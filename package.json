@@ -1,0 +1,68 @@
+{
+  "name": "guardian",
+  "displayName": "Guardian for VS Code",
+  "description": "AI 代码可信度增强插件 - 作为 Copilot 的质检员和安全官",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:guardian.generateUnitTests"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "guardian.generateUnitTests",
+        "title": "Generate Unit Tests",
+        "category": "Guardian"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "guardian.generateUnitTests",
+          "when": "editorHasSelection || editorTextFocus",
+          "group": "guardian"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Guardian",
+      "properties": {
+        "guardian.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Guardian 后端服务地址"
+        },
+        "guardian.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "LLM API Key（如果后端需要）"
+        },
+        "guardian.testDirectory": {
+          "type": "string",
+          "default": "__tests__",
+          "description": "测试文件目录名称"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
+
