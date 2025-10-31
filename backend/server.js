@@ -119,6 +119,21 @@ const server = http.createServer(async (req, res) => {
 
     const parsedUrl = url.parse(req.url, true);
     
+    // 根路径：返回 API 介绍
+    if (parsedUrl.pathname === '/' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            name: 'Guardian Backend API',
+            version: '0.0.1',
+            description: 'AI 代码可信度增强插件后端服务',
+            endpoints: {
+                'POST /api/generate-tests': '生成单元测试用例'
+            },
+            status: 'running'
+        }, null, 2));
+        return;
+    }
+    
     if (parsedUrl.pathname === '/api/generate-tests' && req.method === 'POST') {
         let body = '';
         
