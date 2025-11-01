@@ -101,7 +101,7 @@ npm run compile
 在 `backend` 目录下创建 `.env` 文件：
 
 ```env
-OPENAI_API_BASE=http://23.106.155.236:3001/v1
+OPENAI_API_BASE=http://xxx:3000/v1
 OPENAI_API_KEY=your-api-key-here
 MODEL=gpt-4.1
 ```
