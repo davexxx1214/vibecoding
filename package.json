@@ -1,0 +1,124 @@
+{
+  "name": "vscode-knowledge-graph",
+  "displayName": "Knowledge Graph",
+  "description": "将工作区转化为智能知识网络的 VS Code 插件",
+  "version": "0.1.0",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "knowledge.createEntity",
+        "title": "Knowledge: Create Entity from Selection"
+      },
+      {
+        "command": "knowledge.linkToEntity",
+        "title": "Knowledge: Link Selection to Entity..."
+      },
+      {
+        "command": "knowledge.addObservation",
+        "title": "Knowledge: Add Observation to Entity..."
+      },
+      {
+        "command": "knowledge.viewEntityDetails",
+        "title": "Knowledge: View Entity Details"
+      },
+      {
+        "command": "knowledge.searchGraph",
+        "title": "Knowledge: Search Graph"
+      },
+      {
+        "command": "knowledge.visualizeGraph",
+        "title": "Knowledge: Visualize Graph"
+      },
+      {
+        "command": "knowledge.exportGraph",
+        "title": "Knowledge: Export Graph"
+      },
+      {
+        "command": "knowledge.importGraph",
+        "title": "Knowledge: Import Graph"
+      },
+      {
+        "command": "knowledge.clearGraph",
+        "title": "Knowledge: Clear Graph"
+      },
+      {
+        "command": "knowledge.settings",
+        "title": "Knowledge: Settings"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "knowledge.createEntity",
+          "group": "knowledge@1"
+        },
+        {
+          "command": "knowledge.linkToEntity",
+          "group": "knowledge@2"
+        },
+        {
+          "command": "knowledge.addObservation",
+          "group": "knowledge@3"
+        },
+        {
+          "command": "knowledge.viewEntityDetails",
+          "group": "knowledge@4"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "knowledge.createEntity",
+          "group": "knowledge@1"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "knowledge-graph",
+          "title": "Knowledge Graph",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "knowledge-graph": [
+        {
+          "id": "knowledgeGraphExplorer",
+          "name": "Explorer"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "esbuild": "^0.19.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "sql.js": "^1.13.0"
+  }
+}
