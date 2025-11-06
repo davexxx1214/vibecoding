@@ -1,547 +1,1078 @@
-# VS Code 知识图谱插件
+# VibeCoding - VS Code 知识图谱插件
 
-一个基于知识图谱和 SQLite 的 VS Code 插件，将工作区转化为智能知识网络，帮助开发者管理和理解代码库中的复杂关系。
+> 将你的代码库转化为智能知识网络，让 AI 编程更高效
+
+一个基于知识图谱和 SQLite 的 VS Code 插件，帮助开发者理解和管理代码库中的复杂关系，同时为 AI 编程提供持久化的项目上下文。
 
 ## 📋 目录
 
 - [项目概述](#项目概述)
-- [核心设计理念](#核心设计理念)
-- [功能模块设计](#功能模块设计)
-- [技术选型](#技术选型)
-- [实现步骤](#实现步骤)
-- [用户使用场景](#用户使用场景)
-- [数据库 Schema 设计](#数据库-schema-设计)
+- [核心价值](#核心价值)
+- [当前状态](#当前状态)
+- [快速开始](#快速开始)
+- [核心功能](#核心功能)
+- [三阶段路线图](#三阶段路线图)
+- [AI 协同设计](#ai-协同设计)
+- [技术架构](#技术架构)
+- [数据库设计](#数据库设计)
+- [开发指南](#开发指南)
+
+---
 
 ## 🎯 项目概述
 
-### 核心目标
+### 核心理念
 
-将 VS Code 工作区本身变成一个智能知识图谱，为开发者提供：
-- **项目专属的知识网络**：扫描、索引并关联代码库中的各种实体（函数、类、文件、API端点、配置项等）
-- **可视化代码关系**：通过交互式图谱展示代码之间的依赖和调用关系
-- **持久化记忆**：使用 SQLite 本地存储，知识图谱随项目版本控制
-- **无缝开发体验**：深度集成 VS Code，最小化工作流中断
+VibeCoding 将 VS Code 工作区本身变成一个**智能知识图谱**，为开发者和 AI 提供：
 
-### 核心价值
+- **🧠 代码理解助手**：可视化代码关系，快速理解复杂系统
+- **📝 项目记忆系统**：持久化保存设计决策、重构笔记、性能警告
+- **🤖 AI 编程加速器**：为 AI 提供项目上下文，避免重复解释
+- **👥 团队知识共享**：知识图谱可被 Git 追踪，团队协作更顺畅
 
-1. **为开发者自己服务**：不再是为外部 AI 提供记忆，而是帮助开发者理解和管理自己的代码库
-2. **项目级知识管理**：知识图谱存储在项目目录中，可以被 Git 追踪或忽略
-3. **可交互的知识网络**：支持可视化、搜索、编辑和管理
+### 三个核心概念
 
-## 💡 核心设计理念
-
-### 知识图谱的三个核心概念
-
-1. **实体 (Entities)**：代码库中的各种元素
-   - 函数、类、接口、变量
-   - 文件、目录
-   - API 端点、配置项
-   - 数据库表、服务等
-
-2. **关系 (Relations)**：实体之间的连接
-   - `uses`：使用关系
-   - `calls`：调用关系
-   - `extends`：继承关系
-   - `implements`：实现关系
-   - `depends_on`：依赖关系
-   - 自定义关系类型
-
-3. **观察记录 (Observations)**：关于实体的笔记和注释
-   - 性能警告
-   - 设计决策说明
-   - Bug 记录
-   - 重构建议
-   - 任何开发者想要记住的信息
-
-## 🏗️ 功能模块设计
-
-### 1. 存储层（本地化实现）
-
-#### 数据库设计
-- **位置**：项目工作区的 `.vscode/.knowledge/` 目录
-- **文件**：`graph.sqlite`（SQLite 数据库文件）
-- **版本控制**：可被 Git 追踪或添加到 `.gitignore`
-
-#### 技术实现
-- **库选择**：`better-sqlite3`（推荐）或 `sqlite3`
-  - `better-sqlite3` 优势：性能好，支持同步操作，适合插件逻辑
-- **全文搜索**：启用 SQLite 的 FTS5 扩展
-
-#### 数据库 Schema
-
-详见 [数据库 Schema 设计](#数据库-schema-设计) 章节。
-
-### 2. 知识图谱核心服务（插件内部逻辑）
-
-TypeScript/JavaScript 模块，负责所有与数据库的交互，实现核心 CRUD 操作：
-
-#### 核心 API
+#### 1. 实体 (Entities)
+代码库中的各种元素，**关键特性：具有精确的代码位置**
 
 ```typescript
-// 实体管理
-createEntity(name: string, type: string, location: CodeLocation): Entity
-updateEntity(entityId: string, updates: Partial<Entity>): Entity
-deleteEntity(entityId: string): void
-getEntity(entityId: string): Entity | null
-listEntities(filters?: EntityFilters): Entity[]
-
-// 关系管理
-addRelation(sourceId: string, targetId: string, verb: string): Relation
-removeRelation(relationId: string): void
-getRelations(entityId: string): Relation[]
-getRelatedEntities(entityId: string, relationType?: string): Entity[]
-
-// 观察记录管理
-addObservation(entityId: string, content: string): Observation
-updateObservation(observationId: string, content: string): Observation
-deleteObservation(observationId: string): void
-getObservations(entityId: string): Observation[]
-
-// 搜索功能
-searchNodes(query: string): SearchResult[]
-searchByType(type: string): Entity[]
-searchByFile(filePath: string): Entity[]
+{
+  id: "uuid-123",
+  name: "UserService",
+  type: "Class",
+  filePath: "src/services/user.ts",  // ← 可跳转
+  startLine: 15,                      // ← 精确定位
+  endLine: 120,
+  description: "用户管理核心服务",
+  observations: [...]
+}
 ```
 
-### 3. 用户界面与交互层（VS Code Integration）
+支持的类型：
+- 代码元素：`Function`、`Class`、`Interface`、`Variable`
+- 文件系统：`File`、`Directory`
+- 业务概念：`API`、`Service`、`Component`、`Database`
+- 自定义类型
 
-#### 3.1 侧边栏视图 (Activity Bar View)
+#### 2. 关系 (Relations)
+实体之间的连接，支持多种关系类型
 
-**功能描述**：
-- 创建新的 Activity Bar 图标（如 🧠 或 📊）
-- 点击后展开"知识图谱"面板
-
-**面板内容**：
-- **搜索框**：全文搜索实体、关系和观察记录
-- **实体列表**：树状视图或列表展示
-  - 最近访问的实体
-  - 收藏的实体
-  - 按类型分组的实体
-- **快速操作**：点击实体跳转到代码位置
-
-**实现要点**：
-- 使用 VS Code TreeDataProvider API
-- 支持虚拟滚动（处理大量实体）
-- 实时搜索过滤
-
-#### 3.2 右键上下文菜单 (Context Menu)
-
-**代码编辑器中的菜单项**：
-```
-Knowledge: Create Entity from Selection
-  └─ 从选中的代码创建实体（自动识别类型和位置）
-
-Knowledge: Link Selection to Entity...
-  └─ 将选中代码链接到已存在的实体
-
-Knowledge: Add Observation to Entity...
-  └─ 为关联实体添加笔记
-
-Knowledge: View Entity Details
-  └─ 查看当前实体的详细信息
-```
-
-**文件浏览器中的菜单项**：
-```
-Knowledge: Create Entity for this File
-Knowledge: Create Entity for this Folder
-Knowledge: View File Relations
-```
-
-**实现要点**：
-- 使用 `vscode.commands.registerCommand`
-- 菜单项通过 `contributes.menus` 注册
-- 智能识别选中代码的类型（函数、类、变量等）
-
-#### 3.3 命令面板 (Command Palette)
-
-**暴露的核心命令**：
-```
-Knowledge: Create new Entity
-Knowledge: Search Graph
-Knowledge: Visualize Relations
-Knowledge: Export Graph
-Knowledge: Import Graph
-Knowledge: Clear Graph
-Knowledge: Settings
-```
-
-**实现要点**：
-- 所有命令通过 `contributes.commands` 注册
-- 支持键盘快捷键绑定
-- 命令参数通过 QuickPick 或 InputBox 收集
-
-#### 3.4 悬浮提示 (Hover Provider)
-
-**功能描述**：
-当鼠标悬停在已创建为"实体"的代码上时，显示增强信息：
-
-**显示内容**：
-- **观察记录**：`"Note: Handles payment processing via Stripe."`
-- **关系信息**：
-  - `Used by: OrderController, PaymentService`
-  - `Calls: PaymentGateway.charge, Logger.info`
-  - `Extends: BaseService`
-- **统计信息**：`3 observations, 2 relations`
-
-**实现要点**：
-- 使用 `vscode.languages.registerHoverProvider`
-- 解析当前光标位置的代码符号
-- 查询数据库获取关联信息
-- Markdown 格式展示
-
-#### 3.5 代码内联装饰/CodeLens
-
-**功能描述**：
-在已成为实体的函数或类定义上方显示可点击的装饰文本。
-
-**显示格式**：
 ```typescript
-// [KG: 3 observations, 2 relations]  ← 可点击
+{
+  from: "AuthController",
+  to: "UserService",
+  verb: "uses"  // calls, extends, implements, depends_on 等
+}
+```
+
+#### 3. 观察记录 (Observations)
+关于实体的笔记和注释，这是**知识图谱的核心价值**
+
+```typescript
+{
+  entityId: "uuid-123",
+  content: "⚠️ 性能警告：存在 N+1 查询问题，待优化",
+  createdAt: "2024-11-06T10:30:00Z"
+}
+```
+
+用途：
+- 性能警告和优化建议
+- 设计决策说明
+- Bug 记录和修复历史
+- 重构待办事项
+- 团队协作笔记
+
+---
+
+## 💎 核心价值
+
+### 为开发者
+
+```
+传统开发：
+  😵 代码库复杂，不知道从哪里改起
+  😵 修改一个函数，不知道影响哪些地方
+  😵 团队成员的经验分散在聊天记录里
+  😵 新人接手项目，理解成本极高
+
+使用 VibeCoding：
+  ✅ 悬浮提示显示实体的观察记录和关系
+  ✅ 关系图谱显示完整的影响链
+  ✅ 观察记录保存团队知识
+  ✅ 可视化图谱快速理解项目结构
+```
+
+### 为 AI 编程
+
+```
+传统 AI 编程：
+  😵 AI 每次都要重新理解项目
+  😵 上下文窗口有限，无法加载整个项目
+  😵 历史决策和笔记容易丢失
+  😵 AI 不知道哪些代码有坑
+
+使用 VibeCoding：
+  ✅ 导出知识图谱供 AI 阅读（Markdown/JSON）
+  ✅ 一键复制实体上下文到 AI 对话
+  ✅ 观察记录告诉 AI 哪些代码需要注意
+  ✅ 关系图谱帮助 AI 理解依赖链
+```
+
+---
+
+## ✅ 当前状态
+
+### 已完成：阶段一 MVP（2000+ 行代码）
+
+根据 [STAGE1_COMPLETE.md](./STAGE1_COMPLETE.md)，我们已经完成：
+
+#### ✅ 核心服务层
+- [x] SQLite 数据库服务（FTS5 全文搜索）
+- [x] 实体管理服务（CRUD、查询、过滤）
+- [x] 关系管理服务（创建、查询、验证）
+- [x] 观察记录服务（添加、搜索）
+
+#### ✅ VS Code UI 集成
+- [x] **侧边栏树视图**：按类型分组显示实体
+- [x] **悬浮提示**：显示实体信息、观察记录、关系
+- [x] **CodeLens**：代码上方显示统计信息
+- [x] **右键菜单**：创建实体、添加观察记录
+- [x] **命令面板**：搜索、查看详情、跳转
+
+#### ✅ 基础功能
+- [x] 手动创建实体
+- [x] 添加观察记录
+- [x] 查看实体详情
+- [x] 搜索功能
+- [x] 点击跳转到代码
+
+### 下一步：阶段二和三
+
+详见 [三阶段路线图](#三阶段路线图)
+
+---
+
+## 🚀 快速开始
+
+### 安装
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/yourusername/vibecoding.git
+cd vibecoding
+
+# 2. 安装依赖
+npm install
+
+# 3. 编译
+npm run compile
+
+# 4. 在 VS Code 中按 F5 启动调试
+```
+
+### 基本使用
+
+#### 1️⃣ 创建第一个实体
+
+```
+1. 打开一个项目文件（如 user.ts）
+2. 选中一个类或函数
+3. 右键 → "Knowledge: Create Entity from Selection"
+4. 输入描述（可选）
+5. 完成！
+```
+
+#### 2️⃣ 添加观察记录
+
+```
+1. 鼠标悬停在已创建的实体上
+2. 点击"Add Observation"
+3. 输入笔记内容，如：
+   "⚠️ 这个函数有性能问题，需要优化"
+4. 保存
+```
+
+#### 3️⃣ 查看知识图谱
+
+```
+1. 点击侧边栏的"Knowledge Graph"图标（🧠）
+2. 浏览按类型分组的实体
+3. 点击任意实体跳转到代码位置
+```
+
+#### 4️⃣ 搜索
+
+```
+1. 命令面板（Ctrl+Shift+P）
+2. 输入 "Knowledge: Search Graph"
+3. 搜索实体名称、类型或观察记录内容
+```
+
+---
+
+## 🎯 核心功能
+
+### 1. 实体管理
+
+#### 创建实体
+- **方式一**：选中代码 → 右键菜单 → "Create Entity from Selection"
+- **方式二**：命令面板 → "Knowledge: Create new Entity"
+- **方式三**：文件浏览器 → 右键 → "Create Entity for this File"
+
+#### 智能识别
+插件会自动识别选中代码的类型：
+- 类声明 → `Class`
+- 函数声明 → `Function`
+- 接口定义 → `Interface`
+- 其他 → 手动选择类型
+
+### 2. 悬浮提示增强
+
+鼠标悬停在实体上时，显示：
+
+```markdown
+📦 UserService (Class)
+📄 src/services/user.ts:15-120
+
+💭 观察记录 (3)
+  • ⚠️ 性能警告：存在 N+1 查询问题
+  • ✅ 已添加 Redis 缓存提升性能
+  • 📝 团队决策：所有用户操作必须通过此类
+
+🔗 关系 (5)
+  → 调用：DatabasePool, RedisCache
+  ← 被调用：AuthController, OrderService
+
+[查看详情] [添加观察] [复制上下文]
+```
+
+### 3. CodeLens 装饰
+
+在函数/类定义上方显示：
+
+```typescript
+// [KG: 3 observations, 2 relations] ← 可点击
 export class UserService {
   // ...
 }
 ```
 
-**点击行为**：
-- 打开快速预览面板
-- 显示该实体的所有观察记录和关系
-- 提供快速编辑入口
+点击后打开快速预览面板。
 
-**实现要点**：
-- 使用 `vscode.languages.registerCodeLensProvider`
-- 异步加载实体信息
-- 支持命令执行
+### 4. 侧边栏视图
 
-#### 3.6 Webview 可视化面板
+按类型分组展示：
 
-**功能描述**：
-最亮眼的功能。提供一个命令 `Knowledge: Visualize Graph`，打开新的 Tab 页面（Webview），以图形方式展示知识图谱。
+```
+📁 Classes (12)
+  📦 UserService
+  📦 AuthController
+  📦 DatabasePool
 
-**可视化特性**：
-- **节点**：代表实体，不同颜色/形状表示不同类型
-- **连线**：代表关系，不同颜色/样式表示不同关系类型
-- **交互**：
-  - 拖拽节点
-  - 缩放和平移画布
-  - 点击节点查看详情
-  - 点击节点跳转到代码
-  - 右键菜单添加关系
-  - 搜索高亮
+📁 Functions (25)
+  ⚡ validateUser
+  ⚡ hashPassword
+  
+📁 Interfaces (8)
+  📋 UserDTO
+  📋 AuthToken
 
-**视图模式**：
-- **全局视图**：显示整个图谱
-- **局部视图**：以某个实体为中心，显示其邻居
-- **时间线视图**：按创建时间排序
+🔍 搜索框
+```
 
-**实现要点**：
-- 使用 VS Code Webview API
-- 图形库选择：
-  - **React Flow**（推荐）：React 组件，易集成，性能好
-  - **D3.js**：功能强大，但集成复杂
-  - **Vis.js**：简单易用，适合快速原型
-- 数据导出/导入（JSON、GraphML 等）
+### 5. 搜索功能
 
-## 🛠️ 技术选型
+支持 FTS5 全文搜索：
+- 搜索实体名称
+- 搜索实体类型
+- 搜索观察记录内容
+- 支持中英文
 
-| 模块 | 技术选型 | 理由 |
+---
+
+## 🗺️ 三阶段路线图
+
+### 第一阶段：MVP - 基础知识图谱 ✅ **已完成**
+
+**目标**：可用的手动知识图谱管理工具
+
+**核心功能**：
+- ✅ SQLite 数据库（实体、关系、观察记录）
+- ✅ 基础 CRUD 操作
+- ✅ VS Code UI 集成（侧边栏、悬浮、CodeLens、菜单）
+- ✅ 手动创建实体和关系
+- ✅ 基础搜索功能
+
+**验收标准**：
+- ✅ 开发者可以手动标记代码实体
+- ✅ 可以通过 UI 浏览和搜索
+- ✅ 悬浮提示能显示观察记录
+
+**时间**：已完成（约 2000+ 行代码）
+
+---
+
+### 第二阶段：AI 协同 🔥 **进行中**
+
+**目标**：让知识图谱成为 AI 编程的"外部记忆"
+
+**核心功能**：
+
+#### 2.1 知识图谱导出 🎯
+- [ ] **Markdown 格式导出**（最适合 AI 阅读）
+  - 命令：`Knowledge: Export as Markdown`
+  - 格式化输出：实体描述 + 观察记录 + 关系链
+  - 可直接复制到 AI 对话框
+  
+- [ ] **JSON 格式导出**（结构化数据）
+  - 命令：`Knowledge: Export as JSON`
+  - 适合数据分析和备份
+  
+- [ ] **项目摘要文档**
+  - 自动生成项目概览
+  - 包含关键实体和设计决策
+  - 适合新人 onboarding
+
+#### 2.2 快速上下文注入 🎯
+- [ ] **复制实体上下文**
+  - 快捷键：`Ctrl+K Ctrl+C`
+  - 一键复制实体的完整信息（代码 + 观察 + 关系）
+  - 自动格式化为 AI 友好的文本
+  
+- [ ] **生成文件摘要**
+  - 命令：`Knowledge: Generate File Summary`
+  - 列出文件中的所有实体和关键笔记
+  
+- [ ] **依赖链分析**
+  - 命令：`Knowledge: Show Dependency Chain`
+  - 生成实体的完整依赖树
+  - 显示直接依赖和间接影响
+
+#### 2.3 Cursor 深度集成 🎯
+- [ ] **自动生成 .cursorrules**
+  - 命令：`Knowledge: Generate Cursor Rules`
+  - 将知识图谱转化为 Cursor 规则
+  - 包含项目结构、关键实体、编码规范
+  
+- [ ] **项目知识库文档**
+  - 在项目根目录生成 `KNOWLEDGE.md`
+  - 作为 Cursor 的 context file
+  - 随代码更新自动刷新
+
+**验收标准**：
+- ✅ 可以一键导出知识图谱供 AI 使用
+- ✅ AI 能基于导出的上下文理解项目
+- ✅ 开发者能快速将图谱注入 AI 对话
+- ✅ Cursor 能读取项目知识图谱
+
+**时间估计**：1-2 周
+
+---
+
+### 第三阶段：智能增强 🚀 **规划中**
+
+**目标**：从手动维护到自动化
+
+**核心功能**：
+
+#### 3.1 代码自动解析 🚀
+- [ ] **TypeScript/JavaScript 解析**
+  - 使用 TypeScript Compiler API
+  - 自动识别函数、类、接口、变量
+  - 提取 JSDoc 注释作为描述
+  
+- [ ] **关系自动建立**
+  - 分析函数调用 → `calls` 关系
+  - 分析类继承 → `extends` 关系
+  - 分析接口实现 → `implements` 关系
+  - 分析导入依赖 → `imports` 关系
+  
+- [ ] **增量更新机制**
+  - 监听文件变更（onDidChangeTextDocument）
+  - 只重新解析变更的部分
+  - 智能合并手动和自动数据
+
+#### 3.2 智能建议系统 🚀
+- [ ] **缺失实体提醒**
+  - 检测到重要的导出函数/类未记录
+  - 在 CodeLens 中显示建议："💡 添加到知识图谱"
+  
+- [ ] **关系补全建议**
+  - 检测到函数调用但图谱中没有关系记录
+  - 提供一键添加按钮
+  
+- [ ] **观察记录推荐**
+  - 基于代码复杂度建议添加说明
+  - 检测 TODO、FIXME 注释并建议记录
+  - 发现性能问题（大循环、递归）时提醒
+
+#### 3.3 全自动扫描（可选） 🚀
+- [ ] **初次扫描**
+  - 首次启用插件时扫描整个项目
+  - 生成基础知识图谱
+  - 用户审核后保存
+  
+- [ ] **定期扫描**
+  - 后台扫描新增代码
+  - 发现变更时通知用户
+  - 支持白名单/黑名单配置
+
+#### 3.4 AI 辅助生成观察记录（实验性） 🧪
+- [ ] 集成本地 LLM 或调用 API
+- [ ] 自动为复杂函数生成说明
+- [ ] 用户审核后保存
+
+**验收标准**：
+- ✅ 打开项目后自动扫描生成基础图谱
+- ✅ 代码修改后自动更新相关实体
+- ✅ 智能建议帮助补全知识图谱
+- ✅ 手动和自动数据无缝合并
+
+**时间估计**：3-4 周
+
+---
+
+## 🤖 AI 协同设计详解
+
+> 这是第二阶段的核心内容，让知识图谱成为 AI 的"外部记忆"
+
+### 设计理念
+
+**不依赖特定 AI 工具**，而是通过**数据导出 + 快捷命令**让任何 AI 工具都能访问知识图谱。
+
+### 功能一：知识图谱导出
+
+#### 1. Markdown 格式（最适合 AI 阅读）
+
+**命令**：`Knowledge: Export as Markdown`
+
+**输出示例**：
+
+```markdown
+# MyProject Knowledge Graph
+
+**项目概览**
+- 实体数量：156
+- 关系数量：243
+- 最后更新：2024-11-06
+
+---
+
+## 核心实体
+
+### UserService (Class)
+
+**位置**：`src/services/user.ts:15-120`
+
+**描述**：用户管理核心服务
+
+**观察记录**：
+- ⚠️ **性能警告**：存在 N+1 查询问题（2024-11-01）
+- ✅ **优化完成**：已添加 Redis 缓存（2024-11-03）
+- 📝 **团队决策**：所有用户操作必须通过此类
+
+**依赖关系**：
+- **调用** → DatabasePool, RedisCache, Logger
+- **被调用** ← AuthController, OrderService, AdminPanel
+
+**代码片段**：
+```typescript
+export class UserService {
+  constructor(
+    private db: DatabasePool,
+    private cache: RedisCache
+  ) {}
+  
+  async getUsers() {
+    // 实现...
+  }
+}
+```
+
+---
+
+### AuthController (Class)
+
+**位置**：`src/controllers/auth.ts:20-85`
+
+**描述**：认证控制器
+
+**观察记录**：
+- 🔒 **安全**：JWT token 存储在 Redis，过期 24h
+- 📝 **规范**：所有 API 路由必须经过 AuthMiddleware
+
+**依赖关系**：
+- **使用** → UserService, JWTService
+- **被调用** ← API Routes
+
+---
+
+## 关系图谱
+
+### 核心依赖链
+```
+API Routes
+  └─> AuthController
+      └─> UserService
+          ├─> DatabasePool
+          └─> RedisCache
+```
+
+### 数据流
+```
+Client Request
+  → AuthController (JWT 验证)
+  → UserService (业务逻辑)
+  → DatabasePool (数据访问)
+  → RedisCache (缓存)
+```
+
+---
+
+## 重要设计决策
+
+1. **用户服务集中化**
+   - 所有用户相关操作必须通过 UserService
+   - 不允许直接访问 User 表
+   - 原因：统一权限控制和缓存策略
+
+2. **缓存策略**
+   - 用户信息缓存 5 分钟
+   - 使用 Redis 存储 session
+   - 原因：减少数据库压力
+
+3. **已知问题**
+   - UserService.getUsers 有 N+1 查询问题
+   - 计划使用 DataLoader 优化
+   - 影响：高并发场景性能下降
+
+---
+
+**生成时间**：2024-11-06 10:30:00  
+**插件版本**：VibeCoding v0.1.0
+```
+
+**使用场景**：
+```
+1. 复制整个 Markdown
+2. 粘贴到 AI 对话框
+3. 提问："基于这个项目知识图谱，帮我优化 UserService"
+
+AI 现在有了完整上下文！
+```
+
+#### 2. JSON 格式（结构化数据）
+
+**命令**：`Knowledge: Export as JSON`
+
+**输出示例**：
+
+```json
+{
+  "metadata": {
+    "project": "MyProject",
+    "exportDate": "2024-11-06T10:30:00Z",
+    "entityCount": 156,
+    "relationCount": 243,
+    "pluginVersion": "0.1.0"
+  },
+  "entities": [
+    {
+      "id": "uuid-123",
+      "name": "UserService",
+      "type": "Class",
+      "file": "src/services/user.ts",
+      "location": {
+        "startLine": 15,
+        "endLine": 120
+      },
+      "description": "用户管理核心服务",
+      "observations": [
+        {
+          "content": "⚠️ 性能警告：存在 N+1 查询问题",
+          "createdAt": "2024-11-01T10:00:00Z"
+        },
+        {
+          "content": "✅ 已添加 Redis 缓存",
+          "createdAt": "2024-11-03T15:30:00Z"
+        }
+      ],
+      "relations": {
+        "calls": ["DatabasePool", "RedisCache"],
+        "calledBy": ["AuthController", "OrderService"]
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "AuthController",
+      "to": "UserService",
+      "type": "uses"
+    }
+  ]
+}
+```
+
+**使用场景**：
+- 供其他工具解析
+- 数据分析和可视化
+- 备份和版本控制
+- 与其他系统集成
+
+### 功能二：快速上下文注入
+
+#### 命令 1：复制实体上下文
+
+**触发方式**：
+- 鼠标悬停 → 点击"复制上下文"按钮
+- 右键菜单 → "Knowledge: Copy Entity Context"
+- 快捷键：`Ctrl+K Ctrl+C`（选中实体后）
+
+**输出内容**：
+
+```
+📦 实体：UserService (Class)
+📄 位置：src/services/user.ts:15-120
+
+💭 关键观察：
+  • ⚠️ 性能警告：存在 N+1 查询问题
+  • ✅ 已添加 Redis 缓存提升性能
+  • 📝 团队决策：所有用户操作必须通过此类
+
+🔗 依赖关系：
+  调用 → DatabasePool, RedisCache, Logger
+  被调用 ← AuthController (3处), OrderService (2处), AdminPanel (1处)
+
+📋 代码片段：
+```typescript
+export class UserService {
+  constructor(
+    private db: DatabasePool,
+    private cache: RedisCache
+  ) {}
+  
+  async getUsers(): Promise<User[]> {
+    const cached = await this.cache.get('users');
+    if (cached) return cached;
+    
+    const users = await this.db.query('SELECT * FROM users');
+    await this.cache.set('users', users, 300);
+    return users;
+  }
+}
+```
+
+---
+💡 提示：此上下文由 VibeCoding 生成，包含实体的完整信息和团队笔记。
+```
+
+**使用流程**：
+
+```
+场景：你要让 AI 帮你优化一个函数
+
+步骤 1：鼠标悬停在 UserService 上
+步骤 2：点击"复制上下文"（或 Ctrl+K Ctrl+C）
+步骤 3：打开 Cursor/ChatGPT
+步骤 4：粘贴上下文 + 提问
+
+示例对话：
+---
+[粘贴的上下文]
+📦 实体：UserService (Class)
+观察：存在 N+1 查询问题
+依赖：DatabasePool, RedisCache
+被调用：AuthController, OrderService
+---
+
+我的问题：
+如何优化 UserService 的查询性能？
+注意：它被 AuthController 和 OrderService 调用，改动不能破坏现有接口。
+
+AI 回复：
+✅ 基于你的上下文，我看到：
+   1. 已经用了 Redis 缓存 ✓
+   2. 存在 N+1 问题（主要在 getUsers 方法）
+   3. AuthController 和 OrderService 依赖它
+   
+   建议方案：使用 DataLoader 批量加载...
+```
+
+#### 命令 2：生成文件摘要
+
+**命令**：`Knowledge: Generate File Summary`
+
+**输出示例**：
+
+```
+📄 文件摘要：src/services/user.ts
+
+包含实体 (3)：
+  📦 UserService (Class, 行 15-120)
+  📋 UserDTO (Interface, 行 5-10)
+  ⚡ validateUser (Function, 行 125-140)
+
+关键关系：
+  • UserService → 调用 DatabasePool, RedisCache
+  • AuthController → 使用 UserService
+  • OrderService → 使用 UserDTO
+
+重要笔记 (2)：
+  ⚠️ UserService 有性能问题待优化
+  ✅ 已添加 Redis 缓存提升查询性能
+
+建议操作：
+  💡 UserService 被 3 个地方调用，修改需谨慎
+  💡 validateUser 函数可以提取到独立的 util 文件
+```
+
+**使用场景**：
+- 快速了解一个文件的核心内容
+- 在 AI 对话中解释文件结构
+- Code Review 时的参考
+
+#### 命令 3：依赖链分析
+
+**命令**：`Knowledge: Show Dependency Chain`
+
+选中实体后触发，生成完整的依赖树：
+
+```
+🔗 UserService 依赖链分析
+
+📤 直接依赖 (UserService 调用)
+├─ DatabasePool
+├─ RedisCache
+└─ Logger
+
+📥 直接被依赖 (被 UserService 调用)
+├─ AuthController (3 处调用)
+├─ OrderService (2 处调用)
+└─ AdminPanel (1 处调用)
+
+🌐 间接影响范围
+├─ API Routes (通过 AuthController)
+├─ PaymentProcessor (通过 OrderService)
+├─ NotificationService (通过 OrderService)
+└─ AdminDashboard (通过 AdminPanel)
+
+⚠️ 影响评估
+  • 修改 UserService 接口会影响 6 个直接调用
+  • 间接影响 10+ 个下游服务
+  • 建议：先在测试环境验证变更
+
+📊 统计
+  • 直接依赖：3 个
+  • 被依赖：3 个
+  • 影响范围：10+ 个服务
+  • 风险等级：🔴 高
+```
+
+**使用场景**：
+- 重构前的影响分析
+- 告诉 AI 完整的依赖关系
+- 团队讨论技术方案
+
+### 功能三：Cursor 深度集成
+
+#### 1. 自动生成 .cursorrules
+
+**命令**：`Knowledge: Generate Cursor Rules`
+
+在项目根目录生成 `.cursorrules` 文件：
+
+```markdown
+# VibeCoding Knowledge Graph Context
+
+> 本文件由 VibeCoding 自动生成，包含项目知识图谱的关键信息。
+> 最后更新：2024-11-06 10:30:00
+
+## 项目概览
+
+- **实体数量**：156 个
+- **关系数量**：243 个
+- **主要技术栈**：TypeScript, Node.js, SQLite
+- **架构模式**：分层架构（Controller → Service → Repository）
+
+---
+
+## 核心实体速查
+
+### UserService (src/services/user.ts)
+- **职责**：用户管理核心服务
+- **⚠️ 注意**：存在 N+1 查询问题，使用时注意性能
+- **✅ 优化**：已添加 Redis 缓存
+- **依赖**：DatabasePool, RedisCache
+- **团队规范**：所有用户操作必须通过此类
+
+### AuthController (src/controllers/auth.ts)
+- **职责**：认证控制器
+- **🔒 安全**：JWT token 存储在 Redis，过期 24h
+- **依赖**：UserService, JWTService
+- **团队规范**：所有 API 路由必须经过 AuthMiddleware
+
+### DatabasePool (src/database/pool.ts)
+- **职责**：数据库连接池
+- **⚠️ 配置**：连接池大小 20（经过压测）
+- **⚠️ 重要**：不要启用自动重连，会导致死锁
+- **被依赖**：UserService, OrderService 等 15+ 服务
+
+---
+
+## 架构约束
+
+### 数据访问规范
+```
+❌ 不允许：直接访问数据库表
+✅ 必须：通过 Service 层访问
+原因：统一权限控制和缓存策略
+```
+
+### 用户权限处理
+```
+❌ 不允许：在 Controller 中检查权限
+✅ 必须：在 AuthMiddleware 中统一处理
+原因：集中管理，避免遗漏
+```
+
+### 缓存策略
+```
+✅ 用户信息：缓存 5 分钟
+✅ 配置数据：缓存 1 小时
+✅ 静态内容：缓存 24 小时
+```
+
+---
+
+## 已知问题
+
+### 🔴 高优先级
+1. **UserService.getUsers**
+   - 问题：N+1 查询
+   - 影响：高并发场景性能下降
+   - 计划：使用 DataLoader 优化
+   - 负责人：@team
+
+### 🟡 中优先级
+2. **AuthController.login**
+   - 问题：缺少频率限制
+   - 影响：可能被暴力破解
+   - 计划：添加 rate limiting
+   
+---
+
+## 重要设计决策
+
+### 为什么用 Redis 而不是内存缓存？
+- **决策日期**：2024-10-15
+- **原因**：支持多实例部署，缓存一致性
+- **权衡**：增加了 Redis 依赖，但提升了扩展性
+
+### 为什么不用 ORM？
+- **决策日期**：2024-10-01
+- **原因**：项目查询复杂，ORM 性能不佳
+- **权衡**：手写 SQL 维护成本更高，但性能好 50%
+
+---
+
+## 编码规范（基于知识图谱）
+
+### 修改 UserService 时
+- ⚠️ 注意：被 3 个 Controller 调用
+- ⚠️ 注意：已知性能问题
+- ✅ 建议：先写测试再改代码
+- ✅ 建议：修改后更新知识图谱观察记录
+
+### 添加新 API 时
+- ✅ 必须：经过 AuthMiddleware
+- ✅ 必须：调用 Service 层而非直接访问数据库
+- ✅ 建议：在知识图谱中记录 API 实体
+
+---
+
+## 快速参考
+
+### 实体类型统计
+- Classes: 45
+- Functions: 67
+- Interfaces: 28
+- APIs: 16
+
+### 关系类型统计
+- calls: 156
+- uses: 45
+- implements: 23
+- extends: 19
+
+---
+
+**生成时间**：2024-11-06 10:30:00  
+**插件版本**：VibeCoding v0.1.0  
+**自动更新**：每次知识图谱变更时自动重新生成
+```
+
+**效果**：
+- Cursor 在每次对话时自动读取这个文件
+- AI 了解项目的架构、约束、已知问题
+- 开发效率显著提升
+
+#### 2. 生成项目知识库文档
+
+**命令**：`Knowledge: Export Project Knowledge Base`
+
+生成 `KNOWLEDGE.md` 作为 Cursor 的 context file：
+
+```markdown
+# Project Knowledge Base
+
+> 本文档是项目的知识中心，包含关键实体、设计决策、已知问题。
+> 由 VibeCoding 自动生成和维护。
+
+[内容同上，但更详细]
+```
+
+---
+
+## 🏗️ 技术架构
+
+### 技术栈
+
+| 层次 | 技术选型 | 说明 |
 |------|---------|------|
-| **语言** | TypeScript | VS Code 插件标准，类型安全 |
-| **框架** | VS Code Extension API | 官方插件开发框架 |
-| **数据库** | better-sqlite3 | 性能好，同步操作，适合插件逻辑 |
-| **图可视化** | React Flow | React 组件，易集成，性能好 |
-| **UI 框架** | VS Code Tree View API | 原生支持，样式统一 |
-| **构建工具** | webpack / esbuild | 打包插件代码 |
+| **插件框架** | VS Code Extension API | 官方插件开发框架 |
+| **语言** | TypeScript | 类型安全，开发体验好 |
+| **数据库** | better-sqlite3 | 同步 API，性能好 |
+| **全文搜索** | SQLite FTS5 | 内置，无需额外依赖 |
+| **UI 框架** | VS Code Native Components | TreeView, Webview 等 |
+| **构建工具** | esbuild | 快速打包 |
+| **代码解析** | TypeScript Compiler API | 阶段三使用 |
+| **图可视化** | React Flow | 阶段五使用 |
 
-## 📝 实现步骤
+### 项目结构
 
-### 阶段一：项目基础搭建（Week 1-2）
-
-#### 步骤 1.1：初始化 VS Code 插件项目
-- [ ] 使用 `yo code` 或手动创建插件项目结构
-- [ ] 配置 `package.json`：
-  - 插件名称、描述、版本
-  - 激活事件（activationEvents）
-  - 命令注册（contributes.commands）
-  - 菜单注册（contributes.menus）
-- [ ] 配置 TypeScript 编译选项
-- [ ] 配置 webpack 或 esbuild 打包
-- [ ] 创建基本的扩展入口文件 `extension.ts`
-
-#### 步骤 1.2：安装和配置依赖
-- [ ] 安装 `better-sqlite3`：`npm install better-sqlite3`
-- [ ] 安装类型定义：`npm install --save-dev @types/better-sqlite3`
-- [ ] 配置 native 模块编译（如果需要）
-- [ ] 创建 `.vscodeignore` 排除不必要的文件
-
-#### 步骤 1.3：创建项目目录结构
 ```
-.vscode/
-  └─ .knowledge/
-      └─ graph.sqlite (运行时创建)
+vibecoding/
+├── src/
+│   ├── extension.ts                  # ✅ 插件入口
+│   ├── services/
+│   │   ├── database.ts               # ✅ 数据库服务
+│   │   ├── entityService.ts          # ✅ 实体管理
+│   │   ├── relationService.ts        # ✅ 关系管理
+│   │   └── observationService.ts     # ✅ 观察记录管理
+│   ├── providers/
+│   │   ├── hoverProvider.ts          # ✅ 悬浮提示
+│   │   ├── codeLensProvider.ts       # ✅ CodeLens
+│   │   └── treeDataProvider.ts       # ✅ 树视图
+│   ├── ui/
+│   │   ├── commands/
+│   │   │   └── entityCommands.ts     # ✅ 命令处理器
+│   │   └── webview/
+│   │       └── graphView.ts          # 🔜 可视化面板（阶段五）
+│   ├── utils/
+│   │   ├── types.ts                  # ✅ 类型定义
+│   │   ├── codeParser.ts             # 🔜 代码解析（阶段三）
+│   │   └── exporter.ts               # 🔜 导出工具（阶段二）
+│   └── ai/
+│       ├── contextBuilder.ts         # 🔜 上下文构建（阶段二）
+│       └── cursorIntegration.ts      # 🔜 Cursor 集成（阶段二）
+├── package.json                      # ✅ 插件配置
+├── tsconfig.json                     # ✅ TypeScript 配置
+├── esbuild.js                        # ✅ 构建脚本
+├── README.md                         # 本文件
+├── STAGE1_COMPLETE.md                # 阶段一完成总结
+├── INSTALL.md                        # 安装指南
+└── QUICKSTART.md                     # 快速入门
 
-src/
-  ├─ extension.ts           # 插件入口
-  ├─ services/
-  │   ├─ database.ts        # 数据库服务
-  │   ├─ entityService.ts   # 实体管理服务
-  │   ├─ relationService.ts # 关系管理服务
-  │   └─ observationService.ts # 观察记录服务
-  ├─ providers/
-  │   ├─ hoverProvider.ts   # 悬浮提示提供者
-  │   ├─ codeLensProvider.ts # CodeLens 提供者
-  │   └─ treeDataProvider.ts # 树视图提供者
-  ├─ ui/
-  │   ├─ webview/
-  │   │   ├─ graphView.ts   # 可视化 Webview
-  │   │   └─ components/    # React 组件
-  │   └─ commands/          # 命令处理器
-  └─ utils/
-      ├─ codeParser.ts      # 代码解析工具
-      └─ types.ts           # 类型定义
+图例：
+  ✅ 已实现
+  🔜 计划中
+  🧪 实验性
 ```
 
-### 阶段二：数据库层实现（Week 2-3）
+### 数据流
 
-#### 步骤 2.1：数据库初始化
-- [ ] 创建 `database.ts` 服务类
-- [ ] 实现数据库连接和初始化逻辑
-- [ ] 创建工作区 `.vscode/.knowledge/` 目录（如果不存在）
-- [ ] 实现数据库迁移机制（版本管理）
+```
+用户操作
+  ↓
+VS Code UI (TreeView / Hover / CodeLens / Menu)
+  ↓
+Commands (entityCommands.ts)
+  ↓
+Services (entityService / relationService / observationService)
+  ↓
+Database (database.ts → SQLite)
+  ↓
+存储在 .vscode/.knowledge/graph.sqlite
+```
 
-#### 步骤 2.2：实现数据库 Schema
-- [ ] 创建 `entities` 表
-- [ ] 创建 `relations` 表
-- [ ] 创建 `observations` 表
-- [ ] 创建索引（提升查询性能）
-- [ ] 启用 FTS5 扩展（全文搜索）
+---
 
-#### 步骤 2.3：实现核心数据库操作
-- [ ] 实现 CRUD 操作的基础方法
-- [ ] 实现事务处理
-- [ ] 实现错误处理和日志记录
-- [ ] 编写单元测试
+## 💾 数据库设计
 
-### 阶段三：核心服务层实现（Week 3-4）
+### Schema 概览
 
-#### 步骤 3.1：实体服务 (EntityService)
-- [ ] 实现 `createEntity` 方法
-- [ ] 实现 `updateEntity` 方法
-- [ ] 实现 `deleteEntity` 方法
-- [ ] 实现 `getEntity` 和 `listEntities` 方法
-- [ ] 实现按类型、文件路径过滤
-
-#### 步骤 3.2：关系服务 (RelationService)
-- [ ] 实现 `addRelation` 方法
-- [ ] 实现 `removeRelation` 方法
-- [ ] 实现 `getRelations` 方法
-- [ ] 实现 `getRelatedEntities` 方法
-- [ ] 实现关系类型验证
-
-#### 步骤 3.3：观察记录服务 (ObservationService)
-- [ ] 实现 `addObservation` 方法
-- [ ] 实现 `updateObservation` 方法
-- [ ] 实现 `deleteObservation` 方法
-- [ ] 实现 `getObservations` 方法
-
-#### 步骤 3.4：搜索服务
-- [ ] 实现全文搜索（FTS5）
-- [ ] 实现按类型搜索
-- [ ] 实现按文件路径搜索
-- [ ] 实现组合搜索和过滤
-
-### 阶段四：VS Code UI 集成（Week 4-6）
-
-#### 步骤 4.1：侧边栏视图实现
-- [ ] 创建 Activity Bar 图标和视图
-- [ ] 实现 TreeDataProvider
-- [ ] 实现搜索框和过滤逻辑
-- [ ] 实现实体列表展示
-- [ ] 实现点击跳转到代码位置
-- [ ] 实现右键菜单操作
-
-#### 步骤 4.2：右键上下文菜单
-- [ ] 注册代码编辑器菜单项
-- [ ] 注册文件浏览器菜单项
-- [ ] 实现代码选择识别（函数、类、变量等）
-- [ ] 实现"创建实体"命令
-- [ ] 实现"链接到实体"命令
-- [ ] 实现"添加观察记录"命令
-
-#### 步骤 4.3：命令面板集成
-- [ ] 注册所有核心命令
-- [ ] 实现命令的参数收集（QuickPick、InputBox）
-- [ ] 实现命令的错误处理和用户反馈
-- [ ] 配置键盘快捷键（可选）
-
-#### 步骤 4.4：悬浮提示实现
-- [ ] 注册 HoverProvider
-- [ ] 实现代码符号解析
-- [ ] 查询数据库获取实体信息
-- [ ] 格式化 Markdown 显示内容
-- [ ] 实现缓存机制（提升性能）
-
-#### 步骤 4.5：CodeLens 实现
-- [ ] 注册 CodeLensProvider
-- [ ] 识别代码中的实体定义位置
-- [ ] 显示统计信息（观察记录数、关系数）
-- [ ] 实现点击命令（打开详情面板）
-
-### 阶段五：可视化面板实现（Week 6-8）
-
-#### 步骤 5.1：Webview 基础搭建
-- [ ] 创建 Webview 面板类
-- [ ] 实现 HTML/CSS/JS 加载
-- [ ] 实现消息传递机制（插件 ↔ Webview）
-- [ ] 实现数据序列化/反序列化
-
-#### 步骤 5.2：React Flow 集成
-- [ ] 搭建 React 开发环境
-- [ ] 安装 React Flow 依赖
-- [ ] 创建基础图形组件
-- [ ] 实现节点和边的渲染
-- [ ] 实现布局算法（力导向图、层次布局等）
-
-#### 步骤 5.3：交互功能实现
-- [ ] 实现节点拖拽
-- [ ] 实现画布缩放和平移
-- [ ] 实现节点点击（显示详情）
-- [ ] 实现节点双击（跳转到代码）
-- [ ] 实现右键菜单（添加关系、删除实体等）
-- [ ] 实现搜索高亮
-
-#### 步骤 5.4：视图模式实现
-- [ ] 实现全局视图（显示所有实体）
-- [ ] 实现局部视图（以实体为中心）
-- [ ] 实现过滤视图（按类型、关系类型）
-- [ ] 实现时间线视图
-
-#### 步骤 5.5：数据导出/导入
-- [ ] 实现 JSON 格式导出
-- [ ] 实现 GraphML 格式导出（可选）
-- [ ] 实现导入功能
-- [ ] 实现数据验证
-
-### 阶段六：代码解析和自动化（Week 8-9）
-
-#### 步骤 6.1：代码解析工具
-- [ ] 集成 TypeScript/JavaScript 解析器（如 `@typescript-eslint/parser`）
-- [ ] 实现函数识别
-- [ ] 实现类识别
-- [ ] 实现变量识别
-- [ ] 实现导入/导出关系识别
-
-#### 步骤 6.2：自动索引功能（可选）
-- [ ] 实现文件监听（onDidChangeFiles）
-- [ ] 实现自动创建实体（可配置）
-- [ ] 实现自动创建关系（如导入关系）
-- [ ] 提供开关控制（避免过度索引）
-
-### 阶段七：优化和测试（Week 9-10）
-
-#### 步骤 7.1：性能优化
-- [ ] 实现数据库查询缓存
-- [ ] 优化大量实体的列表渲染（虚拟滚动）
-- [ ] 优化图谱渲染性能（节点数量限制）
-- [ ] 实现懒加载机制
-
-#### 步骤 7.2：错误处理
-- [ ] 完善错误处理逻辑
-- [ ] 添加用户友好的错误提示
-- [ ] 实现错误日志记录
-
-#### 步骤 7.3：测试
-- [ ] 编写单元测试（核心服务）
-- [ ] 编写集成测试（UI 交互）
-- [ ] 手动测试各种使用场景
-- [ ] 性能测试（大量数据）
-
-#### 步骤 7.4：文档和示例
-- [ ] 编写用户使用文档
-- [ ] 创建示例项目演示
-- [ ] 录制演示视频（可选）
-- [ ] 编写开发者文档（API 文档）
-
-### 阶段八：发布准备（Week 10+）
-
-#### 步骤 8.1：打包和发布
-- [ ] 配置发布脚本
-- [ ] 创建 VSIX 包
-- [ ] 准备 Marketplace 清单
-- [ ] 提交到 VS Code Marketplace
-
-#### 步骤 8.2：后续迭代
-- [ ] 收集用户反馈
-- [ ] 修复 Bug
-- [ ] 添加新功能
-- [ ] 性能持续优化
-
-## 📊 数据库 Schema 设计
-
-### entities 表
-
-存储代码库中的实体信息。
+#### entities 表（实体）
 
 ```sql
 CREATE TABLE entities (
-    id TEXT PRIMARY KEY,                    -- UUID
-    name TEXT NOT NULL,                     -- 实体名称（如函数名、类名）
-    type TEXT NOT NULL,                     -- 实体类型（function, class, file, api, etc.）
-    file_path TEXT NOT NULL,                -- 文件路径（相对于工作区根目录）
-    start_line INTEGER NOT NULL,            -- 起始行号
-    end_line INTEGER NOT NULL,              -- 结束行号
-    description TEXT,                       -- 描述（可选）
-    created_at INTEGER NOT NULL,            -- 创建时间戳
-    updated_at INTEGER NOT NULL,            -- 更新时间戳
-    metadata TEXT                           -- JSON 格式的额外元数据
+    id TEXT PRIMARY KEY,                -- UUID
+    name TEXT NOT NULL,                 -- 实体名称
+    type TEXT NOT NULL,                 -- 实体类型（function, class, file, etc.）
+    file_path TEXT NOT NULL,            -- 文件路径（相对于工作区根目录）
+    start_line INTEGER NOT NULL,        -- 起始行号
+    end_line INTEGER NOT NULL,          -- 结束行号
+    description TEXT,                   -- 描述
+    created_at INTEGER NOT NULL,        -- 创建时间戳
+    updated_at INTEGER NOT NULL,        -- 更新时间戳
+    metadata TEXT                       -- JSON 格式的额外元数据
 );
 
+-- 索引
 CREATE INDEX idx_entities_type ON entities(type);
 CREATE INDEX idx_entities_file_path ON entities(file_path);
 CREATE INDEX idx_entities_name ON entities(name);
 ```
 
-### relations 表
-
-存储实体之间的关系。
+#### relations 表（关系）
 
 ```sql
 CREATE TABLE relations (
-    id TEXT PRIMARY KEY,                    -- UUID
-    source_entity_id TEXT NOT NULL,         -- 源实体 ID
-    target_entity_id TEXT NOT NULL,         -- 目标实体 ID
-    verb TEXT NOT NULL,                     -- 关系类型（uses, calls, extends, etc.）
-    created_at INTEGER NOT NULL,            -- 创建时间戳
-    metadata TEXT,                          -- JSON 格式的额外元数据
+    id TEXT PRIMARY KEY,                -- UUID
+    source_entity_id TEXT NOT NULL,     -- 源实体 ID
+    target_entity_id TEXT NOT NULL,     -- 目标实体 ID
+    verb TEXT NOT NULL,                 -- 关系类型（uses, calls, extends, etc.）
+    created_at INTEGER NOT NULL,        -- 创建时间戳
+    metadata TEXT,                      -- JSON 格式的额外元数据
+    
     FOREIGN KEY (source_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
     FOREIGN KEY (target_entity_id) REFERENCES entities(id) ON DELETE CASCADE
 );
 
+-- 索引
 CREATE INDEX idx_relations_source ON relations(source_entity_id);
 CREATE INDEX idx_relations_target ON relations(target_entity_id);
 CREATE INDEX idx_relations_verb ON relations(verb);
 ```
 
-### observations 表
-
-存储关于实体的观察记录和笔记。
+#### observations 表（观察记录）
 
 ```sql
 CREATE TABLE observations (
-    id TEXT PRIMARY KEY,                    -- UUID
-    entity_id TEXT NOT NULL,                -- 关联的实体 ID
-    content TEXT NOT NULL,                  -- 观察内容
-    created_at INTEGER NOT NULL,            -- 创建时间戳
-    updated_at INTEGER NOT NULL,            -- 更新时间戳
+    id TEXT PRIMARY KEY,                -- UUID
+    entity_id TEXT NOT NULL,            -- 关联的实体 ID
+    content TEXT NOT NULL,              -- 观察内容
+    created_at INTEGER NOT NULL,        -- 创建时间戳
+    updated_at INTEGER NOT NULL,        -- 更新时间戳
+    
     FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
 );
 
+-- 索引
 CREATE INDEX idx_observations_entity ON observations(entity_id);
 ```
 
-### FTS5 全文搜索表
-
-启用 SQLite FTS5 扩展进行全文搜索。
+### FTS5 全文搜索
 
 ```sql
 -- 实体全文搜索
@@ -562,112 +1093,256 @@ CREATE VIRTUAL TABLE observations_fts USING fts5(
     content_rowid='rowid'
 );
 
--- 创建触发器保持 FTS5 表同步
+-- 触发器保持 FTS5 表同步
 CREATE TRIGGER entities_fts_insert AFTER INSERT ON entities BEGIN
-    INSERT INTO entities_fts(rowid, name, description) VALUES (new.rowid, new.name, new.description);
+    INSERT INTO entities_fts(rowid, name, description) 
+    VALUES (new.rowid, new.name, new.description);
 END;
 
-CREATE TRIGGER entities_fts_delete AFTER DELETE ON entities BEGIN
-    INSERT INTO entities_fts(entities_fts, rowid, name, description) VALUES('delete', old.rowid, old.name, old.description);
-END;
-
-CREATE TRIGGER entities_fts_update AFTER UPDATE ON entities BEGIN
-    INSERT INTO entities_fts(entities_fts, rowid, name, description) VALUES('delete', old.rowid, old.name, old.description);
-    INSERT INTO entities_fts(rowid, name, description) VALUES (new.rowid, new.name, new.description);
-END;
-
-CREATE TRIGGER observations_fts_insert AFTER INSERT ON observations BEGIN
-    INSERT INTO observations_fts(rowid, content) VALUES (new.rowid, new.content);
-END;
-
-CREATE TRIGGER observations_fts_delete AFTER DELETE ON observations BEGIN
-    INSERT INTO observations_fts(observations_fts, rowid, content) VALUES('delete', old.rowid, old.content);
-END;
-
-CREATE TRIGGER observations_fts_update AFTER UPDATE ON observations BEGIN
-    INSERT INTO observations_fts(observations_fts, rowid, content) VALUES('delete', old.rowid, old.content);
-    INSERT INTO observations_fts(rowid, content) VALUES (new.rowid, new.content);
-END;
+-- 更多触发器... (详见 src/services/database.ts)
 ```
 
-## 🎬 用户使用场景
+### 存储位置
 
-### 场景一：创建和维护实体
+```
+项目根目录/
+  └── .vscode/
+      └── .knowledge/
+          └── graph.sqlite  (约 1-10MB，取决于项目大小)
+```
 
-**步骤**：
-1. 开发者选中 `UserService` 类名
-2. 右键选择 `Knowledge: Create Entity from Selection`
-3. 插件自动填充名称和代码位置
-4. 开发者设置类型为 `Class`
-5. 实体创建完成
-
-**结果**：
-- 实体被保存到数据库
-- 在侧边栏视图中可见
-- 鼠标悬停时显示相关信息
-
-### 场景二：添加观察记录
-
-**步骤**：
-1. 开发者发现 `UserService.getUsersWithPermissions` 存在性能问题
-2. 通过命令面板或右键菜单为 `UserService` 实体添加观察记录
-3. 输入内容：`"Warning: getUsersWithPermissions has N+1 query problem. Needs optimization."`
-4. 保存
-
-**结果**：
-- 观察记录关联到实体
-- 其他开发者悬停该实体时能看到警告
-- 可以通过搜索找到所有性能警告
-
-### 场景三：建立代码关系
-
-**步骤**：
-1. 开发者创建 `AuthController` 实体
-2. 打开可视化图谱面板
-3. 找到 `AuthController` 和 `UserService` 节点
-4. 拖拽 `AuthController` 节点连接到 `UserService`
-5. 定义关系类型为 `uses`
-
-**结果**：
-- 关系被保存到数据库
-- 图谱中显示连线
-- 悬停时显示"Used by: AuthController"
-
-### 场景四：新成员接手项目
-
-**步骤**：
-1. 新开发者打开项目
-2. 插件自动加载知识图谱
-3. 鼠标悬停在 `UserService` 上
-4. 立即看到性能警告和依赖关系
-5. 打开可视化图谱，了解整体架构
-
-**结果**：
-- 快速理解代码库结构
-- 避免重复踩坑
-- 做出更明智的重构决策
-
-## 🚀 未来扩展方向
-
-1. **AI 辅助**：集成 AI 自动识别代码关系和生成观察记录
-2. **团队协作**：支持多人编辑和冲突解决
-3. **版本历史**：记录知识图谱的变更历史
-4. **导入导出**：支持更多格式（GraphML、Neo4j 等）
-5. **插件生态**：提供 API 供其他插件扩展
-6. **云端同步**：可选的多设备同步功能
-
-## 📚 参考资料
-
-- [VS Code Extension API 文档](https://code.visualstudio.com/api)
-- [better-sqlite3 文档](https://github.com/WiseLibs/better-sqlite3)
-- [React Flow 文档](https://reactflow.dev/)
-- [VS Code Extension 开发指南](https://code.visualstudio.com/api/get-started/your-first-extension)
-
-## 📄 许可证
-
-待定
+**注意**：
+- 可以被 Git 追踪（团队共享知识）
+- 也可以添加到 `.gitignore`（个人笔记）
+- 建议：添加到 Git，但排除临时表和缓存
 
 ---
 
-**开始开发**：按照 [实现步骤](#实现步骤) 中的阶段一逐步进行，每个阶段完成后进行测试和代码审查，确保质量后再进入下一阶段。
+## 🛠️ 开发指南
+
+### 环境要求
+
+- Node.js >= 16.x
+- VS Code >= 1.80.0
+- TypeScript >= 4.9.0
+
+### 开发命令
+
+```bash
+# 安装依赖
+npm install
+
+# 编译
+npm run compile
+
+# 监听模式（开发时使用）
+npm run watch
+
+# 运行测试
+npm test
+
+# 打包插件
+npm run package
+
+# 代码检查
+npm run lint
+```
+
+### 调试
+
+1. 在 VS Code 中打开项目
+2. 按 `F5` 启动调试
+3. 会打开一个新的 VS Code 窗口（Extension Development Host）
+4. 在新窗口中测试插件功能
+
+### 添加新命令
+
+```typescript
+// 1. 在 package.json 中注册命令
+{
+  "contributes": {
+    "commands": [
+      {
+        "command": "knowledge.myNewCommand",
+        "title": "Knowledge: My New Command"
+      }
+    ]
+  }
+}
+
+// 2. 在 extension.ts 中注册处理器
+context.subscriptions.push(
+  vscode.commands.registerCommand('knowledge.myNewCommand', () => {
+    // 命令实现
+  })
+);
+```
+
+### 添加新的实体类型
+
+```typescript
+// 在 src/utils/types.ts 中添加
+export type EntityType = 
+  | 'function'
+  | 'class'
+  | 'interface'
+  | 'file'
+  | 'myNewType';  // ← 新类型
+
+// 在 TreeDataProvider 中添加对应图标
+private getIcon(type: EntityType): string {
+  const icons = {
+    function: '⚡',
+    class: '📦',
+    interface: '📋',
+    file: '📄',
+    myNewType: '🆕'  // ← 新图标
+  };
+  return icons[type] || '📌';
+}
+```
+
+### 代码规范
+
+- 使用 TypeScript strict 模式
+- 使用 async/await 而非 callback
+- 错误处理使用 try/catch
+- 命名规范：
+  - 文件名：camelCase.ts
+  - 类名：PascalCase
+  - 函数/变量：camelCase
+  - 常量：UPPER_SNAKE_CASE
+
+### 测试建议
+
+```typescript
+// 单元测试示例
+describe('EntityService', () => {
+  it('should create entity', async () => {
+    const entity = await entityService.createEntity({
+      name: 'TestClass',
+      type: 'class',
+      filePath: 'test.ts',
+      startLine: 1,
+      endLine: 10
+    });
+    
+    expect(entity.id).toBeDefined();
+    expect(entity.name).toBe('TestClass');
+  });
+});
+```
+
+---
+
+## 📚 参考资料
+
+### 官方文档
+
+- [VS Code Extension API](https://code.visualstudio.com/api)
+- [better-sqlite3 文档](https://github.com/WiseLibs/better-sqlite3)
+- [TypeScript Compiler API](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
+- [React Flow 文档](https://reactflow.dev/)
+
+### 相关项目
+
+- [memory-mcp-server-go](https://github.com/okooo5km/memory-mcp-server-go) - 知识图谱 MCP 服务器（Go 实现）
+- [TypeScript Language Service](https://github.com/microsoft/TypeScript/wiki/Using-the-Language-Service-API) - 代码解析参考
+
+### 社区
+
+- [GitHub Issues](https://github.com/yourusername/vibecoding/issues) - 问题反馈
+- [GitHub Discussions](https://github.com/yourusername/vibecoding/discussions) - 功能讨论
+
+---
+
+## 🎯 使用场景示例
+
+### 场景一：理解复杂项目
+
+**问题**：新人接手一个 10 万行代码的项目，不知道从哪里看起。
+
+**解决方案**：
+1. 查看知识图谱侧边栏，按类型浏览实体
+2. 点击核心类（如 `UserService`），跳转到代码
+3. 悬浮提示显示观察记录："这是用户管理的入口"
+4. 查看关系：被 `AuthController` 和 `OrderService` 调用
+5. 导出 Markdown，让 AI 解释整体架构
+
+**效果**：1 小时内理解项目核心结构，而非花 1 周阅读代码。
+
+### 场景二：安全重构
+
+**问题**：要修改 `UserService.getUsers` 方法，但不知道会影响哪些地方。
+
+**解决方案**：
+1. 右键 `getUsers` → "Knowledge: Show Dependency Chain"
+2. 看到被 3 个 Controller 调用，间接影响 10+ 服务
+3. 查看观察记录："⚠️ 存在 N+1 查询问题"
+4. 复制上下文到 AI，询问如何优化
+5. AI 基于完整上下文给出建议
+6. 实施优化后，更新观察记录："✅ 已使用 DataLoader 优化"
+
+**效果**：零破坏性重构，团队知识得以保留。
+
+### 场景三：团队协作
+
+**问题**：团队成员的经验散落在 Slack、邮件、口头交流中。
+
+**解决方案**：
+1. 发现性能问题时，添加观察记录到知识图谱
+2. 做出设计决策时，记录原因和权衡
+3. 知识图谱随代码提交到 Git
+4. 其他成员拉取代码时，自动获得最新知识
+
+**效果**：团队知识沉淀，新人快速上手。
+
+### 场景四：AI 辅助编程
+
+**问题**：AI 不了解项目，每次都要重新解释上下文。
+
+**解决方案**：
+1. 导出知识图谱为 Markdown
+2. 生成 `.cursorrules` 配置
+3. AI 自动读取项目知识图谱
+4. 开发时，一键复制实体上下文到 AI 对话
+
+**效果**：AI 成为真正懂项目的编程助手。
+
+---
+
+## 🤝 贡献指南
+
+欢迎贡献！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md)（待创建）。
+
+**贡献方式**：
+- 🐛 报告 Bug
+- 💡 提出新功能建议
+- 📝 改进文档
+- 🔧 提交 Pull Request
+
+---
+
+## 📄 许可证
+
+MIT License - 详见 [LICENSE](./LICENSE) 文件
+
+---
+
+## 🙏 致谢
+
+- 感谢 [memory-mcp-server-go](https://github.com/okooo5km/memory-mcp-server-go) 项目的启发
+- 感谢 VS Code 社区的支持
+
+---
+
+## 📞 联系方式
+
+- **项目主页**：https://github.com/yourusername/vibecoding
+- **问题反馈**：[GitHub Issues](https://github.com/yourusername/vibecoding/issues)
+- **功能讨论**：[GitHub Discussions](https://github.com/yourusername/vibecoding/discussions)
+
+---
+
+**开始使用 VibeCoding，让你的代码库更智能！** 🚀
 
