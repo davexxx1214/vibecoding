@@ -151,6 +151,24 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
 
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        'knowledge.deleteEntity',
+        async (treeItem) => {
+          try {
+            console.log('Executing: knowledge.deleteEntity');
+            await entityCommands.deleteEntity(treeItem);
+            // 刷新树视图和 CodeLens
+            treeDataProvider.refresh();
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in deleteEntity:', error);
+            vscode.window.showErrorMessage(`Error deleting entity: ${error}`);
+          }
+        }
+      )
+    );
+
     // 注册占位命令（后续实现）
     context.subscriptions.push(
       vscode.commands.registerCommand('knowledge.linkToEntity', () => {
@@ -243,6 +261,7 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.viewEntityDetails',
     'knowledge.jumpToEntity',
     'knowledge.searchGraph',
+    'knowledge.deleteEntity',
     'knowledge.linkToEntity',
     'knowledge.visualizeGraph',
     'knowledge.exportGraph',

@@ -284,5 +284,96 @@ export class EntityCommands {
       }
     }
   }
+
+  /**
+   * 删除实体（从树视图右键调用）
+   */
+  public async deleteEntity(treeItem?: any): Promise<void> {
+    let entityToDelete: Entity | null = null;
+
+    // 如果从树视图右键调用，treeItem.entity 包含实体信息
+    if (treeItem && treeItem.entity && treeItem.type === 'entity') {
+      entityToDelete = treeItem.entity;
+    } else {
+      // 如果没有传入实体，让用户选择
+      const entities = this.entityService.listEntities();
+      if (entities.length === 0) {
+        vscode.window.showInformationMessage('No entities to delete');
+        return;
+      }
+
+      const selected = await vscode.window.showQuickPick(
+        entities.map(e => ({
+          label: e.name,
+          description: `${e.type} - ${e.filePath}:${e.startLine}`,
+          entity: e
+        })),
+        { placeHolder: 'Select entity to delete' }
+      );
+
+      if (!selected) {
+        return;
+      }
+
+      entityToDelete = selected.entity;
+    }
+
+    if (!entityToDelete) {
+      return;
+    }
+
+    // 确认删除
+    const answer = await vscode.window.showWarningMessage(
+      `Are you sure you want to delete entity "${entityToDelete.name}"?`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (answer !== 'Delete') {
+      return;
+    }
+
+    try {
+      // 检查是否有关联的观察记录
+      const observations = this.observationService.getObservations(entityToDelete.id);
+      const relations = this.relationService.getRelations(entityToDelete.id);
+
+      let confirmMessage = `Deleting entity "${entityToDelete.name}"`;
+      if (observations.length > 0 || relations.length > 0) {
+        confirmMessage += `\n\nThis will also delete:\n`;
+        if (observations.length > 0) {
+          confirmMessage += `- ${observations.length} observation(s)\n`;
+        }
+        if (relations.length > 0) {
+          confirmMessage += `- ${relations.length} relation(s)\n`;
+        }
+        confirmMessage += `\nContinue?`;
+
+        const finalConfirm = await vscode.window.showWarningMessage(
+          confirmMessage,
+          { modal: true },
+          'Delete All',
+          'Cancel'
+        );
+
+        if (finalConfirm !== 'Delete All') {
+          return;
+        }
+      }
+
+      // 执行删除
+      const success = this.entityService.deleteEntity(entityToDelete.id);
+
+      if (success) {
+        vscode.window.showInformationMessage(`✅ Entity "${entityToDelete.name}" deleted successfully`);
+      } else {
+        vscode.window.showErrorMessage(`Failed to delete entity "${entityToDelete.name}"`);
+      }
+    } catch (error: any) {
+      console.error('Error deleting entity:', error);
+      vscode.window.showErrorMessage(`Error deleting entity: ${error.message}`);
+    }
+  }
 }
 

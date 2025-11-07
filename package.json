@@ -55,6 +55,10 @@
       {
         "command": "knowledge.settings",
         "title": "Knowledge: Settings"
+      },
+      {
+        "command": "knowledge.deleteEntity",
+        "title": "Knowledge: Delete Entity"
       }
     ],
     "menus": {
@@ -79,6 +83,13 @@
       "explorer/context": [
         {
           "command": "knowledge.createEntity",
+          "group": "knowledge@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "knowledge.deleteEntity",
+          "when": "view == knowledgeGraphExplorer && viewItem == entity",
           "group": "knowledge@1"
         }
       ]

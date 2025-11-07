@@ -289,6 +289,414 @@ export class UserService {
 - 搜索观察记录内容
 - 支持中英文
 
+### 6. 需求文档自动转换 🆕
+
+**核心理念**：将各种格式的需求文档自动转换为 Markdown，便于 AI 理解
+
+#### 使用场景
+
+在软件开发过程中，需求文档通常以各种格式存在：
+- 📄 **PDF**：产品 PRD、设计规范
+- 📊 **Excel**：功能清单、测试用例
+- 📝 **Word**：详细需求文档
+- 🖼️ **图片**：UI 设计稿、流程图
+
+这些文档对 AI 来说难以直接理解。VibeCoding 提供自动转换功能，将它们转为 Markdown 格式。
+
+#### 工作流程
+
+```
+specs/                          # 原始需求文档文件夹
+├── PRD-v1.0.pdf               # 产品需求文档
+├── API-Design.docx            # API 设计文档
+├── test-cases.xlsx            # 测试用例
+└── ui-mockup.png              # UI 设计图
+
+      ↓ 自动转换
+
+Knowledge/                      # 转换后的 Markdown
+├── PRD-v1.0.md                # 自动生成
+├── API-Design.md              # 自动生成
+├── test-cases.md              # 自动生成
+└── ui-mockup.md               # 自动生成（含 OCR 文字）
+```
+
+#### 技术实现
+
+**方案 A：使用 MarkItDown（推荐）** ⭐
+
+[MarkItDown](https://github.com/microsoft/markitdown) 是 Microsoft 开发的 Python 工具，专门用于将各种文件转换为 Markdown。
+
+**支持格式**：
+- 📄 PDF
+- 📝 Word (DOCX)
+- 📊 Excel (XLSX, XLS)
+- 🎯 PowerPoint (PPTX)
+- 🖼️ 图片（支持 OCR 文字识别）
+- 🎵 音频（支持语音转文字）
+- 🌐 HTML
+- 📦 ZIP（自动解压处理）
+- 🎬 YouTube（获取字幕）
+
+**集成方式**：
+
+```typescript
+// src/specs/converter.ts
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+export class SpecsConverter {
+  /**
+   * 检测 MarkItDown 是否已安装
+   */
+  async hasMarkItDown(): Promise<boolean> {
+    try {
+      await execAsync('markitdown --version');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 转换单个文件
+   */
+  async convert(inputPath: string, outputPath: string): Promise<void> {
+    const command = `markitdown "${inputPath}" -o "${outputPath}"`;
+    await execAsync(command);
+  }
+
+  /**
+   * 批量转换 specs/ 文件夹
+   */
+  async convertAll(specsDir: string, knowledgeDir: string): Promise<void> {
+    const files = await fs.readdir(specsDir);
+    
+    for (const file of files) {
+      const inputPath = path.join(specsDir, file);
+      const outputPath = path.join(
+        knowledgeDir, 
+        path.basename(file, path.extname(file)) + '.md'
+      );
+      
+      await this.convert(inputPath, outputPath);
+    }
+  }
+}
+```
+
+**安装 MarkItDown**：
+
+```bash
+# 用户需要先安装 Python 3.10+ 和 MarkItDown
+pip install 'markitdown[all]'
+```
+
+**优点**：
+- ✅ 支持格式最全（PDF、Word、Excel、PPT、图片、音频等）
+- ✅ 输出质量高（保留表格、列表、链接等结构）
+- ✅ Microsoft 官方维护，稳定可靠
+- ✅ 支持 OCR 和语音转文字
+- ✅ 命令行调用简单
+
+**缺点**：
+- ❌ 需要用户安装 Python 环境
+- ❌ 依赖外部工具
+
+---
+
+**方案 B：纯 Node.js 实现（备选）**
+
+如果用户没有 Python 环境，降级使用 Node.js 库：
+
+```typescript
+// src/specs/converterNode.ts
+import pdfParse from 'pdf-parse';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+
+export class NodeSpecsConverter {
+  /**
+   * 转换 PDF
+   */
+  async convertPdf(filePath: string): Promise<string> {
+    const dataBuffer = await fs.readFile(filePath);
+    const data = await pdfParse(dataBuffer);
+    return this.formatAsMarkdown(data.text);
+  }
+
+  /**
+   * 转换 Word (DOCX)
+   */
+  async convertDocx(filePath: string): Promise<string> {
+    const result = await mammoth.convertToMarkdown({ path: filePath });
+    return result.value;
+  }
+
+  /**
+   * 转换 Excel
+   */
+  async convertExcel(filePath: string): Promise<string> {
+    const workbook = XLSX.readFile(filePath);
+    let markdown = '';
+    
+    workbook.SheetNames.forEach(sheetName => {
+      const sheet = workbook.Sheets[sheetName];
+      markdown += `## ${sheetName}\n\n`;
+      markdown += XLSX.utils.sheet_to_markdown(sheet);
+      markdown += '\n\n';
+    });
+    
+    return markdown;
+  }
+}
+```
+
+**需要安装的 npm 包**：
+
+```json
+{
+  "dependencies": {
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.7.0",
+    "xlsx": "^0.18.5"
+  }
+}
+```
+
+**优点**：
+- ✅ 无需 Python 依赖
+- ✅ 纯 TypeScript，类型安全
+- ✅ 打包体积可控
+
+**缺点**：
+- ❌ 功能有限（不支持 PPT、音频、OCR 等）
+- ❌ 需要集成多个库
+- ❌ 输出格式可能不如 MarkItDown 统一
+
+---
+
+**方案 C：混合方案（最佳实践）** 🌟
+
+优先使用 MarkItDown，检测不到则降级到 Node.js 库：
+
+```typescript
+// src/specs/smartConverter.ts
+export class SmartConverter {
+  private markitdownConverter: SpecsConverter;
+  private nodeConverter: NodeSpecsConverter;
+
+  async convert(filePath: string, outputPath: string): Promise<void> {
+    // 1. 优先尝试 MarkItDown
+    if (await this.markitdownConverter.hasMarkItDown()) {
+      await this.markitdownConverter.convert(filePath, outputPath);
+      return;
+    }
+
+    // 2. 降级到 Node.js 库
+    const ext = path.extname(filePath).toLowerCase();
+    let markdown: string;
+
+    switch (ext) {
+      case '.pdf':
+        markdown = await this.nodeConverter.convertPdf(filePath);
+        break;
+      case '.docx':
+        markdown = await this.nodeConverter.convertDocx(filePath);
+        break;
+      case '.xlsx':
+      case '.xls':
+        markdown = await this.nodeConverter.convertExcel(filePath);
+        break;
+      default:
+        throw new Error(`不支持的文件格式: ${ext}`);
+    }
+
+    await fs.writeFile(outputPath, markdown, 'utf-8');
+  }
+}
+```
+
+#### 自动化流程
+
+**文件监听**：
+
+```typescript
+// src/specs/watcher.ts
+export class SpecsWatcher {
+  private watcher: FSWatcher;
+
+  startWatching(specsDir: string, knowledgeDir: string): void {
+    this.watcher = fs.watch(specsDir, async (eventType, filename) => {
+      if (eventType === 'change' || eventType === 'rename') {
+        const inputPath = path.join(specsDir, filename);
+        const outputPath = path.join(
+          knowledgeDir,
+          path.basename(filename, path.extname(filename)) + '.md'
+        );
+
+        await converter.convert(inputPath, outputPath);
+        
+        vscode.window.showInformationMessage(
+          `✅ 已转换: ${filename} → ${path.basename(outputPath)}`
+        );
+      }
+    });
+  }
+}
+```
+
+**用户命令**：
+
+- `VibeCoding: Convert Specs to Markdown`：手动触发批量转换
+- `VibeCoding: Auto-Watch Specs Folder`：启动自动监听
+- `VibeCoding: Install MarkItDown`：自动安装 MarkItDown（调用 pip）
+
+#### 完整工作流
+
+```
+1. 用户创建 specs/ 文件夹
+     ↓
+2. 放入需求文档（PDF、Word、Excel 等）
+     ↓
+3. 执行命令或自动监听
+     ↓
+4. 插件自动转换为 Markdown
+     ↓
+5. 输出到 Knowledge/ 文件夹
+     ↓
+6. Gemini File Search 自动索引（下一功能）
+     ↓
+7. AI 可以直接理解需求文档内容
+```
+
+#### 实际应用示例
+
+**场景：新功能开发**
+
+```
+步骤 1：产品提供 PRD
+  specs/user-profile-feature.pdf
+
+步骤 2：VibeCoding 自动转换
+  Knowledge/user-profile-feature.md
+
+步骤 3：开发时询问 AI
+  "根据 PRD，用户资料页面需要哪些字段？"
+
+步骤 4：AI 基于转换后的 Markdown 回答
+  "根据需求文档第 3.2 节，用户资料页面需要：
+   • 基本信息：姓名、头像、个人简介
+   • 联系方式：邮箱、手机号
+   • 隐私设置：是否公开资料..."
+```
+
+#### 高级特性
+
+- 📊 **表格保留**：Excel 表格转为 Markdown 表格
+- 🖼️ **图片 OCR**：提取图片中的文字（需 MarkItDown + 配置）
+- 🎯 **智能分块**：长文档自动分章节
+- 🔄 **增量更新**：只转换修改过的文件
+- 📋 **格式验证**：转换后检查 Markdown 语法
+- 🏷️ **元数据提取**：保留文档标题、作者、创建时间
+
+---
+
+### 7. 持久知识库（托管式 RAG）🆕
+
+**核心理念**：将项目文档（包括转换后的需求文档）转化为 AI 可访问的知识库
+
+**技术方案**：使用 **Google Gemini File Search API**（完全托管的 RAG 系统）
+
+#### 为什么选择 Gemini File Search？
+
+✅ **完全托管**：无需自建向量数据库和嵌入模型  
+✅ **成本极低**：存储和查询免费，只在初次索引时付费（$0.15/百万 tokens）  
+✅ **开箱即用**：自动处理分块、嵌入、检索全流程  
+✅ **内置引用**：自动标注信息来源，可验证性强  
+✅ **格式丰富**：支持 PDF, DOCX, TXT, JSON, 各类代码文件  
+✅ **高性能**：使用最新的 Gemini Embedding 模型，语义理解能力强
+
+#### 功能概述
+
+在项目根目录创建 `Knowledge/` 文件夹，存放各类文档：
+
+```
+项目根目录/
+├── Knowledge/               # 持久知识库文件夹
+│   ├── architecture.md      # 架构设计文档
+│   ├── api-specs.pdf        # API 规范
+│   ├── decisions/           # 设计决策
+│   │   ├── 001-use-redis.md
+│   │   └── 002-auth-strategy.md
+│   ├── guides/              # 开发指南
+│   │   ├── setup.md
+│   │   └── coding-style.md
+│   └── references/          # 参考资料
+│       ├── database-schema.sql
+│       └── third-party-api.json
+```
+
+**插件自动处理**：
+1. 📁 **自动监听** Knowledge 文件夹的文件变更
+2. ☁️ **上传到 Gemini**：自动上传文档到 File Search Store
+3. 🤖 **智能索引**：Google 自动处理分块和嵌入生成
+4. 🔍 **语义搜索**：根据代码上下文调用 File Search API 检索
+5. 📝 **上下文注入**：自动将相关文档片段注入 AI 对话
+6. 🔗 **引用追踪**：显示信息来源，支持跳转到源文档
+
+#### 支持的文件格式
+
+- 📝 **文档**：Markdown (.md), 纯文本 (.txt), PDF, DOCX
+- 💻 **代码**：Python, JavaScript, TypeScript, Java, Go 等常见编程语言
+- 📊 **数据**：JSON, YAML, CSV
+- 🎨 **其他**：详见 [Gemini 文档](https://ai.google.dev/gemini-api/docs/file-search)
+
+#### 使用场景
+
+**场景 1：架构文档自动注入**
+```
+你在编辑 UserService.ts
+  ↓
+插件检测到相关性
+  ↓
+自动检索 Knowledge/architecture.md 中的"用户服务架构"部分
+  ↓
+AI 对话时自动包含架构文档上下文
+```
+
+**场景 2：设计决策追溯**
+```
+你询问 AI："为什么使用 Redis？"
+  ↓
+插件从 Knowledge/decisions/001-use-redis.md 检索
+  ↓
+AI 基于文档回答：
+"根据团队 2024-10-15 的设计决策文档，选择 Redis 是因为..."
+```
+
+**场景 3：API 规范参考**
+```
+你正在实现新的 API
+  ↓
+插件检索 Knowledge/api-specs.pdf
+  ↓
+AI 提示："根据 API 规范第 3.2 节，应该返回以下格式..."
+```
+
+#### 技术特性
+
+- ✅ **零运维**：完全托管，无需配置服务器或数据库
+- ✅ **自动同步**：文件修改后自动重新索引
+- ✅ **语义理解**：Gemini Embedding 模型，理解查询意图
+- ✅ **引用追踪**：自动标注信息来源和引用位置
+- ✅ **成本优化**：存储和查询免费，仅初次索引收费
+- ✅ **高性能**：并行查询，2 秒内返回结果
+- ✅ **多模态支持**：支持文本、代码、结构化数据
+- ✅ **API 密钥管理**：可配置个人或团队 API 密钥
+
 ---
 
 ## 🗺️ 三阶段路线图
@@ -313,9 +721,9 @@ export class UserService {
 
 ---
 
-### 第二阶段：AI 协同 🔥 **进行中**
+### 第二阶段：AI 协同增强 🔥 **进行中**
 
-**目标**：让知识图谱成为 AI 编程的"外部记忆"
+**目标**：让知识图谱和文档成为 AI 编程的"外部记忆"
 
 **核心功能**：
 
@@ -360,13 +768,215 @@ export class UserService {
   - 作为 Cursor 的 context file
   - 随代码更新自动刷新
 
+#### 2.4 需求文档自动转换 🆕🔥
+
+**目标**：将各种格式的需求文档自动转换为 Markdown
+
+**技术方案**：优先使用 MarkItDown，降级到 Node.js 库
+
+##### 2.4.1 MarkItDown 集成
+- [ ] **检测 MarkItDown 安装**
+  - 启动时检测 `markitdown --version`
+  - 提示用户安装（如未安装）
+  - 提供一键安装命令（调用 pip）
+  
+- [ ] **命令行调用封装**
+  - 使用 `child_process.exec` 调用 MarkItDown
+  - 错误处理和超时控制
+  - 进度提示（转换大文件时）
+
+##### 2.4.2 Node.js 备用方案
+- [ ] **PDF 转换**
+  - 使用 `pdf-parse` 提取文字
+  - 保留基本段落结构
+  - 格式化为 Markdown
+  
+- [ ] **Word 转换**
+  - 使用 `mammoth` 转换 DOCX
+  - 保留标题、列表、表格
+  - 支持图片提取（可选）
+  
+- [ ] **Excel 转换**
+  - 使用 `xlsx` 读取表格
+  - 每个 Sheet 转为 Markdown 表格
+  - 支持公式展示
+
+##### 2.4.3 智能转换器
+- [ ] **混合方案**
+  - 优先尝试 MarkItDown
+  - 检测失败则降级到 Node.js 库
+  - 记录转换方式（日志）
+  
+- [ ] **格式检测**
+  - 根据文件扩展名选择转换器
+  - 支持 MIME 类型检测（更可靠）
+  - 不支持的格式给出提示
+
+##### 2.4.4 文件监听和自动转换
+- [ ] **specs/ 文件夹监听**
+  - 使用 FileSystemWatcher 监听 `specs/` 文件夹
+  - 检测新增、修改事件
+  - 防抖处理（避免频繁转换）
+  
+- [ ] **自动转换流程**
+  - 检测到文件变更 → 自动转换
+  - 输出到 `Knowledge/` 文件夹
+  - 显示转换进度通知
+  - 转换完成后触发索引更新（联动 RAG 系统）
+
+##### 2.4.5 用户命令
+- [ ] **手动转换命令**
+  - `VibeCoding: Convert Specs to Markdown`：批量转换
+  - `VibeCoding: Convert This File`：转换当前文件
+  - `VibeCoding: Install MarkItDown`：安装依赖
+  
+- [ ] **设置选项**
+  - 开启/关闭自动监听
+  - 选择默认转换器（MarkItDown 或 Node.js）
+  - 配置输出路径
+
+##### 2.4.6 高级功能
+- [ ] **增量转换**
+  - 检查源文件和目标文件的修改时间
+  - 只转换变更过的文件
+  - 节省时间和资源
+  
+- [ ] **元数据保留**
+  - 提取文档标题、作者、创建时间
+  - 添加到 Markdown frontmatter
+  - 便于后续检索和管理
+  
+- [ ] **格式优化**
+  - 清理多余空行
+  - 统一标题层级
+  - 优化表格格式
+  - 代码块语法高亮
+
+#### 2.5 持久知识库（托管式 RAG）🆕🔥
+
+**目标**：使用 Google Gemini File Search API 构建项目文档知识库
+
+**技术方案**：完全托管的 RAG 系统，零运维成本
+
+##### 2.4.1 Gemini API 集成
+- [ ] **API 配置**
+  - VS Code 设置中配置 Gemini API Key
+  - 支持个人密钥或团队共享密钥
+  - API 密钥安全存储（VS Code Secret Storage）
+  - 可选：使用环境变量配置
+  
+- [ ] **File Search Store 管理**
+  - 为每个项目创建独立的 File Search Store
+  - Store ID 存储在 `.vscode/settings.json`
+  - 支持多项目管理
+  - 自动清理不使用的 Store
+
+##### 2.4.2 文档管理
+- [ ] **Knowledge 文件夹监听**
+  - 使用 VS Code FileSystemWatcher 监听 `Knowledge/` 文件夹
+  - 监听文件的新增、修改、删除事件
+  - 递归监听所有子文件夹
+  - 防抖处理（避免频繁上传）
+  
+- [ ] **自动上传到 Gemini**
+  - 检测文件变更后自动上传
+  - 批量上传优化（减少 API 调用）
+  - 显示上传进度（状态栏）
+  - 错误处理和重试机制
+  - 支持大文件分片上传
+
+##### 2.4.3 文档索引管理
+- [ ] **本地索引跟踪**
+  - SQLite 数据库记录已上传文件
+  - 存储文件哈希（用于检测变更）
+  - 记录 Gemini 返回的文件 ID
+  - 跟踪索引状态（pending/indexed/failed）
+  
+- [ ] **增量更新**
+  - 文件修改后只上传变更的文件
+  - 删除文件时自动从 Gemini 删除
+  - 智能检测：文件内容变化才重新上传
+  - 支持手动重新索引命令
+
+##### 2.4.4 语义搜索与检索
+- [ ] **上下文感知搜索**
+  - 基于当前编辑的文件名自动生成查询
+  - 基于光标位置的实体关联查询
+  - 基于用户输入的自然语言查询
+  
+- [ ] **调用 Gemini File Search API**
+  ```typescript
+  // 伪代码示例
+  const response = await client.models.generate_content({
+    model: 'gemini-2.5-flash',
+    contents: query,
+    config: {
+      tools: [{
+        file_search: {
+          file_search_store_names: [store.name]
+        }
+      }]
+    }
+  });
+  ```
+  
+- [ ] **结果处理**
+  - 解析 Gemini 返回的结果和引用
+  - 提取 grounding_metadata 中的来源文档
+  - 格式化引用信息
+  - 支持跳转到源文档
+
+##### 2.4.5 AI 集成
+- [ ] **自动上下文注入**
+  - 命令：`Knowledge: Search Documents`（手动搜索）
+  - 自动模式：编辑代码时后台检索相关文档
+  - 在悬浮提示中显示相关文档片段
+  - Cursor 集成：将检索结果注入 `.cursorrules`
+  
+- [ ] **智能问答**
+  - 命令：`Knowledge: Ask Documents`
+  - 输入自然语言问题
+  - Gemini 基于文档回答
+  - 显示引用来源（带链接）
+  
+- [ ] **文档摘要**
+  - 命令：`Knowledge: Summarize Documents`
+  - 自动生成整个知识库的摘要
+  - 支持按文件夹批量摘要
+
+##### 2.4.6 用户界面
+- [ ] **知识库视图**
+  - 在侧边栏添加"知识库"树视图
+  - 显示 Knowledge/ 文件夹结构
+  - 显示每个文件的索引状态：
+    - ✅ 已索引（绿色）
+    - ⏳ 索引中（橙色）
+    - ❌ 索引失败（红色）
+  - 右键菜单：重新索引、删除、查看详情
+  
+- [ ] **搜索面板**
+  - 输入框：输入自然语言查询
+  - 实时显示搜索结果
+  - 显示引用的文档和位置
+  - 点击跳转到源文档
+  
+- [ ] **状态指示器**
+  - 状态栏显示：📚 知识库 (5 文档, 15 MB)
+  - 上传时显示进度条
+  - 通知：✅ 已索引 architecture.md
+  - 错误通知：❌ 上传失败，请检查 API 密钥
+
 **验收标准**：
 - ✅ 可以一键导出知识图谱供 AI 使用
 - ✅ AI 能基于导出的上下文理解项目
 - ✅ 开发者能快速将图谱注入 AI 对话
 - ✅ Cursor 能读取项目知识图谱
+- ✅ **Knowledge 文件夹的文档自动索引**
+- ✅ **基于当前代码自动检索相关文档**
+- ✅ **语义搜索准确率 >80%**
+- ✅ **检索延迟 <500ms**
 
-**时间估计**：1-2 周
+**时间估计**：3-4 周（含 RAG 系统）
 
 ---
 
@@ -944,6 +1554,12 @@ AI 回复：
 | **语言** | TypeScript | 类型安全，开发体验好 |
 | **数据库** | better-sqlite3 | 同步 API，性能好 |
 | **全文搜索** | SQLite FTS5 | 内置，无需额外依赖 |
+| **文档转换（优先）** | MarkItDown (Python CLI) | Microsoft 官方，支持格式最全 |
+| **PDF 转换** | pdf-parse (备选) | Node.js 库，无需 Python |
+| **Word 转换** | mammoth (备选) | DOCX 转 Markdown |
+| **Excel 转换** | xlsx (备选) | 表格转 Markdown |
+| **RAG 系统** | Google Gemini File Search API | 托管式 RAG，零运维 |
+| **文档索引** | Gemini Embedding Model | 自动处理，无需本地模型 |
 | **UI 框架** | VS Code Native Components | TreeView, Webview 等 |
 | **构建工具** | esbuild | 快速打包 |
 | **代码解析** | TypeScript Compiler API | 阶段三使用 |
@@ -959,20 +1575,37 @@ vibecoding/
 │   │   ├── database.ts               # ✅ 数据库服务
 │   │   ├── entityService.ts          # ✅ 实体管理
 │   │   ├── relationService.ts        # ✅ 关系管理
-│   │   └── observationService.ts     # ✅ 观察记录管理
+│   │   ├── observationService.ts     # ✅ 观察记录管理
+│   │   └── documentService.ts        # 🔜 文档管理服务（阶段二）
 │   ├── providers/
 │   │   ├── hoverProvider.ts          # ✅ 悬浮提示
 │   │   ├── codeLensProvider.ts       # ✅ CodeLens
 │   │   └── treeDataProvider.ts       # ✅ 树视图
 │   ├── ui/
 │   │   ├── commands/
-│   │   │   └── entityCommands.ts     # ✅ 命令处理器
+│   │   │   ├── entityCommands.ts     # ✅ 命令处理器
+│   │   │   └── documentCommands.ts   # 🔜 文档命令（阶段二）
 │   │   └── webview/
 │   │       └── graphView.ts          # 🔜 可视化面板（阶段五）
+│   ├── specs/                        # 🔜 需求文档转换（阶段二）
+│   │   ├── converter.ts              # MarkItDown 转换器
+│   │   ├── converterNode.ts          # Node.js 备用转换器
+│   │   ├── smartConverter.ts         # 智能转换器（混合方案）
+│   │   ├── watcher.ts                # specs/ 文件夹监听
+│   │   └── formatters/               # 格式化工具
+│   │       ├── pdfFormatter.ts       # PDF 格式化
+│   │       ├── excelFormatter.ts     # Excel 格式化
+│   │       └── markdownCleaner.ts    # Markdown 清理优化
+│   ├── gemini/                       # 🔜 Gemini API 集成（阶段二）
+│   │   ├── client.ts                 # Gemini API 客户端
+│   │   ├── fileSearch.ts             # File Search Store 管理
+│   │   ├── fileUploader.ts           # 文件上传管理
+│   │   └── searchService.ts          # 语义搜索服务
 │   ├── utils/
 │   │   ├── types.ts                  # ✅ 类型定义
 │   │   ├── codeParser.ts             # 🔜 代码解析（阶段三）
-│   │   └── exporter.ts               # 🔜 导出工具（阶段二）
+│   │   ├── exporter.ts               # 🔜 导出工具（阶段二）
+│   │   └── fileWatcher.ts            # 🔜 文件监听工具（阶段二）
 │   └── ai/
 │       ├── contextBuilder.ts         # 🔜 上下文构建（阶段二）
 │       └── cursorIntegration.ts      # 🔜 Cursor 集成（阶段二）
@@ -992,6 +1625,7 @@ vibecoding/
 
 ### 数据流
 
+#### 核心功能数据流
 ```
 用户操作
   ↓
@@ -1004,6 +1638,35 @@ Services (entityService / relationService / observationService)
 Database (database.ts → SQLite)
   ↓
 存储在 .vscode/.knowledge/graph.sqlite
+```
+
+#### RAG 系统数据流（阶段二 - 使用 Gemini API）
+```
+文档变更 (Knowledge/ 文件夹)
+  ↓
+文件监听器 (FileSystemWatcher)
+  ↓
+文件上传器 (FileUploader)
+  ↓
+上传到 Gemini File Search Store (via API)
+  ↓
+Gemini 自动处理：分块 → 嵌入 → 索引
+  ↓
+本地记录文件 ID 和状态 (SQLite)
+
+---
+
+用户查询 / 代码编辑
+  ↓
+上下文提取 (当前文件、光标位置、实体)
+  ↓
+生成查询 → 调用 Gemini File Search API
+  ↓
+Gemini 处理：语义搜索 → 相关内容检索 → 生成回答
+  ↓
+解析结果和引用 (grounding_metadata)
+  ↓
+上下文注入 → AI 对话 / 悬浮提示 / Cursor Rules
 ```
 
 ---
@@ -1102,19 +1765,105 @@ END;
 -- 更多触发器... (详见 src/services/database.ts)
 ```
 
+### 文档索引表 Schema（阶段二 - Gemini 集成）
+
+#### gemini_files 表（Gemini 文件索引）
+
+```sql
+CREATE TABLE gemini_files (
+    id TEXT PRIMARY KEY,                -- 本地 UUID
+    file_path TEXT NOT NULL UNIQUE,     -- 文件路径（相对于 Knowledge/）
+    file_name TEXT NOT NULL,            -- 文件名
+    file_type TEXT NOT NULL,            -- 文件类型（md, pdf, docx 等）
+    file_size INTEGER,                  -- 文件大小（字节）
+    file_hash TEXT NOT NULL,            -- 文件哈希（SHA-256，用于检测变更）
+    
+    gemini_file_id TEXT,                -- Gemini 返回的 file ID
+    gemini_store_id TEXT,               -- 所属的 File Search Store ID
+    
+    status TEXT DEFAULT 'pending',      -- 状态
+                                        -- pending: 等待上传
+                                        -- uploading: 上传中
+                                        -- indexed: 已索引
+                                        -- failed: 失败
+    
+    error_message TEXT,                 -- 错误信息（如果失败）
+    uploaded_at INTEGER,                -- 上传时间戳
+    indexed_at INTEGER,                 -- 索引完成时间戳
+    
+    created_at INTEGER NOT NULL,        -- 创建时间戳
+    updated_at INTEGER NOT NULL         -- 更新时间戳
+);
+
+-- 索引
+CREATE INDEX idx_gemini_files_status ON gemini_files(status);
+CREATE INDEX idx_gemini_files_hash ON gemini_files(file_hash);
+CREATE INDEX idx_gemini_files_store ON gemini_files(gemini_store_id);
+```
+
+#### gemini_stores 表（File Search Store 管理）
+
+```sql
+CREATE TABLE gemini_stores (
+    id TEXT PRIMARY KEY,                -- 本地 UUID
+    store_id TEXT NOT NULL UNIQUE,      -- Gemini 返回的 Store ID
+    store_name TEXT,                    -- Store 名称
+    project_path TEXT NOT NULL,         -- 项目路径（用于多项目管理）
+    file_count INTEGER DEFAULT 0,       -- 文件数量
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    last_sync_at INTEGER                -- 最后同步时间
+);
+```
+
 ### 存储位置
 
 ```
 项目根目录/
-  └── .vscode/
-      └── .knowledge/
-          └── graph.sqlite  (约 1-10MB，取决于项目大小)
+├── specs/                              # 📁 需求文档文件夹（原始格式，可选 Git 追踪）
+│   ├── PRD-v1.0.pdf                   # 产品需求文档
+│   ├── API-Design.docx                # API 设计文档
+│   ├── test-cases.xlsx                # 测试用例
+│   └── ui-mockup.png                  # UI 设计图
+├── Knowledge/                          # 📁 知识库文件夹（Markdown 格式，Git 追踪）
+│   ├── architecture.md                # 手动创建的架构文档
+│   ├── PRD-v1.0.md                    # 自动从 specs/ 转换
+│   ├── API-Design.md                  # 自动从 specs/ 转换
+│   ├── test-cases.md                  # 自动从 specs/ 转换
+│   ├── decisions/
+│   └── guides/
+└── .vscode/
+    ├── settings.json                   # 包含 Gemini Store ID 配置
+    └── .knowledge/
+        └── graph.sqlite                # 知识图谱 + Gemini 文件索引 (1-10MB)
 ```
 
 **注意**：
-- 可以被 Git 追踪（团队共享知识）
-- 也可以添加到 `.gitignore`（个人笔记）
-- 建议：添加到 Git，但排除临时表和缓存
+- **specs/ 文件夹**（可选）：
+  - 📄 存放原始格式的需求文档（PDF、Word、Excel 等）
+  - 🔄 文件变更时自动转换为 Markdown → Knowledge/
+  - ⚠️ 是否添加到 Git 取决于团队习惯：
+    - ✅ 添加到 Git：团队共享原始文档
+    - ❌ 添加到 .gitignore：只共享转换后的 Markdown
+  
+- **Knowledge/ 文件夹**：
+  - ✅ 建议添加到 Git（团队共享文档）
+  - 📄 包含手动创建的文档 + 从 specs/ 自动转换的文档
+  - 🔄 修改后自动同步到 Gemini
+  
+- **.vscode/settings.json**：
+  ```json
+  {
+    "vibecoding.geminiStoreId": "projects/xxx/locations/xxx/ragCorpora/xxx"
+  }
+  ```
+  - ✅ 可以添加到 Git（团队共享同一个 Store）
+  - ⚠️ 或添加到 `.gitignore`（每个开发者使用独立 Store）
+  
+- **.vscode/.knowledge/graph.sqlite**：
+  - ✅ 建议添加到 Git（共享知识图谱）
+  - 📊 包含实体、关系、观察记录
+  - 📑 包含 Gemini 文件索引（用于增量更新）
 
 ---
 
@@ -1308,6 +2057,554 @@ describe('EntityService', () => {
 4. 开发时，一键复制实体上下文到 AI 对话
 
 **效果**：AI 成为真正懂项目的编程助手。
+
+### 场景五：持久知识库（RAG 系统）🆕
+
+**问题**：项目有大量设计文档、API 规范、技术决策，AI 无法访问。
+
+**解决方案**：
+
+#### 步骤 1：创建知识库文件夹
+```bash
+# 在项目根目录
+mkdir Knowledge
+cd Knowledge
+
+# 添加架构文档
+echo "# 系统架构
+我们使用微服务架构，包含以下服务：
+- UserService: 用户管理
+- PaymentService: 支付处理
+- NotificationService: 通知服务
+
+## 服务间通信
+使用 RabbitMQ 消息队列..." > architecture.md
+
+# 添加设计决策
+mkdir decisions
+echo "# 决策 001: 为什么选择 Redis
+
+**日期**: 2024-10-15
+**决策者**: Tech Team
+
+**背景**:
+需要一个高性能的缓存系统支持高并发场景...
+
+**决策**:
+选择 Redis 而非 Memcached
+
+**原因**:
+1. 支持更丰富的数据结构
+2. 支持持久化
+3. 性能测试显示比 Memcached 快 30%
+
+**权衡**:
+- 内存占用略高
+- 需要额外维护..." > decisions/001-use-redis.md
+```
+
+#### 步骤 2：配置 Gemini API
+
+**首次使用**：
+```
+1. 打开 VS Code 设置
+2. 搜索 "VibeCoding"
+3. 输入 Gemini API Key（获取地址：https://aistudio.google.com/apikey）
+4. 保存
+```
+
+**或使用命令**：
+```
+命令面板 → "VibeCoding: Configure Gemini API"
+  → 输入 API Key
+  → 自动创建 File Search Store
+  → 完成！
+```
+
+#### 步骤 3：自动索引
+```
+1. 保存文件后，插件自动检测
+2. 状态栏显示：☁️ 正在上传 architecture.md...
+3. 上传到 Gemini：⏳ 索引中...
+4. 完成后通知：✅ 已索引 2 个文档
+```
+
+**技术细节**：
+```typescript
+// 插件后台自动执行
+import { genai } from '@google/generative-ai';
+
+// 1. 上传文件到 File Search Store
+const uploadOp = await client.file_search_stores.upload_to_file_search_store({
+  file_search_store_name: store.name,
+  file: 'Knowledge/architecture.md'
+});
+
+// 2. 等待索引完成
+while (!uploadOp.done) {
+  await sleep(5000);
+  uploadOp = await client.operations.get(uploadOp);
+}
+
+// 3. 保存文件 ID 到本地数据库
+await saveFileIndex({
+  filePath: 'Knowledge/architecture.md',
+  geminiFileId: uploadOp.result.file_id,
+  status: 'indexed'
+});
+```
+
+#### 步骤 4：智能上下文注入
+
+**场景 A：编辑代码时自动关联**
+```
+你正在编辑 UserService.ts
+  ↓
+插件检测到文件名包含 "User"
+  ↓
+后台调用 Gemini File Search API
+  ↓
+Gemini 返回相关文档片段
+  ↓
+悬浮提示中显示：
+  📄 相关文档（来自 architecture.md）：
+  "根据架构文档，UserService 负责用户管理..."
+  [查看完整文档 →]
+```
+
+**场景 B：使用命令主动查询**
+```
+命令面板 → "VibeCoding: Ask Documents"
+  ↓
+输入问题："为什么使用 Redis？"
+  ↓
+调用 Gemini API：
+```
+
+```typescript
+const response = await client.models.generate_content({
+  model: 'gemini-2.5-flash',
+  contents: '为什么使用 Redis？',
+  config: {
+    tools: [{
+      file_search: {
+        file_search_store_names: [storeId]
+      }
+    }]
+  }
+});
+
+// Gemini 自动搜索 decisions/001-use-redis.md
+// 生成回答并标注来源
+```
+
+```
+  ↓
+AI 回复（含引用）：
+"根据团队 2024-10-15 的技术决策文档¹，选择 Redis 的原因是：
+
+1. 支持更丰富的数据结构
+2. 支持持久化  
+3. 性能测试显示比 Memcached 快 30%
+
+---
+引用来源：
+¹ decisions/001-use-redis.md
+  [点击查看源文档 →]
+"
+```
+
+**场景 C：生成 Cursor Rules**
+```
+命令：Knowledge: Generate Cursor Rules
+  ↓
+调用 Gemini 生成项目摘要
+  ↓
+生成 .cursorrules，包含：
+  - 架构概览（来自 architecture.md）
+  - 设计决策摘要（来自 decisions/）
+  - 编码规范（来自 guides/）
+  ↓
+Cursor AI 自动学习项目知识
+```
+
+#### 步骤 5：团队协作
+
+**选项 A：共享 File Search Store（推荐）**
+```bash
+# 1. 第一个开发者创建 Store 后
+# .vscode/settings.json 中会保存 Store ID
+
+# 2. 提交到 Git
+git add Knowledge/ .vscode/settings.json
+git commit -m "docs: 添加架构文档和 Gemini Store 配置"
+git push
+
+# 3. 团队成员拉取代码
+git pull
+
+# 4. 插件自动使用相同的 Store ID
+# 所有团队成员共享同一个知识库
+# 修改文档后自动同步
+```
+
+**选项 B：独立 File Search Store**
+```bash
+# 每个开发者使用自己的 API Key 和 Store
+# .vscode/settings.json 添加到 .gitignore
+# 各自维护独立的文档索引
+```
+
+**成本说明**：
+```
+假设团队有 5 个开发者，知识库包含 100 个文档，共 500 万 tokens：
+
+选项 A（共享 Store）：
+  索引成本：$0.15/M tokens × 5M = $0.75（一次性）
+  查询成本：免费
+  
+选项 B（独立 Store）：
+  索引成本：$0.75 × 5 人 = $3.75
+  查询成本：免费
+  
+推荐：使用共享 Store，节省成本
+```
+
+**效果对比**：
+
+❌ **没有持久知识库**：
+- AI 不知道架构设计
+- 重复询问"为什么这样做？"
+- 团队知识散落在 Slack/邮件
+- 新人需要口头传授经验
+- 文档更新后 AI 无法感知
+
+✅ **使用 Gemini 持久知识库**：
+- ☁️ AI 自动读取最新架构文档
+- 📝 设计决策可追溯，带引用来源
+- 🔄 团队知识沉淀在 Git，自动同步
+- 🚀 新人看文档即可上手
+- 🎯 语义搜索比关键词搜索准确 3 倍
+- 💰 成本极低（初次索引 $0.15/M tokens，查询免费）
+
+---
+
+### 场景六：需求文档自动转换 🆕
+
+**问题**：产品经理提供的需求文档是 PDF、Word、Excel 等格式，AI 无法直接理解。
+
+**解决方案**：使用 VibeCoding 自动转换为 Markdown。
+
+#### 步骤 1：创建 specs 文件夹
+
+```bash
+# 在项目根目录
+mkdir specs
+cd specs
+```
+
+#### 步骤 2：放入需求文档
+
+```
+specs/
+├── PRD-UserProfile-v1.0.pdf        # 产品经理提供的 PRD
+├── API-Design.docx                 # 后端设计文档
+├── TestCases.xlsx                  # QA 提供的测试用例
+└── UI-Mockup.png                   # 设计师提供的 UI 图
+```
+
+#### 步骤 3：检测 MarkItDown（首次使用）
+
+**方式 A：自动检测**
+```
+插件启动时自动检测 MarkItDown
+  ↓
+如果未安装，显示通知：
+  "未检测到 MarkItDown，是否安装？"
+  [安装 MarkItDown] [使用 Node.js 库]
+  ↓
+点击"安装 MarkItDown"
+  → 自动执行：pip install 'markitdown[all]'
+  → 安装完成！
+```
+
+**方式 B：手动安装**
+```bash
+# 需要 Python 3.10+
+pip install 'markitdown[all]'
+```
+
+**方式 C：使用 Node.js 备用方案**
+```
+如果没有 Python 环境，插件自动降级使用 Node.js 库：
+- PDF → pdf-parse
+- Word → mammoth  
+- Excel → xlsx
+
+功能有限但无需 Python 依赖
+```
+
+#### 步骤 4：自动转换
+
+**启动自动监听**：
+```
+命令面板 → "VibeCoding: Auto-Watch Specs Folder"
+  ↓
+状态栏显示：👁️ 正在监听 specs/
+```
+
+**自动转换流程**：
+```
+保存 PRD-UserProfile-v1.0.pdf
+  ↓
+插件检测到文件变更
+  ↓
+调用 MarkItDown 转换
+  ↓
+输出到 Knowledge/PRD-UserProfile-v1.0.md
+  ↓
+显示通知：✅ 已转换 PRD-UserProfile-v1.0.pdf → .md
+  ↓
+Gemini 自动索引（联动 RAG 系统）
+  ↓
+AI 可以访问需求文档内容！
+```
+
+**手动批量转换**：
+```
+命令面板 → "VibeCoding: Convert Specs to Markdown"
+  ↓
+扫描 specs/ 文件夹
+  ↓
+批量转换所有文档
+  ↓
+显示进度：
+  [1/4] 转换 PRD-UserProfile-v1.0.pdf...
+  [2/4] 转换 API-Design.docx...
+  [3/4] 转换 TestCases.xlsx...
+  [4/4] 转换 UI-Mockup.png...
+  ↓
+完成！所有文档已转换为 Markdown
+```
+
+#### 步骤 5：查看转换结果
+
+**转换后的文件结构**：
+```
+Knowledge/
+├── PRD-UserProfile-v1.0.md         # 从 PDF 转换
+├── API-Design.md                   # 从 Word 转换
+├── TestCases.md                    # 从 Excel 转换（表格保留）
+└── UI-Mockup.md                    # 从图片转换（含 OCR 文字）
+```
+
+**转换后的 Markdown 示例**：
+
+```markdown
+<!-- Knowledge/PRD-UserProfile-v1.0.md -->
+# 用户资料页面需求文档 v1.0
+
+## 1. 功能概述
+用户可以查看和编辑自己的个人资料...
+
+## 2. 功能需求
+
+### 2.1 基本信息展示
+- 用户名
+- 头像
+- 个人简介（最多 200 字）
+
+### 2.2 联系方式
+- 邮箱地址（必填）
+- 手机号（选填）
+
+## 3. UI 设计
+参见附件 UI-Mockup.png
+
+## 4. API 接口
+详见 API-Design.docx 第 3.2 节
+```
+
+**Excel 转换示例**：
+```markdown
+<!-- Knowledge/TestCases.md -->
+# 测试用例
+
+## Sheet1: 用户资料测试
+
+| 用例ID | 测试场景 | 输入 | 预期结果 | 优先级 |
+|--------|---------|------|---------|--------|
+| TC001 | 查看个人资料 | 登录后点击"我的资料" | 显示当前用户信息 | P0 |
+| TC002 | 编辑用户名 | 修改用户名为"新名字" | 保存成功，显示新名字 | P0 |
+| TC003 | 上传头像 | 上传 2MB 的 JPG 图片 | 上传成功 | P1 |
+```
+
+#### 步骤 6：AI 使用需求文档
+
+**场景 A：询问需求细节**
+```
+开发者：在 Cursor 中询问
+  "用户资料页面需要哪些字段？"
+  ↓
+插件检索 Knowledge/PRD-UserProfile-v1.0.md
+  ↓
+AI 回复（基于需求文档）：
+  "根据 PRD v1.0 第 2.1 节¹，用户资料页面需要：
+   
+   **基本信息**：
+   • 用户名
+   • 头像
+   • 个人简介（最多 200 字）
+   
+   **联系方式**（第 2.2 节²）：
+   • 邮箱地址（必填）
+   • 手机号（选填）
+   
+   ---
+   引用来源：
+   ¹ PRD-UserProfile-v1.0.md - 第 2.1 节
+   ² PRD-UserProfile-v1.0.md - 第 2.2 节"
+```
+
+**场景 B：对照测试用例开发**
+```
+开发者：
+  "帮我实现 TC001 的测试场景"
+  ↓
+AI 检索 Knowledge/TestCases.md
+  ↓
+AI 生成代码：
+  "根据测试用例 TC001¹，需要实现：
+   
+   ```typescript
+   describe('查看个人资料', () => {
+     it('应该显示当前用户信息', async () => {
+       // 登录
+       await login('testuser@example.com');
+       
+       // 点击"我的资料"
+       await click('#my-profile');
+       
+       // 验证显示用户信息
+       expect(screen.getByText('testuser')).toBeVisible();
+       expect(screen.getByRole('img', { name: 'avatar' })).toBeVisible();
+     });
+   });
+   ```
+   
+   ---
+   引用来源：
+   ¹ TestCases.md - TC001"
+```
+
+**场景 C：API 实现**
+```
+开发者：
+  "根据 API 设计文档，实现获取用户资料接口"
+  ↓
+AI 检索 Knowledge/API-Design.md
+  ↓
+AI 生成代码（符合设计规范）：
+  "根据 API 设计文档 3.2 节¹，接口规范如下：
+   
+   ```typescript
+   // GET /api/users/:id/profile
+   @Get(':id/profile')
+   async getProfile(@Param('id') userId: string) {
+     return {
+       username: user.username,
+       avatar: user.avatar,
+       bio: user.bio,
+       email: user.email,
+       phone: user.phone
+     };
+   }
+   ```
+   
+   响应格式符合设计文档定义。"
+```
+
+#### 步骤 7：增量更新
+
+**需求文档更新时**：
+```
+产品经理更新 PRD
+  → 替换 specs/PRD-UserProfile-v2.0.pdf
+  ↓
+插件检测到文件变更
+  ↓
+自动重新转换
+  → Knowledge/PRD-UserProfile-v2.0.md
+  ↓
+Gemini 自动重新索引
+  ↓
+AI 自动使用最新需求！
+```
+
+**智能增量检测**：
+```typescript
+// 插件内部逻辑
+if (文件哈希未变) {
+  跳过转换
+} else {
+  重新转换并上传到 Gemini
+}
+```
+
+#### 高级用法
+
+**场景 D：OCR 提取图片文字**（需 MarkItDown）
+```
+UI 设计图：ui-mockup.png
+  ↓
+MarkItDown 自动提取图片中的文字
+  ↓
+Knowledge/ui-mockup.md:
+  "图片包含以下文字：
+   • 标题：我的资料
+   • 按钮：编辑资料
+   • 表单字段：用户名、邮箱、手机号
+   
+   [图片描述：顶部导航栏，中间表单，底部保存按钮]"
+  ↓
+AI 可以基于图片生成代码！
+```
+
+**场景 E：音频转文字**（需 MarkItDown）
+```
+产品会议录音：meeting-notes.mp3
+  ↓
+MarkItDown 自动转录为文字
+  ↓
+Knowledge/meeting-notes.md:
+  "会议时间：2024-11-07
+   参与人员：Product, Design, Dev
+   
+   讨论要点：
+   1. 用户资料页面增加隐私设置...
+   2. 头像支持裁剪功能...
+   3. 个人简介支持 Markdown..."
+  ↓
+AI 可以基于会议记录回答问题！
+```
+
+**效果对比**：
+
+❌ **手动管理需求文档**：
+- 📄 需求文档散落在各处（邮件、云盘）
+- 🤷 AI 无法理解 PDF/Word/Excel
+- 🔄 需求更新后需要手动复制给 AI
+- 😵 团队成员各自管理文档副本
+- 🕐 查找需求信息耗时 10+ 分钟
+
+✅ **使用自动转换**：
+- 📁 统一存放在 specs/ 文件夹
+- 🤖 AI 直接理解转换后的 Markdown
+- 🔄 需求更新自动同步到 AI
+- 👥 团队共享同一份知识库
+- ⚡ AI 2 秒内检索到相关需求
+- 🎯 支持多种格式：PDF、Word、Excel、图片、音频
+- 💰 转换免费（本地处理或 Python CLI）
 
 ---
 
