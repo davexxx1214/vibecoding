@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
@@ -13,6 +14,24 @@ export class EntityCommands {
     private relationService: RelationService,
     private observationService: ObservationService
   ) {}
+
+  /**
+   * 获取文件相对于工作区的路径
+   */
+  private getRelativePath(document: vscode.TextDocument): string | null {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!workspaceFolder) {
+      return null;
+    }
+    
+    // 使用 path.relative 计算相对路径，确保返回字符串
+    const absolutePath = document.uri.fsPath;
+    const workspacePath = workspaceFolder.uri.fsPath;
+    const relativePath = path.relative(workspacePath, absolutePath);
+    
+    // 统一使用正斜杠（跨平台兼容）
+    return relativePath.replace(/\\/g, '/');
+  }
 
   /**
    * 从选中的代码创建实体
@@ -77,7 +96,12 @@ export class EntityCommands {
 
     // 创建实体
     try {
-      const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
+      const relativePath = this.getRelativePath(editor.document);
+      if (!relativePath) {
+        vscode.window.showWarningMessage('File is not in a workspace');
+        return;
+      }
+      
       const entity = this.entityService.createEntity(
         name,
         selectedType.label as EntityType,
@@ -98,10 +122,16 @@ export class EntityCommands {
   /**
    * 为实体添加观察记录
    */
-  public async addObservationToEntity(entityId?: string): Promise<void> {
-    let targetEntityId = entityId;
+  public async addObservationToEntity(entityId?: string | any): Promise<void> {
+    let targetEntityId: string | undefined;
 
-    // 如果没有提供实体 ID，尝试从当前位置查找
+    // 检查 entityId 参数类型
+    // 如果是 URI 对象（从右键菜单调用），忽略它
+    if (entityId && typeof entityId === 'string') {
+      targetEntityId = entityId;
+    }
+
+    // 如果没有提供有效的实体 ID，尝试从当前位置查找
     if (!targetEntityId) {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
@@ -109,12 +139,11 @@ export class EntityCommands {
         return;
       }
 
-      const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-      if (!workspaceFolder) {
+      const relativePath = this.getRelativePath(editor.document);
+      if (!relativePath) {
         return;
       }
 
-      const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
       const line = editor.selection.active.line + 1;
       const entity = this.entityService.findEntityAtLocation(relativePath, line);
 
@@ -140,7 +169,7 @@ export class EntityCommands {
     }
 
     try {
-      this.observationService.addObservation(targetEntityId, content);
+      this.observationService.addObservation(targetEntityId!, content);
       vscode.window.showInformationMessage('Observation added successfully');
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to add observation: ${error}`);
@@ -150,24 +179,27 @@ export class EntityCommands {
   /**
    * 查看实体详情
    */
-  public async viewEntityDetails(entityId?: string): Promise<void> {
+  public async viewEntityDetails(entityId?: string | any): Promise<void> {
     let entity: Entity | null = null;
 
-    if (entityId) {
+    // 检查 entityId 参数类型
+    // 如果是 URI 对象（从右键菜单调用），忽略它
+    if (entityId && typeof entityId === 'string') {
       entity = this.entityService.getEntity(entityId);
-    } else {
+    }
+    
+    if (!entity) {
       // 从当前位置查找实体
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
         return;
       }
 
-      const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-      if (!workspaceFolder) {
+      const relativePath = this.getRelativePath(editor.document);
+      if (!relativePath) {
         return;
       }
 
-      const relativePath = vscode.workspace.asRelativePath(editor.document.uri);
       const line = editor.selection.active.line + 1;
       entity = this.entityService.findEntityAtLocation(relativePath, line);
     }

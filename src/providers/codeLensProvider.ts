@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { EntityService } from '../services/entityService';
 import { RelationService } from '../services/relationService';
 import { ObservationService } from '../services/observationService';
@@ -24,12 +25,11 @@ export class KnowledgeCodeLensProvider implements vscode.CodeLensProvider {
     const codeLenses: vscode.CodeLens[] = [];
 
     // 获取当前文件的所有实体
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-    if (!workspaceFolder) {
+    const relativePath = this.getRelativePath(document);
+    if (!relativePath) {
       return codeLenses;
     }
-
-    const relativePath = vscode.workspace.asRelativePath(document.uri);
+    
     const entities = this.entityService.getEntitiesByFile(relativePath);
 
     for (const entity of entities) {
@@ -56,6 +56,24 @@ export class KnowledgeCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     return codeLenses;
+  }
+
+  /**
+   * 获取文件相对于工作区的路径
+   */
+  private getRelativePath(document: vscode.TextDocument): string | null {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!workspaceFolder) {
+      return null;
+    }
+    
+    // 使用 path.relative 计算相对路径，确保返回字符串
+    const absolutePath = document.uri.fsPath;
+    const workspacePath = workspaceFolder.uri.fsPath;
+    const relativePath = path.relative(workspacePath, absolutePath);
+    
+    // 统一使用正斜杠（跨平台兼容）
+    return relativePath.replace(/\\/g, '/');
   }
 
   public refresh(): void {
