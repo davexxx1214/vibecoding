@@ -631,6 +631,85 @@ export class EntityCommands {
   }
 
   /**
+   * 删除关系
+   */
+  public async deleteRelation(): Promise<void> {
+    // 1. 获取所有关系
+    const allEntities = this.entityService.listEntities();
+    
+    if (allEntities.length === 0) {
+      vscode.window.showWarningMessage('No entities found');
+      return;
+    }
+
+    // 收集所有关系
+    const allRelations: Array<{
+      relation: any;
+      sourceEntity: any;
+      targetEntity: any;
+      displayLabel: string;
+    }> = [];
+
+    for (const entity of allEntities) {
+      const relations = this.relationService.getRelations(entity.id, 'outgoing');
+      for (const relation of relations) {
+        const targetEntity = this.entityService.getEntity(relation.targetEntityId);
+        if (targetEntity) {
+          allRelations.push({
+            relation,
+            sourceEntity: entity,
+            targetEntity,
+            displayLabel: `${entity.name} ${relation.verb} ${targetEntity.name}`
+          });
+        }
+      }
+    }
+
+    if (allRelations.length === 0) {
+      vscode.window.showInformationMessage('No relations to delete');
+      return;
+    }
+
+    // 2. 让用户选择要删除的关系
+    const relationItems = allRelations.map(item => ({
+      label: item.displayLabel,
+      description: `${item.sourceEntity.filePath}:${item.sourceEntity.startLine} → ${item.targetEntity.filePath}:${item.targetEntity.startLine}`,
+      detail: `Type: ${item.relation.verb}`,
+      relationData: item
+    }));
+
+    const selected = await vscode.window.showQuickPick(relationItems, {
+      placeHolder: 'Select relation to delete',
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    // 3. 确认删除
+    const answer = await vscode.window.showWarningMessage(
+      `Delete relation: ${selected.label}?`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (answer !== 'Delete') {
+      return;
+    }
+
+    // 4. 执行删除
+    try {
+      this.relationService.removeRelation(selected.relationData.relation.id);
+      vscode.window.showInformationMessage(`✅ Relation deleted: ${selected.label}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete relation: ${error}`);
+    }
+  }
+
+  /**
    * 删除实体（从树视图右键调用）
    */
   public async deleteEntity(treeItem?: any): Promise<void> {

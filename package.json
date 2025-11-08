@@ -63,6 +63,10 @@
       {
         "command": "knowledge.deleteEntity",
         "title": "Knowledge: Delete Entity"
+      },
+      {
+        "command": "knowledge.deleteRelation",
+        "title": "Knowledge: Delete Relation"
       }
     ],
     "menus": {
