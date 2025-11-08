@@ -29,6 +29,10 @@
         "title": "Knowledge: Add Observation to Entity..."
       },
       {
+        "command": "knowledge.addRelation",
+        "title": "Knowledge: Add Relation"
+      },
+      {
         "command": "knowledge.viewEntityDetails",
         "title": "Knowledge: View Entity Details"
       },

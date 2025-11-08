@@ -208,7 +208,7 @@ code .
 
 ## 📖 完整演示脚本
 
-### 第一部分：基础功能演示（10 分钟）
+### 第一部分：基础功能演示（12 分钟）
 
 #### 1.1 创建第一个实体（2 分钟）
 
@@ -271,33 +271,142 @@ code .
 
 ---
 
-#### 1.4 建立关系（3 分钟）
+#### 1.4 建立关系（5 分钟）
+
+VibeCoding 提供两种创建关系的方式：
+
+##### 方法一：通用方式 - Add Relation（适合任意两个实体）
+
+**触发方式**：命令面板（Ctrl+Shift+P）
 
 **操作**：使用命令面板添加关系
 
 ```
 关系 1：UserController → UserService
-  命令面板 → "Knowledge: Add Relation"
-  From: UserController
-  To: UserService
-  Type: uses
-  
-关系 2：ArticleController → ArticleService
-  From: ArticleController
-  To: ArticleService
-  Type: uses
-  
-关系 3：ArticleService → UserService
-  From: ArticleService
-  To: UserService
-  Type: uses （需要获取文章作者信息）
+  1. 命令面板（Ctrl+Shift+P）
+  2. 输入 "Knowledge: Add Relation"
+  3. 选择源实体：UserController
+  4. 选择目标实体：UserService
+  5. 选择关系类型：uses
+  6. 确认创建
 ```
 
 **预期效果**：
-- ✅ 悬浮在 UserService 上显示：
-  ```
-  被调用 ← UserController, ArticleService
-  ```
+- ✅ 显示成功消息：`✅ Relation created: UserController uses UserService`
+- ✅ 侧边栏自动刷新
+- ✅ CodeLens 更新：`[KG: 0 observations, 1 relation]`
+
+---
+
+##### 方法二：快捷方式 - Link to Entity（从当前位置快速链接）⭐ 推荐
+
+**触发方式**：右键菜单或命令面板
+
+**场景**：你正在浏览 ArticleController，想快速标记它使用了 ArticleService
+
+**操作**：
+```
+1. 打开 src/article/article.controller.ts
+2. 光标放在 ArticleController 类内（任意位置）
+3. 右键 → "Knowledge: Link Selection to Entity..."
+4. 选择目标实体：ArticleService
+5. 选择关系类型：uses
+6. 完成！
+```
+
+**优势**：
+- ⚡ 比 Add Relation 少一步（自动检测当前实体）
+- 🎯 适合边浏览代码边标记关系
+- 💡 更符合自然工作流
+
+**预期效果**：
+- ✅ 显示成功消息：`✅ Linked: ArticleController uses ArticleService`
+- ✅ 自动刷新 UI
+
+---
+
+##### 继续建立更多关系
+
+**使用快捷方式继续**：
+
+```
+关系 3：ArticleService → UserService
+  1. 打开 src/article/article.service.ts
+  2. 光标在 ArticleService 类内
+  3. 右键 → "Link Selection to Entity..."
+  4. 选择：UserService
+  5. 类型：uses（需要获取文章作者信息）
+
+关系 4：ArticleController → ArticleService（调用关系）
+  1. 光标在 ArticleController 类内
+  2. 右键 → "Link Selection to Entity..."
+  3. 选择：ArticleService
+  4. 类型：calls（如果想标记具体的调用关系）
+```
+
+**技巧**：
+- 💡 使用 Link to Entity 时，光标只需在实体代码范围内即可
+- 💡 可以为同一对实体创建不同类型的关系（如 uses 和 calls）
+- 💡 如果提示 "No entity found"，说明当前位置还没有实体，需要先创建
+
+---
+
+##### 验证关系
+
+**查看悬浮提示**：
+
+```
+鼠标悬停在 UserService 上：
+
+📦 UserService (Class)
+📄 src/user/user.service.ts:15-120
+
+💭 观察记录 (1)
+  • ⚠️ 注意：findOne 方法没有缓存，高并发场景可能有性能问题
+
+🔗 关系 (2)
+  ← uses ← UserController
+  ← uses ← ArticleService
+
+[查看详情] [添加观察]
+```
+
+**查看实体详情**：
+```
+1. 右键 UserService → "Knowledge: View Entity Details"
+2. 或命令面板 → "Knowledge: View Entity Details"
+
+输出面板显示：
+Entity: UserService
+Type: class
+Location: src/user/user.service.ts:15-120
+
+Description: 用户管理核心服务
+
+Observations (1):
+  1. ⚠️ 注意：findOne 方法没有缓存，高并发场景可能有性能问题
+
+Relations (2):
+  ← uses ← UserController
+  ← uses ← ArticleService
+```
+
+---
+
+##### 两种方法对比
+
+| 特性 | Add Relation | Link to Entity ⭐ |
+|------|--------------|-------------------|
+| **步骤** | 3 步 | 2 步 |
+| **源实体选择** | 手动选择 | 自动检测 |
+| **适用场景** | 任意两个实体 | 从当前位置快速链接 |
+| **触发方式** | 仅命令面板 | **右键菜单**或命令面板 |
+| **使用频率** | 偶尔使用 | 经常使用 |
+
+**建议**：
+- 📖 **浏览代码时**：使用 Link to Entity（边看边标记）
+- 🔍 **回顾代码时**：使用 Add Relation（补充遗漏的关系）
+- 👥 **Code Review 时**：使用 Link to Entity（快速记录发现的关系）
 
 ---
 

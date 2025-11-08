@@ -318,6 +318,319 @@ export class EntityCommands {
   }
 
   /**
+   * 从当前位置链接到实体（快捷方式）
+   */
+  public async linkToEntity(): Promise<void> {
+    // 1. 获取当前编辑器和位置
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active editor');
+      return;
+    }
+
+    // 2. 查找当前位置的实体
+    const relativePath = this.getRelativePath(editor.document);
+    if (!relativePath) {
+      vscode.window.showWarningMessage('File is not in workspace');
+      return;
+    }
+
+    const line = editor.selection.active.line + 1;
+    const sourceEntity = this.entityService.findEntityAtLocation(relativePath, line);
+
+    if (!sourceEntity) {
+      vscode.window.showWarningMessage(
+        'No entity found at current location. Create an entity first using "Knowledge: Create Entity from Selection"'
+      );
+      return;
+    }
+
+    // 3. 获取所有其他实体
+    const allEntities = this.entityService.listEntities();
+    const targetEntities = allEntities.filter(e => e.id !== sourceEntity.id);
+
+    if (targetEntities.length === 0) {
+      vscode.window.showWarningMessage(
+        `No other entities to link to. Create more entities first.`
+      );
+      return;
+    }
+
+    // 4. 选择目标实体
+    const targetItems = targetEntities.map(entity => ({
+      label: entity.name,
+      description: `${entity.type} - ${entity.filePath}:${entity.startLine}`,
+      detail: entity.description,
+      entity: entity
+    }));
+
+    const selectedTarget = await vscode.window.showQuickPick(targetItems, {
+      placeHolder: `Link from: ${sourceEntity.name} → To:`,
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selectedTarget) {
+      return;
+    }
+
+    // 5. 选择关系类型
+    const verbOptions: (vscode.QuickPickItem & { verb: string })[] = [
+      { 
+        label: 'uses', 
+        verb: 'uses',
+        description: 'Uses or utilizes',
+        detail: `${sourceEntity.name} uses ${selectedTarget.label}`
+      },
+      { 
+        label: 'calls', 
+        verb: 'calls',
+        description: 'Calls or invokes',
+        detail: `${sourceEntity.name} calls ${selectedTarget.label}`
+      },
+      { 
+        label: 'extends', 
+        verb: 'extends',
+        description: 'Extends or inherits from',
+        detail: `${sourceEntity.name} extends ${selectedTarget.label}`
+      },
+      { 
+        label: 'implements', 
+        verb: 'implements',
+        description: 'Implements an interface',
+        detail: `${sourceEntity.name} implements ${selectedTarget.label}`
+      },
+      { 
+        label: 'depends_on', 
+        verb: 'depends_on',
+        description: 'Depends on',
+        detail: `${sourceEntity.name} depends on ${selectedTarget.label}`
+      },
+      { 
+        label: 'contains', 
+        verb: 'contains',
+        description: 'Contains or includes',
+        detail: `${sourceEntity.name} contains ${selectedTarget.label}`
+      },
+      { 
+        label: 'references', 
+        verb: 'references',
+        description: 'References or mentions',
+        detail: `${sourceEntity.name} references ${selectedTarget.label}`
+      },
+      { 
+        label: 'imports', 
+        verb: 'imports',
+        description: 'Imports from',
+        detail: `${sourceEntity.name} imports ${selectedTarget.label}`
+      },
+      { 
+        label: 'exports', 
+        verb: 'exports',
+        description: 'Exports to',
+        detail: `${sourceEntity.name} exports ${selectedTarget.label}`
+      }
+    ];
+
+    const selectedVerb = await vscode.window.showQuickPick(verbOptions, {
+      placeHolder: 'Select relation type',
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selectedVerb) {
+      return;
+    }
+
+    // 6. 检查关系是否已存在
+    const exists = this.relationService.relationExists(
+      sourceEntity.id,
+      selectedTarget.entity.id,
+      selectedVerb.verb as any
+    );
+
+    if (exists) {
+      const overwrite = await vscode.window.showWarningMessage(
+        `Relation already exists: ${sourceEntity.name} ${selectedVerb.label} ${selectedTarget.label}`,
+        'Continue Anyway',
+        'Cancel'
+      );
+      
+      if (overwrite !== 'Continue Anyway') {
+        return;
+      }
+    }
+
+    // 7. 创建关系
+    try {
+      this.relationService.addRelation(
+        sourceEntity.id,
+        selectedTarget.entity.id,
+        selectedVerb.verb as any
+      );
+
+      vscode.window.showInformationMessage(
+        `✅ Linked: ${sourceEntity.name} ${selectedVerb.label} ${selectedTarget.label}`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to link entities: ${error}`);
+    }
+  }
+
+  /**
+   * 添加关系
+   */
+  public async addRelation(): Promise<void> {
+    // 1. 获取所有实体
+    const allEntities = this.entityService.listEntities();
+    
+    if (allEntities.length < 2) {
+      vscode.window.showWarningMessage('Need at least 2 entities to create a relation');
+      return;
+    }
+
+    // 2. 选择源实体（From）
+    const sourceItems = allEntities.map(entity => ({
+      label: entity.name,
+      description: `${entity.type} - ${entity.filePath}:${entity.startLine}`,
+      detail: entity.description,
+      entity: entity
+    }));
+
+    const selectedSource = await vscode.window.showQuickPick(sourceItems, {
+      placeHolder: 'Select source entity (From)',
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selectedSource) {
+      return;
+    }
+
+    // 3. 选择目标实体（To）
+    const targetItems = allEntities
+      .filter(e => e.id !== selectedSource.entity.id) // 排除源实体
+      .map(entity => ({
+        label: entity.name,
+        description: `${entity.type} - ${entity.filePath}:${entity.startLine}`,
+        detail: entity.description,
+        entity: entity
+      }));
+
+    const selectedTarget = await vscode.window.showQuickPick(targetItems, {
+      placeHolder: `Select target entity (To) - From: ${selectedSource.label}`,
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selectedTarget) {
+      return;
+    }
+
+    // 4. 选择关系类型（Verb）
+    const verbOptions: (vscode.QuickPickItem & { verb: string })[] = [
+      { 
+        label: 'uses', 
+        verb: 'uses',
+        description: 'Uses or utilizes',
+        detail: `${selectedSource.label} uses ${selectedTarget.label}`
+      },
+      { 
+        label: 'calls', 
+        verb: 'calls',
+        description: 'Calls or invokes',
+        detail: `${selectedSource.label} calls ${selectedTarget.label}`
+      },
+      { 
+        label: 'extends', 
+        verb: 'extends',
+        description: 'Extends or inherits from',
+        detail: `${selectedSource.label} extends ${selectedTarget.label}`
+      },
+      { 
+        label: 'implements', 
+        verb: 'implements',
+        description: 'Implements an interface',
+        detail: `${selectedSource.label} implements ${selectedTarget.label}`
+      },
+      { 
+        label: 'depends_on', 
+        verb: 'depends_on',
+        description: 'Depends on',
+        detail: `${selectedSource.label} depends on ${selectedTarget.label}`
+      },
+      { 
+        label: 'contains', 
+        verb: 'contains',
+        description: 'Contains or includes',
+        detail: `${selectedSource.label} contains ${selectedTarget.label}`
+      },
+      { 
+        label: 'references', 
+        verb: 'references',
+        description: 'References or mentions',
+        detail: `${selectedSource.label} references ${selectedTarget.label}`
+      },
+      { 
+        label: 'imports', 
+        verb: 'imports',
+        description: 'Imports from',
+        detail: `${selectedSource.label} imports ${selectedTarget.label}`
+      },
+      { 
+        label: 'exports', 
+        verb: 'exports',
+        description: 'Exports to',
+        detail: `${selectedSource.label} exports ${selectedTarget.label}`
+      }
+    ];
+
+    const selectedVerb = await vscode.window.showQuickPick(verbOptions, {
+      placeHolder: 'Select relation type',
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selectedVerb) {
+      return;
+    }
+
+    // 5. 检查关系是否已存在
+    const exists = this.relationService.relationExists(
+      selectedSource.entity.id,
+      selectedTarget.entity.id,
+      selectedVerb.verb as any
+    );
+
+    if (exists) {
+      const overwrite = await vscode.window.showWarningMessage(
+        `Relation already exists: ${selectedSource.label} ${selectedVerb.label} ${selectedTarget.label}`,
+        'Continue Anyway',
+        'Cancel'
+      );
+      
+      if (overwrite !== 'Continue Anyway') {
+        return;
+      }
+    }
+
+    // 6. 创建关系
+    try {
+      this.relationService.addRelation(
+        selectedSource.entity.id,
+        selectedTarget.entity.id,
+        selectedVerb.verb as any
+      );
+
+      vscode.window.showInformationMessage(
+        `✅ Relation created: ${selectedSource.label} ${selectedVerb.label} ${selectedTarget.label}`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to create relation: ${error}`);
+    }
+  }
+
+  /**
    * 删除实体（从树视图右键调用）
    */
   public async deleteEntity(treeItem?: any): Promise<void> {

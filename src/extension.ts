@@ -108,6 +108,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
+        'knowledge.addRelation',
+        async () => {
+          try {
+            console.log('Executing: knowledge.addRelation');
+            await entityCommands.addRelation();
+            // 刷新树视图和 CodeLens 显示新的关系
+            treeDataProvider.refresh();
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in addRelation:', error);
+            vscode.window.showErrorMessage(`Error adding relation: ${error}`);
+          }
+        }
+      )
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
         'knowledge.viewEntityDetails',
         async (entityId?: string) => {
           try {
@@ -169,11 +187,22 @@ export async function activate(context: vscode.ExtensionContext) {
       )
     );
 
-    // 注册占位命令（后续实现）
     context.subscriptions.push(
-      vscode.commands.registerCommand('knowledge.linkToEntity', () => {
-        vscode.window.showInformationMessage('Link to Entity - Coming soon!');
-      })
+      vscode.commands.registerCommand(
+        'knowledge.linkToEntity',
+        async () => {
+          try {
+            console.log('Executing: knowledge.linkToEntity');
+            await entityCommands.linkToEntity();
+            // 刷新树视图和 CodeLens 显示新的关系
+            treeDataProvider.refresh();
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in linkToEntity:', error);
+            vscode.window.showErrorMessage(`Error linking to entity: ${error}`);
+          }
+        }
+      )
     );
 
     context.subscriptions.push(
@@ -258,6 +287,7 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
   const placeholderCommands = [
     'knowledge.createEntity',
     'knowledge.addObservation',
+    'knowledge.addRelation',
     'knowledge.viewEntityDetails',
     'knowledge.jumpToEntity',
     'knowledge.searchGraph',
