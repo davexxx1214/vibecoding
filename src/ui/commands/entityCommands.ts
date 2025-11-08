@@ -631,6 +631,88 @@ export class EntityCommands {
   }
 
   /**
+   * 删除观察记录
+   */
+  public async deleteObservation(): Promise<void> {
+    // 1. 获取所有实体
+    const allEntities = this.entityService.listEntities();
+    
+    if (allEntities.length === 0) {
+      vscode.window.showWarningMessage('No entities found');
+      return;
+    }
+
+    // 收集所有观察记录
+    const allObservations: Array<{
+      observation: any;
+      entity: any;
+      displayLabel: string;
+    }> = [];
+
+    for (const entity of allEntities) {
+      const observations = this.observationService.getObservations(entity.id);
+      for (const observation of observations) {
+        // 截断长文本用于显示
+        const preview = observation.content.length > 80 
+          ? observation.content.substring(0, 80) + '...'
+          : observation.content;
+        
+        allObservations.push({
+          observation,
+          entity,
+          displayLabel: preview
+        });
+      }
+    }
+
+    if (allObservations.length === 0) {
+      vscode.window.showInformationMessage('No observations to delete');
+      return;
+    }
+
+    // 2. 让用户选择要删除的观察记录
+    const observationItems = allObservations.map(item => ({
+      label: item.displayLabel,
+      description: `${item.entity.name} (${item.entity.type})`,
+      detail: `${item.entity.filePath}:${item.entity.startLine}`,
+      observationData: item
+    }));
+
+    const selected = await vscode.window.showQuickPick(observationItems, {
+      placeHolder: 'Select observation to delete',
+      matchOnDescription: true,
+      matchOnDetail: true
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    // 3. 确认删除（显示完整内容）
+    const fullContent = selected.observationData.observation.content;
+    const answer = await vscode.window.showWarningMessage(
+      `Delete observation?\n\n"${fullContent}"\n\nFrom: ${selected.observationData.entity.name}`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (answer !== 'Delete') {
+      return;
+    }
+
+    // 4. 执行删除
+    try {
+      this.observationService.deleteObservation(selected.observationData.observation.id);
+      vscode.window.showInformationMessage(
+        `✅ Observation deleted from ${selected.observationData.entity.name}`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete observation: ${error}`);
+    }
+  }
+
+  /**
    * 删除关系
    */
   public async deleteRelation(): Promise<void> {

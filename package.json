@@ -67,6 +67,10 @@
       {
         "command": "knowledge.deleteRelation",
         "title": "Knowledge: Delete Relation"
+      },
+      {
+        "command": "knowledge.deleteObservation",
+        "title": "Knowledge: Delete Observation"
       }
     ],
     "menus": {

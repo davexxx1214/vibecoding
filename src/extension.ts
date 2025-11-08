@@ -207,6 +207,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
+        'knowledge.deleteObservation',
+        async () => {
+          try {
+            console.log('Executing: knowledge.deleteObservation');
+            await entityCommands.deleteObservation();
+            // 刷新树视图和 CodeLens
+            treeDataProvider.refresh();
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in deleteObservation:', error);
+            vscode.window.showErrorMessage(`Error deleting observation: ${error}`);
+          }
+        }
+      )
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
         'knowledge.linkToEntity',
         async () => {
           try {
@@ -311,6 +329,7 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.searchGraph',
     'knowledge.deleteEntity',
     'knowledge.deleteRelation',
+    'knowledge.deleteObservation',
     'knowledge.linkToEntity',
     'knowledge.visualizeGraph',
     'knowledge.exportGraph',
