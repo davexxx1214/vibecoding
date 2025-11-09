@@ -208,7 +208,7 @@ code .
 
 ## 📖 完整演示脚本
 
-### 第一部分：基础功能演示（14 分钟）
+### 第一部分：基础功能演示（19 分钟）
 
 #### 1.1 创建第一个实体（2 分钟）
 
@@ -337,12 +337,34 @@ VibeCoding 提供两种创建关系的方式：
   4. 选择：UserService
   5. 类型：uses（需要获取文章作者信息）
 
-关系 4：ArticleController → ArticleService（调用关系）
-  1. 光标在 ArticleController 类内
+关系 4：UserService → User（数据模型关系）
+  1. 光标在 UserService 类内
   2. 右键 → "Link Selection to Entity..."
-  3. 选择：ArticleService
-  4. 类型：calls（如果想标记具体的调用关系）
+  3. 选择：User
+  4. 类型：uses（操作用户数据模型）
+
+关系 5：ArticleService → Article（数据模型关系）
+  1. 光标在 ArticleService 类内
+  2. 右键 → "Link Selection to Entity..."
+  3. 选择：Article
+  4. 类型：uses（操作文章数据模型）
+
+关系 6：ArticleService → User（关联查询）
+  1. 保持在 ArticleService 类内
+  2. 右键 → "Link Selection to Entity..."
+  3. 选择：User
+  4. 类型：references（需要引用用户信息）
 ```
+
+💡 **提示**：建立更多关系可以让可视化图谱更加丰富，更容易看出模块间的依赖关系！
+
+**现在总共有 6 个关系**：
+1. UserController → UserService (uses)
+2. ArticleController → ArticleService (uses)
+3. ArticleService → UserService (uses)
+4. UserService → User (uses)
+5. ArticleService → Article (uses)
+6. ArticleService → User (references)
 
 **技巧**：
 - 💡 使用 Link to Entity 时，光标只需在实体代码范围内即可
@@ -488,6 +510,330 @@ Relations (2):
 - 💡 关系列表支持搜索：输入关键词快速过滤
 - 💡 鼠标悬停显示完整信息
 - 💡 添加/删除关系后自动刷新
+
+---
+
+#### 1.6 可视化知识图谱（5 分钟）🆕 ⭐
+
+**背景**：树视图以列表形式展示实体和关系，而可视化图谱则以**图形化**方式展示它们的依赖关系，更直观！
+
+---
+
+##### 1.6.1 首次打开图谱（1 分钟）
+
+**操作**：
+```
+1. 命令面板（Ctrl+Shift+P）
+2. 输入 "visualize"
+3. 选择 "Knowledge: Visualize Graph"
+4. 等待图谱加载（约 2-3 秒）
+```
+
+**预期效果**：
+
+新窗口打开，标题为 "Knowledge Graph Visualization"
+
+**看到的内容**：
+
+```
+┌─────────────────────────────────────────────────┐
+│ [🔍 适应窗口] [↺ 重置] [🔄 刷新]    [实体:6 | 关系:6] │
+│                                                 │
+│         UserController                          │
+│         (红色椭圆)                               │
+│              │ uses                             │
+│              ↓                                  │
+│         UserService ←──────────┐                │
+│         (红色椭圆)              │ uses           │
+│              │ uses             │               │
+│              ↓                  │               │
+│         User            ArticleService          │
+│    (红色椭圆)           (红色椭圆)              │
+│         ↑                   │ uses              │
+│         │ references         ↓                  │
+│         └───────────────  Article               │
+│                          (红色椭圆)              │
+│                              ↑                  │
+│    ArticleController         │ uses             │
+│    (红色椭圆) ────────────────┘                 │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+✅ **视觉验证**：
+- 6 个节点（实体）自动排列
+- **6 条带箭头的边（关系）** - 更丰富的连接！
+- 关系标签字体更大（16px），带黑色描边和背景，清晰可读
+- 节点根据实体类型显示不同颜色和形状
+- 统计面板显示正确数量
+- 节点自动避免重叠
+- 连接线更明显（更亮的颜色和更大的箭头）
+
+---
+
+##### 1.6.2 测试交互功能（2 分钟）
+
+**操作 1：悬停查看详情**
+```
+鼠标悬停在 UserService 节点上
+```
+
+✅ **预期效果**：显示悬浮提示框
+```
+UserService
+类型: class
+文件: src/user/user.service.ts:15
+描述: 用户管理核心服务
+```
+
+---
+
+**操作 2：双击跳转到代码**
+```
+双击 UserService 节点
+```
+
+✅ **预期效果**：
+- 自动打开 `src/user/user.service.ts` 文件
+- 光标跳转到 UserService 类定义位置（第 15 行）
+- 代码行高亮显示
+
+💡 **提示**：这是查看代码最快的方式！
+
+---
+
+**操作 3：拖拽节点**
+```
+1. 单击 ArticleController 节点（选中）
+2. 按住鼠标左键拖动
+3. 移动到新位置
+4. 松开鼠标
+```
+
+✅ **预期效果**：
+- 节点跟随鼠标移动
+- 连接的边自动跟随
+- 物理引擎会轻微调整周围节点
+- 松开后节点保持在新位置
+
+---
+
+**操作 4：缩放和平移**
+```
+缩放：滚动鼠标滚轮
+平移：拖拽空白区域
+```
+
+✅ **预期效果**：
+- 向前滚动：放大图谱
+- 向后滚动：缩小图谱
+- 拖拽背景：整个图谱跟随移动
+
+---
+
+**操作 5：使用工具栏**
+```
+点击 "🔍 适应窗口" 按钮
+```
+
+✅ **预期效果**：图谱自动缩放并居中，所有节点可见
+
+```
+拖动图谱到任意位置，然后点击 "↺ 重置缩放"
+```
+
+✅ **预期效果**：图谱回到中心位置，缩放级别重置为 1.0
+
+---
+
+##### 1.6.3 关系网络的价值（2 分钟）
+
+**场景**：你已经创建了 6 个关系，现在可以看到丰富的关系网络！
+
+**观察图谱中的关系网络**：
+
+从可视化图谱中可以清晰地看到：
+
+1. **Controller 层 → Service 层**
+   - UserController → UserService (uses)
+   - ArticleController → ArticleService (uses)
+
+2. **Service 层 → Service 层**
+   - ArticleService → UserService (uses)
+
+3. **Service 层 → Entity 层**
+   - UserService → User (uses)
+   - ArticleService → Article (uses)
+   - ArticleService → User (references)
+
+**分层架构一目了然**：
+```
+Controller 层
+    ↓ uses
+Service 层
+    ↓ uses/references
+Entity 层（数据模型）
+```
+
+💡 **价值体现**：
+- ✅ 6 个关系形成了一个连贯的依赖网络
+- ✅ 清晰展示三层架构（Controller → Service → Entity）
+- ✅ 可以看出 ArticleService 是核心节点（连接最多）
+- ✅ 标签字体大（16px）+ 描边，清晰可读
+
+---
+
+**可选：添加更多实体（演示用）**
+
+如果想让图谱更丰富，可以添加：
+
+```
+1. 创建 CommentService 实体（service 类型）
+2. 创建 AuthService 实体（service 类型）
+3. 建立关系：
+   - ArticleService → CommentService (uses)
+   - UserController → AuthService (depends_on)
+4. 点击 🔄 刷新按钮查看更新
+```
+
+这样就会有 **8 个实体，8 个关系**，图谱更加丰富！
+
+```
+┌─────────────────────────────────────────────────┐
+│ [工具栏]                        [实体:8 | 关系:8] │
+│                                                 │
+│         UserController                          │
+│              ↙        ↘                         │
+│         uses        depends_on                  │
+│           ↙              ↘                      │
+│    UserService        AuthService               │
+│         ↑                (青色矩形)              │
+│         │ uses                                  │
+│         │                                       │
+│    ArticleController                            │
+│         │ uses                                  │
+│         ↓                                       │
+│    ArticleService                               │
+│         │ uses                                  │
+│         ↓                                       │
+│    CommentService                               │
+│    (青色矩形)                                    │
+│                                                 │
+│    User            Article                      │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+**观察图谱变化**：
+- ✅ 新节点 CommentService 和 AuthService 出现
+- ✅ 自动布局调整，避免重叠
+- ✅ 新的关系箭头显示
+- ✅ Service 类型的节点显示为青色矩形
+- ✅ 统计数据自动更新
+
+---
+
+##### 1.6.4 使用图谱进行影响分析（1 分钟）
+
+**场景**：准备修改 UserService，想知道会影响哪些组件。
+
+**操作**：
+```
+在可视化图谱中观察 UserService 节点
+```
+
+**分析结果**：
+
+从图谱中一眼看出：
+- **UserService** 被 **2 个组件**依赖：
+  1. ← UserController (uses)
+  2. ← ArticleService (uses)
+
+**影响评估**：
+```
+修改 UserService 的接口
+  ↓
+需要同步更新：
+  1. UserController（直接调用方）
+  2. ArticleService（间接调用方）
+  3. ArticleController（ArticleService 的调用方，可能受影响）
+```
+
+💡 **价值体现**：
+- 传统方式：需要全局搜索 + 人工分析（10+ 分钟）
+- 使用图谱：一眼看出依赖关系（10 秒）
+- **效率提升 60 倍！** 🚀
+
+---
+
+##### 1.6.5 发现架构问题（可选）
+
+**场景**：从图谱中发现潜在的架构问题。
+
+**观察**：
+```
+如果看到 A → B → C → A 的循环箭头
+  ↓
+发现了循环依赖！
+```
+
+**示例**：
+假设我们错误地创建了：
+- ArticleService → UserService (uses)
+- UserService → ArticleService (uses)
+
+**图谱显示**：
+```
+    ArticleService ←→ UserService
+         (循环依赖！)
+```
+
+💡 **价值**：
+- 可视化帮助快速发现循环依赖
+- 及时重构，避免技术债务
+- 保持架构清晰
+
+---
+
+##### 1.6.6 与树视图对比
+
+**树视图 vs 图形化视图**
+
+| 特性 | 树视图 | 可视化图谱 |
+|------|--------|-----------|
+| **展示方式** | 📁 列表形式 | 🕸️ 图形网络 |
+| **查看关系** | 需要展开查看 | 一眼看出 |
+| **影响分析** | 逐个点击查看 | 整体全局视角 |
+| **跳转代码** | 单击跳转 | 双击跳转 |
+| **适用场景** | 浏览所有实体 | 理解依赖关系 |
+| **视觉直观性** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+
+**最佳实践**：
+- 📁 **日常浏览**：使用树视图
+- 🔍 **影响分析**：使用可视化图谱
+- 🔄 **两者结合**：达到最佳效果
+
+---
+
+##### 1.6.7 小结
+
+**你已经学会了**：
+- ✅ 打开可视化图谱
+- ✅ 理解节点颜色和形状的含义
+- ✅ 使用交互功能（悬停、双击、拖拽、缩放）
+- ✅ 刷新图谱查看最新数据
+- ✅ 使用图谱进行影响分析
+- ✅ 发现潜在的架构问题
+
+**关键收获**：
+
+🎯 **一图胜千言**：图形化展示比文本更直观  
+⚡ **快速导航**：双击节点直接跳转到代码  
+🔍 **全局视角**：一眼看出整个项目的依赖关系  
+🐛 **发现问题**：可视化帮助发现循环依赖等架构问题  
+
+**下一步**：
+继续学习如何导出知识图谱供 AI 使用 → 第二部分
 
 ---
 

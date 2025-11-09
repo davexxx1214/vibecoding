@@ -713,7 +713,40 @@ export class EntityCommands {
   }
 
   /**
-   * 删除关系
+   * 从树视图删除关系
+   */
+  public async deleteRelationFromTree(treeItem: any): Promise<void> {
+    if (!treeItem || !treeItem.relationData) {
+      vscode.window.showErrorMessage('Invalid relation data');
+      return;
+    }
+
+    const relationData = treeItem.relationData;
+    const displayLabel = `${relationData.sourceName} ${relationData.verb} ${relationData.targetName}`;
+
+    // 确认删除
+    const answer = await vscode.window.showWarningMessage(
+      `Delete relation?\n\n${displayLabel}`,
+      { modal: true },
+      'Delete',
+      'Cancel'
+    );
+
+    if (answer !== 'Delete') {
+      return;
+    }
+
+    // 执行删除
+    try {
+      this.relationService.removeRelation(relationData.id);
+      vscode.window.showInformationMessage(`✅ Relation deleted: ${displayLabel}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to delete relation: ${error}`);
+    }
+  }
+
+  /**
+   * 删除关系（从命令面板，显示列表选择）
    */
   public async deleteRelation(): Promise<void> {
     // 1. 获取所有关系

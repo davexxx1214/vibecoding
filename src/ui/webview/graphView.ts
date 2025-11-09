@@ -1,43 +1,75 @@
 import * as vscode from 'vscode';
+import { EntityService } from '../../services/entityService';
+import { RelationService } from '../../services/relationService';
 
 /**
  * 图谱可视化 Webview
- * 阶段五实现
  */
 export class GraphView {
   public static currentPanel: GraphView | undefined;
   
   private readonly _panel: vscode.WebviewPanel;
+  private readonly _extensionUri: vscode.Uri;
+  private readonly _entityService: EntityService;
+  private readonly _relationService: RelationService;
   private _disposables: vscode.Disposable[] = [];
 
-  private constructor(panel: vscode.WebviewPanel) {
+  private constructor(
+    panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    entityService: EntityService,
+    relationService: RelationService
+  ) {
     this._panel = panel;
+    this._extensionUri = extensionUri;
+    this._entityService = entityService;
+    this._relationService = relationService;
     
     // 设置初始内容
     this._update();
+    
+    // 监听来自 webview 的消息
+    this._panel.webview.onDidReceiveMessage(
+      (message) => {
+        this._handleMessage(message);
+      },
+      null,
+      this._disposables
+    );
     
     // 监听面板关闭
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
   }
 
-  public static createOrShow(extensionUri: vscode.Uri) {
-    // 如果已经存在，则显示
+  public static createOrShow(
+    extensionUri: vscode.Uri,
+    entityService: EntityService,
+    relationService: RelationService
+  ) {
+    // 如果已经存在，则更新数据并显示
     if (GraphView.currentPanel) {
       GraphView.currentPanel._panel.reveal(vscode.ViewColumn.One);
+      GraphView.currentPanel._update();
       return;
     }
 
     // 创建新的面板
     const panel = vscode.window.createWebviewPanel(
       'knowledgeGraph',
-      'Knowledge Graph',
+      'Knowledge Graph Visualization',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
+        retainContextWhenHidden: true,
       }
     );
 
-    GraphView.currentPanel = new GraphView(panel);
+    GraphView.currentPanel = new GraphView(
+      panel,
+      extensionUri,
+      entityService,
+      relationService
+    );
   }
 
   public dispose() {
@@ -55,48 +87,476 @@ export class GraphView {
 
   private _update() {
     const webview = this._panel.webview;
-    this._panel.title = 'Knowledge Graph';
+    this._panel.title = 'Knowledge Graph Visualization';
     this._panel.webview.html = this._getHtmlForWebview(webview);
+  }
+
+  private _handleMessage(message: any) {
+    switch (message.type) {
+      case 'ready':
+        // Webview 准备好了，发送图谱数据
+        this._sendGraphData();
+        break;
+      case 'jumpToEntity':
+        // 跳转到实体位置
+        this._jumpToEntity(message.entityId);
+        break;
+      case 'refresh':
+        // 刷新图谱数据
+        this._sendGraphData();
+        break;
+    }
+  }
+
+  private _sendGraphData() {
+    // 获取所有实体和关系
+    const entities = this._entityService.listEntities();
+    const allRelations: any[] = [];
+
+    // 收集所有关系
+    for (const entity of entities) {
+      const relations = this._relationService.getRelations(entity.id, 'outgoing');
+      allRelations.push(...relations);
+    }
+
+    // 发送数据到 webview
+    this._panel.webview.postMessage({
+      type: 'graphData',
+      data: {
+        entities: entities.map(e => ({
+          id: e.id,
+          name: e.name,
+          type: e.type,
+          filePath: e.filePath,
+          startLine: e.startLine,
+          endLine: e.endLine,
+          description: e.description,
+        })),
+        relations: allRelations.map(r => ({
+          id: r.id,
+          sourceId: r.sourceEntityId,
+          targetId: r.targetEntityId,
+          verb: r.verb,
+        })),
+      },
+    });
+  }
+
+  private async _jumpToEntity(entityId: string) {
+    const entity = this._entityService.getEntity(entityId);
+    if (!entity) {
+      return;
+    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+      return;
+    }
+
+    const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, entity.filePath);
+    
+    try {
+      const document = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(document);
+
+      // 跳转到实体位置
+      const range = new vscode.Range(
+        entity.startLine - 1,
+        0,
+        entity.endLine - 1,
+        0
+      );
+
+      editor.selection = new vscode.Selection(range.start, range.end);
+      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+    }
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Knowledge Graph</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
     <style>
         body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
+            padding: 0;
             font-family: var(--vscode-font-family);
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
+            overflow: hidden;
         }
-        .placeholder {
+        
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+            background-color: var(--vscode-editor-background);
+            padding: 10px;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 5px;
+        }
+        
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background-color: var(--vscode-editor-background);
+            padding: 10px;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        #mynetwork {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             text-align: center;
+            z-index: 999;
         }
-        h1 {
+        
+        #loading.hidden {
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid var(--vscode-panel-border);
+            border-top: 4px solid var(--vscode-button-background);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 999;
+        }
+        
+        #empty-state.hidden {
+            display: none;
+        }
+        
+        #empty-state h2 {
             font-size: 24px;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
         }
-        p {
+        
+        #empty-state p {
             color: var(--vscode-descriptionForeground);
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="placeholder">
-        <h1>🧠 Knowledge Graph Visualization</h1>
-        <p>This feature will be implemented in Phase 5</p>
-        <p>Coming soon: Interactive graph visualization with React Flow</p>
+    <div id="toolbar">
+        <button onclick="fitGraph()">🔍 适应窗口</button>
+        <button onclick="resetZoom()">↺ 重置缩放</button>
+        <button onclick="refreshGraph()">🔄 刷新</button>
     </div>
+    
+    <div id="stats">
+        <div><strong>实体数量:</strong> <span id="entity-count">0</span></div>
+        <div><strong>关系数量:</strong> <span id="relation-count">0</span></div>
+    </div>
+    
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>加载知识图谱中...</div>
+    </div>
+    
+    <div id="empty-state" class="hidden">
+        <h2>📊 知识图谱为空</h2>
+        <p>请先创建实体和关系</p>
+        <p style="margin-top: 10px;">使用右键菜单 "Knowledge: Create Entity" 开始</p>
+    </div>
+    
+    <div id="mynetwork"></div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        let network = null;
+        
+        // 实体类型颜色映射
+        const typeColors = {
+            'function': '#61AFEF',
+            'class': '#E06C75',
+            'interface': '#C678DD',
+            'variable': '#98C379',
+            'component': '#E5C07B',
+            'service': '#56B6C2',
+            'api': '#D19A66',
+            'config': '#ABB2BF',
+            'other': '#5C6370'
+        };
+        
+        // 页面加载完成
+        window.addEventListener('load', () => {
+            // 通知扩展 webview 已准备好
+            vscode.postMessage({ type: 'ready' });
+        });
+        
+        // 接收来自扩展的消息
+        window.addEventListener('message', event => {
+            const message = event.data;
+            
+            switch (message.type) {
+                case 'graphData':
+                    renderGraph(message.data);
+                    break;
+            }
+        });
+        
+        function renderGraph(data) {
+            const { entities, relations } = data;
+            
+            // 隐藏加载提示
+            document.getElementById('loading').classList.add('hidden');
+            
+            // 检查是否为空
+            if (entities.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                return;
+            } else {
+                document.getElementById('empty-state').classList.add('hidden');
+            }
+            
+            // 更新统计
+            document.getElementById('entity-count').textContent = entities.length;
+            document.getElementById('relation-count').textContent = relations.length;
+            
+            // 构建节点
+            const nodes = entities.map(entity => ({
+                id: entity.id,
+                label: entity.name,
+                title: \`<strong>\${entity.name}</strong><br>
+                        类型: \${entity.type}<br>
+                        文件: \${entity.filePath}:\${entity.startLine}<br>
+                        \${entity.description ? '描述: ' + entity.description : ''}\`,
+                color: {
+                    background: typeColors[entity.type] || typeColors['other'],
+                    border: '#2B2B2B',
+                    highlight: {
+                        background: typeColors[entity.type] || typeColors['other'],
+                        border: '#FFFFFF'
+                    }
+                },
+                font: {
+                    color: '#FFFFFF',
+                    size: 14,
+                    face: 'Arial'
+                },
+                shape: getNodeShape(entity.type),
+                size: 25,
+                entityData: entity
+            }));
+            
+            // 构建边
+            const edges = relations.map(relation => ({
+                id: relation.id,
+                from: relation.sourceId,
+                to: relation.targetId,
+                label: relation.verb,
+                arrows: {
+                    to: {
+                        enabled: true,
+                        scaleFactor: 1.2
+                    }
+                },
+                color: {
+                    color: '#A0A0A0',
+                    highlight: '#FFFFFF',
+                    hover: '#FFFFFF'
+                },
+                font: {
+                    color: '#FFFFFF',
+                    size: 16,
+                    face: 'Arial',
+                    align: 'middle',
+                    strokeWidth: 2,
+                    strokeColor: '#000000',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    vadjust: -10
+                },
+                width: 2,
+                smooth: {
+                    type: 'cubicBezier',
+                    roundness: 0.4
+                }
+            }));
+            
+            // 创建数据集
+            const nodesDataSet = new vis.DataSet(nodes);
+            const edgesDataSet = new vis.DataSet(edges);
+            
+            // 图谱配置
+            const options = {
+                nodes: {
+                    borderWidth: 2,
+                    borderWidthSelected: 4,
+                    font: {
+                        size: 16,
+                        face: 'Arial',
+                        color: '#FFFFFF'
+                    }
+                },
+                edges: {
+                    width: 2,
+                    selectionWidth: 5,
+                    hoverWidth: 3,
+                    smooth: {
+                        enabled: true,
+                        type: 'cubicBezier',
+                        roundness: 0.4
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        gravitationalConstant: -10000,
+                        centralGravity: 0.3,
+                        springLength: 200,
+                        springConstant: 0.04,
+                        damping: 0.09,
+                        avoidOverlap: 0.6
+                    },
+                    stabilization: {
+                        iterations: 250,
+                        updateInterval: 25
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200,
+                    hideEdgesOnDrag: false,
+                    hideEdgesOnZoom: false,
+                    navigationButtons: true,
+                    keyboard: {
+                        enabled: true
+                    }
+                },
+                layout: {
+                    improvedLayout: true,
+                    hierarchical: false
+                }
+            };
+            
+            // 创建网络
+            const container = document.getElementById('mynetwork');
+            const graphData = {
+                nodes: nodesDataSet,
+                edges: edgesDataSet
+            };
+            
+            network = new vis.Network(container, graphData, options);
+            
+            // 双击节点跳转到代码
+            network.on('doubleClick', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    vscode.postMessage({
+                        type: 'jumpToEntity',
+                        entityId: nodeId
+                    });
+                }
+            });
+            
+            // 稳定后适应窗口
+            network.once('stabilizationIterationsDone', function() {
+                network.fit({
+                    animation: {
+                        duration: 1000,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            });
+        }
+        
+        function getNodeShape(type) {
+            const shapes = {
+                'function': 'box',
+                'class': 'ellipse',
+                'interface': 'diamond',
+                'variable': 'dot',
+                'component': 'star',
+                'service': 'box',
+                'api': 'triangleDown',
+                'config': 'square',
+                'other': 'dot'
+            };
+            return shapes[type] || 'dot';
+        }
+        
+        function fitGraph() {
+            if (network) {
+                network.fit({
+                    animation: {
+                        duration: 500,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            }
+        }
+        
+        function resetZoom() {
+            if (network) {
+                network.moveTo({
+                    position: {x: 0, y: 0},
+                    scale: 1,
+                    animation: {
+                        duration: 500,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            }
+        }
+        
+        function refreshGraph() {
+            document.getElementById('loading').classList.remove('hidden');
+            vscode.postMessage({ type: 'refresh' });
+        }
+    </script>
 </body>
 </html>`;
   }
 }
-

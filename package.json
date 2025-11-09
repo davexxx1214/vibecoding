@@ -71,6 +71,10 @@
       {
         "command": "knowledge.deleteObservation",
         "title": "Knowledge: Delete Observation"
+      },
+      {
+        "command": "knowledge.deleteRelationFromTree",
+        "title": "Delete Relation"
       }
     ],
     "menus": {
@@ -102,6 +106,11 @@
         {
           "command": "knowledge.deleteEntity",
           "when": "view == knowledgeGraphExplorer && viewItem == entity",
+          "group": "knowledge@1"
+        },
+        {
+          "command": "knowledge.deleteRelationFromTree",
+          "when": "view == knowledgeGraphExplorer && viewItem == relation",
           "group": "knowledge@1"
         }
       ]

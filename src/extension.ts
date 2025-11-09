@@ -7,6 +7,7 @@ import { KnowledgeHoverProvider } from './providers/hoverProvider';
 import { KnowledgeCodeLensProvider } from './providers/codeLensProvider';
 import { KnowledgeTreeDataProvider } from './providers/treeDataProvider';
 import { EntityCommands } from './ui/commands/entityCommands';
+import { GraphView } from './ui/webview/graphView';
 
 /**
  * 插件激活时调用
@@ -207,6 +208,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
+        'knowledge.deleteRelationFromTree',
+        async (treeItem) => {
+          try {
+            console.log('Executing: knowledge.deleteRelationFromTree');
+            await entityCommands.deleteRelationFromTree(treeItem);
+            // 刷新树视图和 CodeLens
+            treeDataProvider.refresh();
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in deleteRelationFromTree:', error);
+            vscode.window.showErrorMessage(`Error deleting relation: ${error}`);
+          }
+        }
+      )
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
         'knowledge.deleteObservation',
         async () => {
           try {
@@ -243,7 +262,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand('knowledge.visualizeGraph', () => {
-        vscode.window.showInformationMessage('Visualize Graph - Coming soon!');
+        try {
+          console.log('Executing: knowledge.visualizeGraph');
+          GraphView.createOrShow(context.extensionUri, entityService, relationService);
+        } catch (error) {
+          console.error('Error in visualizeGraph:', error);
+          vscode.window.showErrorMessage(`Error opening graph: ${error}`);
+        }
       })
     );
 
