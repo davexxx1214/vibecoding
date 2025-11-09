@@ -267,8 +267,8 @@ code .
 | `UserController` | Class | src/user/user.controller.ts | 用户 API 端点 |
 | `ArticleService` | Class | src/article/article.service.ts | 文章管理服务 |
 | `ArticleController` | Class | src/article/article.controller.ts | 文章 API 端点 |
-| `User` | Entity | src/user/user.entity.ts | 用户数据模型 |
-| `Article` | Entity | src/article/article.entity.ts | 文章数据模型 |
+| `UserEntity` | Class | src/user/user.entity.ts | 用户数据模型 |
+| `ArticleEntity` | Class | src/article/article.entity.ts | 文章数据模型 |
 
 **技巧**：
 - 可以快速选中类名 → 右键创建
@@ -316,34 +316,43 @@ code .
   4. 选择：UserService
   5. 类型：uses（需要获取文章作者信息）
 
-关系 4：UserService → User（数据模型关系）
-  1. 光标在 UserService 类内
+关系 4：ArticleController → ArticleService（调用关系）
+  1. 保持在 ArticleController 类内
   2. 右键 → "Link Selection to Entity..."
-  3. 选择：User
-  4. 类型：uses（操作用户数据模型）
+  3. 选择：ArticleService
+  4. 类型：calls（调用服务方法）
 
-关系 5：ArticleService → Article（数据模型关系）
-  1. 光标在 ArticleService 类内
-  2. 右键 → "Link Selection to Entity..."
-  3. 选择：Article
-  4. 类型：uses（操作文章数据模型）
+关系 5：ArticleService → UserEntity（关联查询）
+  1. 打开 src/article/article.service.ts
+  2. 光标在 ArticleService 类内
+  3. 右键 → "Link Selection to Entity..."
+  4. 选择：UserEntity
+  5. 类型：references（需要引用用户信息）
 
-关系 6：ArticleService → User（关联查询）
+关系 6：ArticleService → ArticleEntity（数据模型关系）
   1. 保持在 ArticleService 类内
   2. 右键 → "Link Selection to Entity..."
-  3. 选择：User
-  4. 类型：references（需要引用用户信息）
+  3. 选择：ArticleEntity
+  4. 类型：uses（操作文章数据模型）
+
+关系 7：UserService → UserEntity（数据模型关系）
+  1. 打开 src/user/user.service.ts
+  2. 光标在 UserService 类内
+  3. 右键 → "Link Selection to Entity..."
+  4. 选择：UserEntity
+  5. 类型：uses（操作用户数据模型）
 ```
 
 💡 **提示**：建立更多关系可以让可视化图谱更加丰富，更容易看出模块间的依赖关系！
 
-**现在总共有 6 个关系**：
+**现在总共有 7 个关系**：
 1. UserController → UserService (uses)
 2. ArticleController → ArticleService (uses)
-3. ArticleService → UserService (uses)
-4. UserService → User (uses)
-5. ArticleService → Article (uses)
-6. ArticleService → User (references)
+3. ArticleController → ArticleService (calls) ⚠️ 与关系2形成双边
+4. ArticleService → UserService (uses)
+5. ArticleService → UserEntity (references)
+6. ArticleService → ArticleEntity (uses)
+7. UserService → UserEntity (uses) ⚠️ UserEntity 同时被关系5和7指向
 
 ---
 
@@ -395,21 +404,23 @@ Relations (2):
 
 **预期效果**：
 ```
-📦 Entities (6)
-  ├─ 📁 Classes (4)
-  │   ├─ UserService
-  │   ├─ UserController
-  │   ├─ ArticleService
-  │   └─ ArticleController
-  └─ 📁 Entity (2)
-      ├─ User
-      └─ Article
+   📦 Entities (6)
+  ├─ 📁 Classes (6)
+     │   ├─ UserService
+     │   ├─ UserController
+     │   ├─ ArticleService
+  │   ├─ ArticleController
+  │   ├─ UserEntity
+  │   └─ ArticleEntity
 
-🔗 Relations (6)
+🔗 Relations (7)
   ├─ UserController → UserService [uses]
   ├─ ArticleController → ArticleService [uses]
+  ├─ ArticleController → ArticleService [calls]      ← 注意：2条边指向同一节点
   ├─ ArticleService → UserService [uses]
-  └─ ...
+  ├─ ArticleService → UserEntity [references]
+  ├─ ArticleService → ArticleEntity [uses]
+  └─ UserService → UserEntity [uses]                ← 注意：UserEntity 有2条入边
 ```
 
 💡 **提示**：点击实体或关系可以跳转到代码位置
@@ -448,23 +459,22 @@ Relations (2):
 ┌─────────────────────────────────────────────────┐
 │                                    [⛶] [↻]     │
 │                                                 │
-│         UserController                          │
-│         (红色椭圆)                               │
-│              │ uses                             │
-│              ↓                                  │
-│         UserService ←──────────┐                │
-│         (红色椭圆)              │ uses           │
-│              │ uses             │               │
-│              ↓                  │               │
-│         User            ArticleService          │
-│    (红色椭圆)           (红色椭圆)              │
-│         ↑                   │ uses              │
-│         │ references         ↓                  │
-│         └───────────────  Article               │
-│                          (红色椭圆)              │
-│                              ↑                  │
-│    ArticleController         │ uses             │
-│    (红色椭圆) ────────────────┘                 │
+│         UserEntity          UserController      │
+│         (红色椭圆)           (红色椭圆)          │
+│              ↑                   │ uses         │
+│     references│                  ↓              │
+│              │              UserService         │
+│         ArticleEntity       (红色椭圆)          │
+│         (红色椭圆)               ↑               │
+│              ↑                  │ uses          │
+│         uses │                  │               │
+│              │             ArticleService        │
+│              └────────────  (红色椭圆)          │
+│                              ↑   ↑              │
+│                         uses │   │ calls        │
+│                              │   │              │
+│                        ArticleController         │
+│                        (红色椭圆)                │
 │                                                 │
 └─────────────────────────────────────────────────┘
 ```
@@ -474,17 +484,38 @@ Relations (2):
 - **↻** - 刷新图谱（重新加载数据）
 
 ✅ **视觉验证**：
-- 6 个节点（实体）自动排列
-- **6 条带箭头的边（关系）** - 更丰富的连接！
+- 6 个节点（实体）自动排列，全部显示为红色椭圆（Class 类型）
+- **7 条带箭头的边（关系）**，全部清晰可见：
+  - **2 条边**从 ArticleController 到 ArticleService（uses 和 calls）
+    - ✨ 自动分离显示：一条向右弯，一条向左弯
+  - **UserEntity 有 2 条入边**（自动分离）：
+    - ArticleService → UserEntity (references)
+    - UserService → UserEntity (uses)
+  - 其他 3 条关系清晰可见
 - 关系标签字体更大（16px），带黑色描边和背景，清晰可读
-- 节点根据实体类型显示不同颜色和形状
-- 节点自动避免重叠
-- 连接线更明显（更亮的颜色和更大的箭头）
+- 多重边自动以不同弧线分离，不会重叠 ⭐
+- 节点自动避免重叠，布局合理
+- 连接线明显（灰色线条 + 箭头）
 - 右上角两个简洁的图标按钮（⛶ 适应窗口，↻ 刷新）
 
 ---
 
 ##### 1.6.2 测试交互功能（2 分钟）
+
+✨ **多重关系自动分离显示**
+
+图谱会自动检测并分离同方向的多条边：
+- **ArticleController → ArticleService** 有 2 条关系（uses 和 calls），会以不同的弧线显示
+- **UserEntity** 有 2 条入边，会清晰分离
+
+**视觉效果**：
+- 第 1 条边：向右弯曲（curvedCW）
+- 第 2 条边：向左弯曲（curvedCCW）
+- 两条边不会重叠，一目了然！
+
+💡 **提示**：鼠标悬停在边上可以看到具体的关系类型
+
+---
 
 **操作 1：悬停查看详情**
 ```
@@ -517,15 +548,18 @@ UserService
 
 **操作 3：拖拽节点**
 ```
-1. 单击 ArticleController 节点（选中）
-2. 按住鼠标左键拖动
-3. 移动到新位置
-4. 松开鼠标
+1. 拖动 ArticleController 节点
+2. 观察 ArticleService 的 2 条弧形连线
+3. 注意两条边的弯曲方向不同
 ```
 
 ✅ **预期效果**：
 - 节点跟随鼠标移动
 - 连接的边自动跟随
+- **ArticleController → ArticleService 的 2 条边**清晰分离
+  - 一条向右弯（uses）
+  - 一条向左弯（calls）
+- **UserEntity 的 2 条入边**也清晰分离
 - 物理引擎会轻微调整周围节点
 - 松开后节点保持在新位置
 
@@ -570,14 +604,15 @@ UserService
 1. **Controller 层 → Service 层**
    - UserController → UserService (uses)
    - ArticleController → ArticleService (uses)
+   - ArticleController → ArticleService (calls)
 
 2. **Service 层 → Service 层**
    - ArticleService → UserService (uses)
 
 3. **Service 层 → Entity 层**
-   - UserService → User (uses)
-   - ArticleService → Article (uses)
-   - ArticleService → User (references)
+   - UserService → UserEntity (uses)
+   - ArticleService → ArticleEntity (uses)
+   - ArticleService → UserEntity (references)
 
 **分层架构一目了然**：
 ```
@@ -589,9 +624,13 @@ Entity 层（数据模型）
 ```
 
 💡 **价值体现**：
-- ✅ 6 个关系形成了一个连贯的依赖网络
+- ✅ 7 个关系形成了一个连贯的依赖网络
 - ✅ 清晰展示三层架构（Controller → Service → Entity）
-- ✅ 可以看出 ArticleService 是核心节点（连接最多）
+- ✅ **ArticleService 是核心节点**（连接最多）
+- ✅ **UserEntity 被多个服务依赖**（2 条入边清晰分离显示）
+- ✅ **ArticleController 对 ArticleService 有两种关系**（uses 和 calls）
+  - ✨ 两条边自动以不同弧线分离，一眼看出
+- ✅ **多重边自动分离**：不需要手动拖动，就能看清所有关系 ⭐
 - ✅ 标签字体大（16px）+ 描边，清晰可读
 
 ---
@@ -632,7 +671,7 @@ Entity 层（数据模型）
 │    CommentService                               │
 │    (青色矩形)                                    │
 │                                                 │
-│    User            Article                      │
+│    UserEntity      ArticleEntity                │
 │                                                 │
 └─────────────────────────────────────────────────┘
 ```
@@ -858,7 +897,7 @@ ArticleService ────⚠️ uses────⤴
 2. **新人入职**
    ```
    打开项目 → 查看图谱 → 快速理解架构
-   ```
+```
 
 ---
 

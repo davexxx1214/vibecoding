@@ -355,6 +355,36 @@ export class GraphView {
             return cycles;
         }
         
+        // 检测同方向的多条边（相同的 from 和 to）
+        function detectMultipleEdges(relations) {
+            const edgeMap = new Map(); // key: "fromId->toId", value: [relationIds]
+            const multiEdgeInfo = new Map(); // key: relationId, value: { index: number, total: number }
+            
+            // 第一遍：按方向分组
+            relations.forEach(rel => {
+                const key = rel.sourceId + '->' + rel.targetId;
+                if (!edgeMap.has(key)) {
+                    edgeMap.set(key, []);
+                }
+                edgeMap.get(key).push(rel.id);
+            });
+            
+            // 第二遍：标记多边
+            edgeMap.forEach((ids, key) => {
+                if (ids.length > 1) {
+                    // 有多条边指向同一方向
+                    ids.forEach((id, index) => {
+                        multiEdgeInfo.set(id, {
+                            index: index,
+                            total: ids.length
+                        });
+                    });
+                }
+            });
+            
+            return multiEdgeInfo;
+        }
+        
         function renderGraph(data) {
             const { entities, relations } = data;
             
@@ -373,9 +403,17 @@ export class GraphView {
             const cycleEdges = detectCycles(relations);
             const hasCycles = cycleEdges.size > 0;
             
+            // 检测同方向的多条边
+            const multiEdgeInfo = detectMultipleEdges(relations);
+            
             // 如果有循环依赖，显示警告
             if (hasCycles) {
                 console.warn(\`⚠️ 检测到 \${cycleEdges.size / 2} 个循环依赖！\`);
+            }
+            
+            // 如果有多重边，显示提示
+            if (multiEdgeInfo.size > 0) {
+                console.log(\`ℹ️ 检测到 \${multiEdgeInfo.size} 条多重边，已自动分离显示\`);
             }
             
             // 构建节点
@@ -407,6 +445,29 @@ export class GraphView {
             // 构建边
             const edges = relations.map(relation => {
                 const isCycle = cycleEdges.has(relation.id);
+                const multiEdge = multiEdgeInfo.get(relation.id);
+                
+                // 确定 smooth 类型
+                let smoothConfig;
+                if (isCycle) {
+                    // 循环依赖使用弧形
+                    smoothConfig = {
+                        type: 'curvedCW',
+                        roundness: 0.2
+                    };
+                } else if (multiEdge) {
+                    // 多重边：第一条向右弯，第二条向左弯
+                    smoothConfig = {
+                        type: multiEdge.index === 0 ? 'curvedCW' : 'curvedCCW',
+                        roundness: 0.2
+                    };
+                } else {
+                    // 普通边
+                    smoothConfig = {
+                        type: 'cubicBezier',
+                        roundness: 0.4
+                    };
+                }
                 
                 return {
                     id: relation.id,
@@ -438,13 +499,7 @@ export class GraphView {
                     },
                     width: 2,                    // 统一线条粗细
                     dashes: false,               // 统一使用实线
-                    smooth: isCycle ? {
-                        type: 'curvedCW',        // 循环依赖使用弯曲边，避免重叠
-                        roundness: 0.2
-                    } : {
-                        type: 'cubicBezier',
-                        roundness: 0.4
-                    }
+                    smooth: smoothConfig
                 };
             });
             

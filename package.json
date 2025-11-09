@@ -151,6 +151,7 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
-    "sql.js": "^1.13.0"
+    "sql.js": "^1.13.0",
+    "vis-network": "^10.0.2"
   }
 }
