@@ -194,41 +194,35 @@ export class GraphView {
         
         #toolbar {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 15px;
+            right: 15px;
             z-index: 1000;
             display: flex;
-            gap: 10px;
-            background-color: var(--vscode-editor-background);
-            padding: 10px;
-            border: 1px solid var(--vscode-panel-border);
-            border-radius: 5px;
+            gap: 8px;
         }
         
         button {
-            background-color: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            border: none;
-            padding: 6px 12px;
+            background-color: rgba(30, 30, 30, 0.8);
+            color: var(--vscode-foreground);
+            border: 1px solid var(--vscode-panel-border);
+            width: 36px;
+            height: 36px;
             cursor: pointer;
-            border-radius: 3px;
-            font-size: 13px;
+            border-radius: 4px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
         
         button:hover {
-            background-color: var(--vscode-button-hoverBackground);
+            background-color: rgba(50, 50, 50, 0.9);
+            transform: scale(1.05);
         }
         
-        #stats {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background-color: var(--vscode-editor-background);
-            padding: 10px;
-            border: 1px solid var(--vscode-panel-border);
-            border-radius: 5px;
-            font-size: 12px;
+        button:active {
+            transform: scale(0.95);
         }
         
         #mynetwork {
@@ -290,14 +284,8 @@ export class GraphView {
 </head>
 <body>
     <div id="toolbar">
-        <button onclick="fitGraph()">🔍 适应窗口</button>
-        <button onclick="resetZoom()">↺ 重置缩放</button>
-        <button onclick="refreshGraph()">🔄 刷新</button>
-    </div>
-    
-    <div id="stats">
-        <div><strong>实体数量:</strong> <span id="entity-count">0</span></div>
-        <div><strong>关系数量:</strong> <span id="relation-count">0</span></div>
+        <button onclick="fitGraph()" title="适应窗口">⛶</button>
+        <button onclick="refreshGraph()" title="刷新">↻</button>
     </div>
     
     <div id="loading">
@@ -347,6 +335,26 @@ export class GraphView {
             }
         });
         
+        // 检测循环依赖
+        function detectCycles(relations) {
+            const cycles = new Set();
+            
+            // 为每对节点检查是否存在双向关系
+            for (let i = 0; i < relations.length; i++) {
+                const rel1 = relations[i];
+                for (let j = i + 1; j < relations.length; j++) {
+                    const rel2 = relations[j];
+                    // 检查是否为循环：A -> B 且 B -> A
+                    if (rel1.sourceId === rel2.targetId && rel1.targetId === rel2.sourceId) {
+                        cycles.add(rel1.id);
+                        cycles.add(rel2.id);
+                    }
+                }
+            }
+            
+            return cycles;
+        }
+        
         function renderGraph(data) {
             const { entities, relations } = data;
             
@@ -361,9 +369,14 @@ export class GraphView {
                 document.getElementById('empty-state').classList.add('hidden');
             }
             
-            // 更新统计
-            document.getElementById('entity-count').textContent = entities.length;
-            document.getElementById('relation-count').textContent = relations.length;
+            // 检测循环依赖
+            const cycleEdges = detectCycles(relations);
+            const hasCycles = cycleEdges.size > 0;
+            
+            // 如果有循环依赖，显示警告
+            if (hasCycles) {
+                console.warn(\`⚠️ 检测到 \${cycleEdges.size / 2} 个循环依赖！\`);
+            }
             
             // 构建节点
             const nodes = entities.map(entity => ({
@@ -392,38 +405,48 @@ export class GraphView {
             }));
             
             // 构建边
-            const edges = relations.map(relation => ({
-                id: relation.id,
-                from: relation.sourceId,
-                to: relation.targetId,
-                label: relation.verb,
-                arrows: {
-                    to: {
-                        enabled: true,
-                        scaleFactor: 1.2
+            const edges = relations.map(relation => {
+                const isCycle = cycleEdges.has(relation.id);
+                
+                return {
+                    id: relation.id,
+                    from: relation.sourceId,
+                    to: relation.targetId,
+                    label: isCycle ? \`⚠️ \${relation.verb}\` : relation.verb,
+                    title: isCycle ? '循环依赖' : undefined,  // 鼠标悬停提示
+                    arrows: {
+                        to: {
+                            enabled: true,
+                            scaleFactor: 1.2,
+                            type: 'arrow'
+                        }
+                    },
+                    color: {
+                        color: '#A0A0A0',        // 统一使用灰色
+                        highlight: '#FFFFFF',
+                        hover: '#FFFFFF'
+                    },
+                    font: {
+                        color: '#FFFFFF',
+                        size: 16,
+                        face: 'Arial',
+                        align: 'middle',
+                        strokeWidth: 2,
+                        strokeColor: '#000000',
+                        background: 'rgba(0, 0, 0, 0.7)',  // 统一使用黑色背景
+                        vadjust: -10
+                    },
+                    width: 2,                    // 统一线条粗细
+                    dashes: false,               // 统一使用实线
+                    smooth: isCycle ? {
+                        type: 'curvedCW',        // 循环依赖使用弯曲边，避免重叠
+                        roundness: 0.2
+                    } : {
+                        type: 'cubicBezier',
+                        roundness: 0.4
                     }
-                },
-                color: {
-                    color: '#A0A0A0',
-                    highlight: '#FFFFFF',
-                    hover: '#FFFFFF'
-                },
-                font: {
-                    color: '#FFFFFF',
-                    size: 16,
-                    face: 'Arial',
-                    align: 'middle',
-                    strokeWidth: 2,
-                    strokeColor: '#000000',
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    vadjust: -10
-                },
-                width: 2,
-                smooth: {
-                    type: 'cubicBezier',
-                    roundness: 0.4
-                }
-            }));
+                };
+            });
             
             // 创建数据集
             const nodesDataSet = new vis.DataSet(nodes);
@@ -469,11 +492,7 @@ export class GraphView {
                     hover: true,
                     tooltipDelay: 200,
                     hideEdgesOnDrag: false,
-                    hideEdgesOnZoom: false,
-                    navigationButtons: true,
-                    keyboard: {
-                        enabled: true
-                    }
+                    hideEdgesOnZoom: false
                 },
                 layout: {
                     improvedLayout: true,
@@ -530,19 +549,6 @@ export class GraphView {
         function fitGraph() {
             if (network) {
                 network.fit({
-                    animation: {
-                        duration: 500,
-                        easingFunction: 'easeInOutQuad'
-                    }
-                });
-            }
-        }
-        
-        function resetZoom() {
-            if (network) {
-                network.moveTo({
-                    position: {x: 0, y: 0},
-                    scale: 1,
                     animation: {
                         duration: 500,
                         easingFunction: 'easeInOutQuad'
