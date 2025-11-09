@@ -208,7 +208,7 @@ code .
 
 ## 📖 完整演示脚本
 
-### 第一部分：基础功能演示（12 分钟）
+### 第一部分：基础功能演示（14 分钟）
 
 #### 1.1 创建第一个实体（2 分钟）
 
@@ -407,6 +407,87 @@ Relations (2):
 - 📖 **浏览代码时**：使用 Link to Entity（边看边标记）
 - 🔍 **回顾代码时**：使用 Add Relation（补充遗漏的关系）
 - 👥 **Code Review 时**：使用 Link to Entity（快速记录发现的关系）
+
+---
+
+#### 1.5 在树视图中查看关系（2 分钟）🆕
+
+**背景**：我们已经创建了几个实体和关系，现在可以在侧边栏树视图中直观地看到它们！
+
+**操作**：
+```
+1. 查看侧边栏 Knowledge Graph 视图
+
+2. 看到新的树结构：
+   📦 Entities (6)
+     ├─ 📁 Classes (4)
+     │   ├─ UserService
+     │   ├─ UserController
+     │   ├─ ArticleService
+     │   └─ ArticleController
+     └─ 📁 Entity (2)
+         ├─ User
+         └─ Article
+   
+   🔗 Relations (4)
+     ├─ UserController → UserService   [uses]
+     ├─ ArticleController → ArticleService   [uses]
+     ├─ ArticleService → UserService   [uses]
+     └─ ...
+```
+
+**探索功能**：
+```
+1. 点击实体（如 UserService）：
+   → 跳转到代码位置
+
+2. 点击关系（如 "UserController → UserService"）：
+   → 跳转到源实体（UserController）的代码位置
+
+3. 查看统计：
+   Entities (6)    ← 共 6 个实体
+   Relations (4)   ← 共 4 个关系
+```
+
+**预期效果**：
+- ✅ 树视图显示两个根节点：Entities 和 Relations
+- ✅ Entities 默认展开，按类型分组
+- ✅ Relations 默认折叠，展开后显示所有关系
+- ✅ 每个关系显示：源实体 → 目标实体 [关系类型]
+- ✅ 点击关系可以跳转到源实体代码
+
+**工作流演示**：
+```
+场景：想了解 UserService 被哪些组件使用
+
+传统方法：
+  1. 打开 UserService 文件
+  2. 右键 → View Entity Details
+  3. 查看 Relations 部分
+  4. 看到关系列表
+  5. 手动记住源实体名
+  6. 搜索源实体文件
+  7. 打开文件
+  
+  总共：7 步 😓
+
+新方法（使用树视图）：
+  1. 展开 Relations
+  2. 搜索 "UserService"
+  3. 看到：
+     - UserController → UserService   [uses]
+     - ArticleService → UserService   [uses]
+  4. 点击任一关系 → 直接跳转
+  
+  总共：4 步 ⚡
+  
+  效率提升：43% 🚀
+```
+
+**提示**：
+- 💡 关系列表支持搜索：输入关键词快速过滤
+- 💡 鼠标悬停显示完整信息
+- 💡 添加/删除关系后自动刷新
 
 ---
 
