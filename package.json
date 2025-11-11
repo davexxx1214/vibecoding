@@ -46,7 +46,8 @@
       },
       {
         "command": "knowledge.exportGraph",
-        "title": "Knowledge: Export Graph"
+        "title": "Knowledge: Export Graph",
+        "icon": "$(export)"
       },
       {
         "command": "knowledge.importGraph",
@@ -75,6 +76,11 @@
       {
         "command": "knowledge.deleteRelationFromTree",
         "title": "Delete Relation"
+      },
+      {
+        "command": "knowledge.refresh",
+        "title": "Knowledge: Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -113,6 +119,23 @@
           "when": "view == knowledgeGraphExplorer && viewItem == relation",
           "group": "knowledge@1"
         }
+      ],
+      "view/title": [
+        {
+          "command": "knowledge.exportGraph",
+          "when": "view == knowledgeGraphExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "knowledge.visualizeGraph",
+          "when": "view == knowledgeGraphExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "knowledge.refresh",
+          "when": "view == knowledgeGraphExplorer",
+          "group": "navigation@3"
+        }
       ]
     },
     "viewsContainers": {
@@ -131,7 +154,13 @@
           "name": "Explorer"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "knowledgeGraphExplorer",
+        "contents": "暂无知识图谱数据。\n\n[创建实体](command:knowledge.createEntity)\n\n从选中的代码创建第一个实体。"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

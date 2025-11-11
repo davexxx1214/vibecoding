@@ -3,17 +3,26 @@ import * as path from 'path';
 import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
+import { ExportService } from '../../services/exportService';
 import { Entity, EntityType } from '../../utils/types';
 
 /**
  * 实体相关的命令处理器
  */
 export class EntityCommands {
+  private exportService: ExportService;
+
   constructor(
     private entityService: EntityService,
     private relationService: RelationService,
     private observationService: ObservationService
-  ) {}
+  ) {
+    this.exportService = new ExportService(
+      entityService,
+      relationService,
+      observationService
+    );
+  }
 
   /**
    * 获取文件相对于工作区的路径
@@ -912,6 +921,73 @@ export class EntityCommands {
     } catch (error: any) {
       console.error('Error deleting entity:', error);
       vscode.window.showErrorMessage(`Error deleting entity: ${error.message}`);
+    }
+  }
+
+  /**
+   * 导出知识图谱
+   */
+  public async exportGraph(): Promise<void> {
+    // 选择导出格式
+    const format = await vscode.window.showQuickPick(
+      [
+        { label: 'Markdown', description: '导出为 Markdown 格式 (.md)', value: 'md' },
+        { label: 'JSON', description: '导出为 JSON 格式 (.json)', value: 'json' },
+      ],
+      {
+        placeHolder: '选择导出格式',
+      }
+    );
+
+    if (!format) {
+      return;
+    }
+
+    // 选择保存位置
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('请先打开一个工作区');
+      return;
+    }
+
+    const defaultFileName = this.exportService.generateExportFileName(format.value as 'md' | 'json');
+    const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, defaultFileName);
+
+    const saveUri = await vscode.window.showSaveDialog({
+      defaultUri,
+      filters: format.value === 'md' 
+        ? { 'Markdown': ['md'] }
+        : { 'JSON': ['json'] },
+      saveLabel: '导出',
+    });
+
+    if (!saveUri) {
+      return;
+    }
+
+    try {
+      // 执行导出
+      if (format.value === 'md') {
+        await this.exportService.exportToMarkdown(saveUri.fsPath);
+      } else {
+        await this.exportService.exportToJSON(saveUri.fsPath);
+      }
+
+      // 询问是否打开导出的文件
+      const action = await vscode.window.showInformationMessage(
+        `✅ 知识图谱已成功导出到 ${path.basename(saveUri.fsPath)}`,
+        '打开文件',
+        '在文件夹中显示'
+      );
+
+      if (action === '打开文件') {
+        const doc = await vscode.workspace.openTextDocument(saveUri);
+        await vscode.window.showTextDocument(doc);
+      } else if (action === '在文件夹中显示') {
+        await vscode.commands.executeCommand('revealFileInOS', saveUri);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`导出失败: ${error}`);
     }
   }
 }

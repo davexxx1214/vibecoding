@@ -100,6 +100,29 @@ export class RelationService {
   }
 
   /**
+   * 获取所有关系
+   */
+  public getAllRelations(): Relation[] {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare('SELECT * FROM relations ORDER BY created_at DESC');
+    
+    const rows: any[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+    
+    return rows.map(row => this.rowToRelation(row));
+  }
+
+  /**
+   * 获取实体的所有关系（别名，与 getRelations 相同）
+   */
+  public getRelationsByEntity(entityId: string): Relation[] {
+    return this.getRelations(entityId);
+  }
+
+  /**
    * 获取关联的实体
    */
   public getRelatedEntities(

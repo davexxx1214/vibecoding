@@ -58,10 +58,10 @@ VibeCoding 将 VS Code 工作区本身变成一个**智能知识图谱**，通�
 根据 [STAGE1_COMPLETE.md](./STAGE1_COMPLETE.md)，已完成基础知识图谱管理工具：
 
 **核心服务层**：
-- ✅ SQLite 数据库服务（FTS5 全文搜索）
+- ✅ SQLite 数据库服务（基于 sql.js）
 - ✅ 实体管理服务（CRUD、查询、过滤）
 - ✅ 关系管理服务（创建、查询、验证）
-- ✅ 观察记录服务（添加、搜索）
+- ✅ 观察记录服务（添加、模糊搜索）
 
 **VS Code UI 集成**：
 - ✅ 侧边栏树视图（按类型分组显示实体）
@@ -74,10 +74,14 @@ VibeCoding 将 VS Code 工作区本身变成一个**智能知识图谱**，通�
 - ✅ 手动创建实体
 - ✅ 添加观察记录
 - ✅ 查看实体详情
-- ✅ 全文搜索功能
+- ✅ 模糊搜索功能
 - ✅ 点击跳转到代码
 
-**代码量**：约 2000+ 行 TypeScript
+**代码量**：约 2500+ 行 TypeScript
+
+**额外功能**（超出计划）：
+- ✅ 图谱可视化（vis-network）
+- ✅ 完整的删除功能（实体/关系/观察记录）
 
 ---
 
@@ -165,14 +169,14 @@ vibecoding/
 - ✅ 基础 CRUD 操作
 - ✅ VS Code UI 集成（侧边栏、悬浮、CodeLens、菜单）
 - ✅ 手动创建实体和关系
-- ✅ FTS5 全文搜索
+- ✅ 模糊搜索（LIKE 查询）
 
 **验收标准**：
 - ✅ 开发者可以手动标记代码实体
 - ✅ 可以通过 UI 浏览和搜索
 - ✅ 悬浮提示能显示观察记录
 
-**时间**：已完成（约 2000+ 行代码）
+**时间**：已完成（约 2500+ 行代码）
 
 ---
 
@@ -182,9 +186,11 @@ vibecoding/
 
 **核心功能**：
 
-#### 2.1 知识图谱导出
-- [ ] Markdown 格式导出（适合 AI 阅读）
-- [ ] JSON 格式导出（结构化数据）
+#### 2.1 知识图谱导出 ✅
+- ✅ Markdown 格式导出（适合 AI 阅读）
+- ✅ JSON 格式导出（结构化数据）
+- ✅ 按类型分组显示
+- ✅ 完整的实体、关系、观察记录
 - [ ] 依赖链分析（完整依赖树）
 
 #### 2.2 Cursor 深度集成
@@ -253,8 +259,9 @@ vibecoding/
 |------|---------|------|
 | **插件框架** | VS Code Extension API | 官方插件开发框架 |
 | **语言** | TypeScript | 类型安全，开发体验好 |
-| **数据库** | better-sqlite3 | 同步 API，性能好 |
-| **全文搜索** | SQLite FTS5 | 内置，无需额外依赖 |
+| **数据库** | sql.js | WebAssembly SQLite，跨平台兼容 |
+| **搜索** | LIKE 模糊查询 | 简单高效，适合中小型项目 |
+| **可视化** | vis-network | 交互式图谱可视化 |
 | **文档转换** | MarkItDown (Python CLI) | 阶段二，支持多种格式 |
 | **RAG 系统** | Google Gemini File Search API | 阶段二，托管式 RAG |
 | **代码解析** | TypeScript Compiler API | 阶段三使用 |
@@ -309,9 +316,10 @@ CREATE TABLE observations (
     updated_at INTEGER NOT NULL
 );
 
--- FTS5 全文搜索
-CREATE VIRTUAL TABLE entities_fts USING fts5(...);
-CREATE VIRTUAL TABLE observations_fts USING fts5(...);
+-- 索引优化
+CREATE INDEX idx_entities_type ON entities(type);
+CREATE INDEX idx_entities_file_path ON entities(file_path);
+CREATE INDEX idx_entities_name ON entities(name);
 ```
 
 ---
@@ -382,7 +390,8 @@ npm run lint
 
 ### 官方文档
 - [VS Code Extension API](https://code.visualstudio.com/api)
-- [better-sqlite3 文档](https://github.com/WiseLibs/better-sqlite3)
+- [sql.js 文档](https://sql.js.org/)
+- [vis-network 文档](https://visjs.github.io/vis-network/)
 - [TypeScript Compiler API](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
 
 ### 相关项目

@@ -273,8 +273,14 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('knowledge.exportGraph', () => {
-        vscode.window.showInformationMessage('Export Graph - Coming soon!');
+      vscode.commands.registerCommand('knowledge.exportGraph', async () => {
+        try {
+          console.log('Executing: knowledge.exportGraph');
+          await entityCommands.exportGraph();
+        } catch (error) {
+          console.error('Error in exportGraph:', error);
+          vscode.window.showErrorMessage(`Error exporting graph: ${error}`);
+        }
       })
     );
 
@@ -345,7 +351,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * 注册占位命令
  */
 function registerPlaceholderCommands(context: vscode.ExtensionContext) {
-  const placeholderCommands = [
+    const placeholderCommands = [
     'knowledge.createEntity',
     'knowledge.addObservation',
     'knowledge.addRelation',
@@ -362,6 +368,7 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.clearGraph',
     'knowledge.settings',
     'knowledge.refresh',
+    'knowledge.deleteRelationFromTree',
   ];
 
   placeholderCommands.forEach(commandId => {
