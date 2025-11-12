@@ -81,6 +81,21 @@
         "command": "knowledge.refresh",
         "title": "Knowledge: Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "knowledge.generateCursorRules",
+        "title": "Knowledge: Generate Cursor Rules",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "knowledge.generateCopilotInstructions",
+        "title": "Knowledge: Generate Copilot Instructions",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "knowledge.generateAllAIConfigs",
+        "title": "Knowledge: Generate All AI Configs",
+        "icon": "$(sparkle)"
       }
     ],
     "menus": {

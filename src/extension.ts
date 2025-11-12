@@ -308,6 +308,43 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // AI 集成命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.generateCursorRules', async () => {
+        try {
+          console.log('Executing: knowledge.generateCursorRules');
+          await entityCommands.generateCursorRules();
+        } catch (error) {
+          console.error('Error in generateCursorRules:', error);
+          vscode.window.showErrorMessage(`Error generating Cursor Rules: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.generateCopilotInstructions', async () => {
+        try {
+          console.log('Executing: knowledge.generateCopilotInstructions');
+          await entityCommands.generateCopilotInstructions();
+        } catch (error) {
+          console.error('Error in generateCopilotInstructions:', error);
+          vscode.window.showErrorMessage(`Error generating Copilot Instructions: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.generateAllAIConfigs', async () => {
+        try {
+          console.log('Executing: knowledge.generateAllAIConfigs');
+          await entityCommands.generateAllAIConfigs();
+        } catch (error) {
+          console.error('Error in generateAllAIConfigs:', error);
+          vscode.window.showErrorMessage(`Error generating AI configs: ${error}`);
+        }
+      })
+    );
+
     // 注册 Hover Provider
     const hoverProvider = new KnowledgeHoverProvider(
       entityService,
@@ -369,6 +406,9 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.settings',
     'knowledge.refresh',
     'knowledge.deleteRelationFromTree',
+    'knowledge.generateCursorRules',
+    'knowledge.generateCopilotInstructions',
+    'knowledge.generateAllAIConfigs',
   ];
 
   placeholderCommands.forEach(commandId => {

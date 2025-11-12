@@ -4,6 +4,7 @@ import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
 import { ExportService } from '../../services/exportService';
+import { AIIntegrationService } from '../../services/aiIntegrationService';
 import { Entity, EntityType } from '../../utils/types';
 
 /**
@@ -11,6 +12,7 @@ import { Entity, EntityType } from '../../utils/types';
  */
 export class EntityCommands {
   private exportService: ExportService;
+  private aiIntegrationService: AIIntegrationService;
 
   constructor(
     private entityService: EntityService,
@@ -18,6 +20,11 @@ export class EntityCommands {
     private observationService: ObservationService
   ) {
     this.exportService = new ExportService(
+      entityService,
+      relationService,
+      observationService
+    );
+    this.aiIntegrationService = new AIIntegrationService(
       entityService,
       relationService,
       observationService
@@ -1011,6 +1018,120 @@ export class EntityCommands {
       }
     } catch (error) {
       vscode.window.showErrorMessage(`导出失败: ${error}`);
+    }
+  }
+
+  /**
+   * 生成 Cursor Rules
+   */
+  public async generateCursorRules(): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('请先打开一个工作区');
+      return;
+    }
+
+    try {
+      const filePath = await this.aiIntegrationService.generateCursorRules(
+        workspaceFolder.uri.fsPath
+      );
+
+      const action = await vscode.window.showInformationMessage(
+        `✅ Cursor Rules 已生成：${path.basename(filePath)}`,
+        '打开文件',
+        '在文件夹中显示'
+      );
+
+      if (action === '打开文件') {
+        const doc = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(doc);
+      } else if (action === '在文件夹中显示') {
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`生成 Cursor Rules 失败: ${error}`);
+    }
+  }
+
+  /**
+   * 生成 Copilot Instructions
+   */
+  public async generateCopilotInstructions(): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('请先打开一个工作区');
+      return;
+    }
+
+    try {
+      const filePath = await this.aiIntegrationService.generateCopilotInstructions(
+        workspaceFolder.uri.fsPath
+      );
+
+      const action = await vscode.window.showInformationMessage(
+        `✅ Copilot Instructions 已生成：.github/${path.basename(filePath)}`,
+        '打开文件',
+        '在文件夹中显示'
+      );
+
+      if (action === '打开文件') {
+        const doc = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(doc);
+      } else if (action === '在文件夹中显示') {
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`生成 Copilot Instructions 失败: ${error}`);
+    }
+  }
+
+  /**
+   * 生成所有 AI 配置
+   */
+  public async generateAllAIConfigs(): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('请先打开一个工作区');
+      return;
+    }
+
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: '正在生成 AI 配置文件...',
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: '生成 Cursor Rules...' });
+          await this.aiIntegrationService.generateCursorRules(workspaceFolder.uri.fsPath);
+
+          progress.report({ increment: 50, message: '生成 Copilot Instructions...' });
+          await this.aiIntegrationService.generateCopilotInstructions(workspaceFolder.uri.fsPath);
+
+          progress.report({ increment: 100, message: '完成！' });
+        }
+      );
+
+      const action = await vscode.window.showInformationMessage(
+        `✅ 所有 AI 配置文件已生成：
+- .cursorrules
+- .github/copilot-instructions.md`,
+        '查看 .cursorrules',
+        '查看 Copilot Instructions'
+      );
+
+      if (action === '查看 .cursorrules') {
+        const filePath = path.join(workspaceFolder.uri.fsPath, '.cursorrules');
+        const doc = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(doc);
+      } else if (action === '查看 Copilot Instructions') {
+        const filePath = path.join(workspaceFolder.uri.fsPath, '.github', 'copilot-instructions.md');
+        const doc = await vscode.workspace.openTextDocument(filePath);
+        await vscode.window.showTextDocument(doc);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`生成 AI 配置失败: ${error}`);
     }
   }
 }
