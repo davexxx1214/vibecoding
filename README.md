@@ -200,12 +200,19 @@ vibecoding/
 #### 2.2 AI 编程工具深度集成 🔥
 - ✅ Cursor 集成
   - ✅ 自动生成 `.cursorrules`
+  - ✅ 自动检测并包含技术栈信息（JS/TS 项目）
   - 包含项目概览、关键组件、观察记录
   - 智能分类警告、TODO、已知问题
 - ✅ GitHub Copilot 集成
   - ✅ 自动生成 `.github/copilot-instructions.md`
+  - ✅ 自动检测并包含技术栈信息（JS/TS 项目）
   - 英文格式，符合 Copilot 规范
   - 架构概览和编码指南
+- ✅ 技术栈自动检测（Phase 1）
+  - ✅ 从 `package.json` 提取依赖信息
+  - ✅ 识别框架、数据库、测试工具等
+  - ✅ 版本号自动提取和格式化
+  - 📝 当前仅支持 JavaScript/TypeScript 项目
 - ✅ 一键生成所有 AI 配置
 - [ ] 快速上下文导出（Phase 2）
   - 复制实体上下文到剪贴板
