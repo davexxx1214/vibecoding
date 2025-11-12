@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { EntityService } from './entityService';
 import { RelationService } from './relationService';
 import { ObservationService } from './observationService';
+import { DependencyAnalyzer } from './dependencyAnalyzer';
 import { Entity, Relation, Observation } from '../utils/types';
 
 /**
@@ -11,16 +12,23 @@ import { Entity, Relation, Observation } from '../utils/types';
  * 负责将知识图谱导出为不同格式
  */
 export class ExportService {
+  private dependencyAnalyzer: DependencyAnalyzer;
+
   constructor(
     private entityService: EntityService,
     private relationService: RelationService,
     private observationService: ObservationService
-  ) {}
+  ) {
+    this.dependencyAnalyzer = new DependencyAnalyzer(entityService, relationService);
+  }
 
   /**
    * 导出为 Markdown 格式
    */
-  public async exportToMarkdown(outputPath: string): Promise<void> {
+  public async exportToMarkdown(
+    outputPath: string,
+    options: { includeDependencyAnalysis?: boolean } = {}
+  ): Promise<void> {
     const entities = this.entityService.listEntities({});
     const allRelations = this.relationService.getAllRelations();
 
@@ -28,6 +36,11 @@ export class ExportService {
     markdown += this.generateOverview(entities, allRelations);
     markdown += this.generateEntitySections(entities);
     markdown += this.generateRelationSection(allRelations, entities);
+
+    // 添加依赖链分析（如果需要）
+    if (options.includeDependencyAnalysis) {
+      markdown += this.generateDependencyAnalysisSection();
+    }
 
     // 写入文件
     fs.writeFileSync(outputPath, markdown, 'utf-8');
@@ -275,6 +288,103 @@ export class ExportService {
     
     const json = JSON.stringify(exportData, null, 2);
     fs.writeFileSync(outputPath, json, 'utf-8');
+  }
+
+  /**
+   * 生成依赖链分析部分
+   */
+  private generateDependencyAnalysisSection(): string {
+    let section = `## 📊 依赖链分析\n\n`;
+
+    // 全局统计
+    const stats = this.dependencyAnalyzer.getGlobalDependencyStats();
+    section += `### 全局统计\n\n`;
+    section += `- **总实体数**：${stats.totalEntities}\n`;
+    section += `- **有依赖的实体**：${stats.entitiesWithDependencies}\n`;
+    section += `- **平均依赖数**：${stats.averageDependencies}\n`;
+    section += `- **最大依赖深度**：${stats.maxDependencyDepth}\n`;
+    section += `- **循环依赖数**：${stats.circularDependencyCount}\n\n`;
+
+    // 依赖最多的实体
+    if (stats.topDependencies.length > 0) {
+      section += `### 📈 依赖最多的实体 (Top ${Math.min(10, stats.topDependencies.length)})\n\n`;
+      for (let i = 0; i < stats.topDependencies.length; i++) {
+        const item = stats.topDependencies[i];
+        section += `${i + 1}. **${item.entity.name}** (\`${item.entity.type}\`) - ${item.dependencyCount} 个依赖\n`;
+        section += `   - 位置：\`${item.entity.filePath}:${item.entity.startLine}\`\n`;
+      }
+      section += `\n`;
+    }
+
+    // 详细依赖树（只显示依赖数量 > 0 的实体）
+    const entities = this.entityService.listEntities({});
+    const entitiesWithDeps = entities.filter(entity => {
+      const chain = this.dependencyAnalyzer.analyzeDependencyChain(entity.id);
+      return chain && chain.totalDependencies > 0;
+    });
+
+    if (entitiesWithDeps.length > 0) {
+      section += `### 🌳 依赖树（前 ${Math.min(5, entitiesWithDeps.length)} 个）\n\n`;
+      
+      // 按依赖数量排序，只显示前5个
+      const sortedEntities = entitiesWithDeps.slice(0, 5);
+      
+      for (const entity of sortedEntities) {
+        const tree = this.dependencyAnalyzer.buildDependencyTree(entity.id, 3); // 限制深度为3
+        if (tree) {
+          section += `#### ${entity.name}\n\n`;
+          section += '```\n';
+          section += this.dependencyAnalyzer.treeToString(tree);
+          section += '```\n\n';
+        }
+      }
+    }
+
+    // 循环依赖检测
+    const allCircular = this.detectAllCircularDependencies();
+    if (allCircular.length > 0) {
+      section += `### ⚠️ 循环依赖警告\n\n`;
+      section += `检测到 ${allCircular.length} 个循环依赖：\n\n`;
+      
+      for (let i = 0; i < allCircular.length; i++) {
+        const circular = allCircular[i];
+        section += `#### 循环 ${i + 1}\n\n`;
+        const entityNames = circular.chain.map(e => `**${e.name}**`).join(' → ');
+        section += `${entityNames} → **${circular.chain[0].name}**\n\n`;
+        section += `_关系链：_\n`;
+        for (let j = 0; j < circular.relations.length; j++) {
+          const rel = circular.relations[j];
+          const source = circular.chain[j];
+          const target = circular.chain[j + 1] || circular.chain[0];
+          section += `- ${source.name} **${rel.verb}** ${target.name}\n`;
+        }
+        section += `\n`;
+      }
+    }
+
+    section += `---\n\n`;
+    return section;
+  }
+
+  /**
+   * 检测所有循环依赖
+   */
+  private detectAllCircularDependencies() {
+    const entities = this.entityService.listEntities({});
+    const allCircular = new Map<string, any>();
+
+    for (const entity of entities) {
+      const circular = this.dependencyAnalyzer.detectCircularDependencies(entity.id);
+      for (const circ of circular) {
+        // 使用排序后的ID作为key，避免重复
+        const key = circ.chain.map(e => e.id).sort().join('-');
+        if (!allCircular.has(key)) {
+          allCircular.set(key, circ);
+        }
+      }
+    }
+
+    return Array.from(allCircular.values());
   }
 
   /**

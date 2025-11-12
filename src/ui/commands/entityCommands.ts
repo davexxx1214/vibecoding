@@ -932,6 +932,7 @@ export class EntityCommands {
     const format = await vscode.window.showQuickPick(
       [
         { label: 'Markdown', description: '导出为 Markdown 格式 (.md)', value: 'md' },
+        { label: 'Markdown with Dependency Analysis', description: '包含依赖链分析的 Markdown (.md)', value: 'md-deps' },
         { label: 'JSON', description: '导出为 JSON 格式 (.json)', value: 'json' },
       ],
       {
@@ -943,6 +944,10 @@ export class EntityCommands {
       return;
     }
 
+    // 判断是否包含依赖分析
+    const includeDeps = format.value === 'md-deps';
+    const actualFormat = includeDeps ? 'md' : format.value;
+
     // 选择保存位置
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
@@ -950,12 +955,12 @@ export class EntityCommands {
       return;
     }
 
-    const defaultFileName = this.exportService.generateExportFileName(format.value as 'md' | 'json');
+    const defaultFileName = this.exportService.generateExportFileName(actualFormat as 'md' | 'json');
     const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, defaultFileName);
 
     const saveUri = await vscode.window.showSaveDialog({
       defaultUri,
-      filters: format.value === 'md' 
+      filters: actualFormat === 'md' 
         ? { 'Markdown': ['md'] }
         : { 'JSON': ['json'] },
       saveLabel: '导出',
@@ -966,12 +971,30 @@ export class EntityCommands {
     }
 
     try {
-      // 执行导出
-      if (format.value === 'md') {
-        await this.exportService.exportToMarkdown(saveUri.fsPath);
-      } else {
-        await this.exportService.exportToJSON(saveUri.fsPath);
-      }
+      // 显示进度提示
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: '正在导出知识图谱...',
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ increment: 0, message: '收集数据...' });
+
+          // 执行导出
+          if (actualFormat === 'md') {
+            progress.report({ increment: 30, message: '生成 Markdown...' });
+            await this.exportService.exportToMarkdown(saveUri.fsPath, {
+              includeDependencyAnalysis: includeDeps,
+            });
+          } else {
+            progress.report({ increment: 30, message: '生成 JSON...' });
+            await this.exportService.exportToJSON(saveUri.fsPath);
+          }
+
+          progress.report({ increment: 100, message: '完成！' });
+        }
+      );
 
       // 询问是否打开导出的文件
       const action = await vscode.window.showInformationMessage(
