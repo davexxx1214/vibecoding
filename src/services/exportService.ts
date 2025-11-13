@@ -395,5 +395,282 @@ export class ExportService {
     const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'knowledge-graph';
     return `${workspaceName}-export-${timestamp}.${format}`;
   }
+
+  /**
+   * 生成实体上下文（用于复制到剪贴板）
+   * 格式化单个实体的完整信息，适合粘贴给 AI
+   */
+  public generateEntityContext(entityId: string): string {
+    const entity = this.entityService.getEntity(entityId);
+    if (!entity) {
+      throw new Error('实体不存在');
+    }
+
+    let context = `# 实体上下文：${entity.name}\n\n`;
+    context += `**类型**：${entity.type}\n`;
+    context += `**位置**：\`${entity.filePath}\`（第 ${entity.startLine}-${entity.endLine} 行）\n\n`;
+
+    if (entity.description) {
+      context += `**描述**：${entity.description}\n\n`;
+    }
+
+    // 观察记录
+    const observations = this.observationService.getObservations(entity.id);
+    if (observations.length > 0) {
+      context += `## 观察记录 (${observations.length})\n\n`;
+      observations.forEach((obs, i) => {
+        context += `${i + 1}. ${obs.content}\n`;
+      });
+      context += `\n`;
+    }
+
+    // 关系
+    const relations = this.relationService.getRelationsByEntity(entity.id);
+    if (relations.length > 0) {
+      context += `## 关系 (${relations.length})\n\n`;
+
+      // 出边
+      const outgoing = relations.filter(r => r.sourceEntityId === entity.id);
+      if (outgoing.length > 0) {
+        context += `### 依赖项（此实体使用的其他实体）\n\n`;
+        outgoing.forEach(rel => {
+          const target = this.entityService.getEntity(rel.targetEntityId);
+          if (target) {
+            context += `- **${rel.verb}** → ${target.name} (\`${target.type}\` 在 \`${target.filePath}:${target.startLine}\`)\n`;
+          }
+        });
+        context += `\n`;
+      }
+
+      // 入边
+      const incoming = relations.filter(r => r.targetEntityId === entity.id);
+      if (incoming.length > 0) {
+        context += `### 被依赖项（依赖此实体的其他实体）\n\n`;
+        incoming.forEach(rel => {
+          const source = this.entityService.getEntity(rel.sourceEntityId);
+          if (source) {
+            context += `- ${source.name} (\`${source.type}\` 在 \`${source.filePath}:${source.startLine}\`) **${rel.verb}** → 此实体\n`;
+          }
+        });
+        context += `\n`;
+      }
+    }
+
+    context += `---\n`;
+    context += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+
+    return context;
+  }
+
+  /**
+   * 生成当前文件上下文
+   * 导出当前文件中的所有实体、关系和观察记录
+   */
+  public generateFileContext(filePath: string): string {
+    // 获取文件中的所有实体
+    const allEntities = this.entityService.listEntities({});
+    const fileEntities = allEntities.filter(e => e.filePath === filePath);
+
+    if (fileEntities.length === 0) {
+      return `# 文件上下文：${filePath}\n\n_此文件中暂无知识图谱数据_\n`;
+    }
+
+    let context = `# 文件上下文：${path.basename(filePath)}\n\n`;
+    context += `**完整路径**：\`${filePath}\`\n`;
+    context += `**实体数量**：${fileEntities.length}\n\n`;
+    context += `---\n\n`;
+
+    // 按类型分组
+    const entitiesByType = this.groupEntitiesByType(fileEntities);
+
+    for (const [type, entities] of Object.entries(entitiesByType)) {
+      context += `## ${this.getTypeIcon(type)} ${type.toUpperCase()} (${entities.length})\n\n`;
+
+      for (const entity of entities) {
+        context += `### ${entity.name}\n\n`;
+        context += `**位置**：第 ${entity.startLine}-${entity.endLine} 行\n`;
+
+        if (entity.description) {
+          context += `**描述**：${entity.description}\n`;
+        }
+
+        // 观察记录
+        const observations = this.observationService.getObservations(entity.id);
+        if (observations.length > 0) {
+          context += `\n**观察记录** (${observations.length})：\n`;
+          observations.forEach(obs => {
+            context += `- ${obs.content}\n`;
+          });
+        }
+
+        // 关系
+        const relations = this.relationService.getRelationsByEntity(entity.id);
+        if (relations.length > 0) {
+          context += `\n**关系** (${relations.length})：\n`;
+          
+          const outgoing = relations.filter(r => r.sourceEntityId === entity.id);
+          if (outgoing.length > 0) {
+            outgoing.forEach(rel => {
+              const target = this.entityService.getEntity(rel.targetEntityId);
+              if (target) {
+                context += `- ${rel.verb} → ${target.name} (\`${target.filePath}\`)\n`;
+              }
+            });
+          }
+
+          const incoming = relations.filter(r => r.targetEntityId === entity.id);
+          if (incoming.length > 0) {
+            incoming.forEach(rel => {
+              const source = this.entityService.getEntity(rel.sourceEntityId);
+              if (source) {
+                context += `- ← ${rel.verb} ${source.name} (\`${source.filePath}\`)\n`;
+              }
+            });
+          }
+        }
+
+        context += `\n`;
+      }
+
+      context += `---\n\n`;
+    }
+
+    context += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+
+    return context;
+  }
+
+  /**
+   * 生成 AI 摘要
+   * 生成简洁的项目概览，适合作为 AI 对话的上下文
+   */
+  public generateAISummary(): string {
+    const entities = this.entityService.listEntities({});
+    const relations = this.relationService.getAllRelations();
+    
+    if (entities.length === 0) {
+      return `# 项目知识图谱摘要\n\n_此项目暂无知识图谱数据_\n`;
+    }
+
+    let summary = `# 项目知识图谱摘要\n\n`;
+    
+    // 统计信息
+    const stats = {
+      totalEntities: entities.length,
+      totalRelations: relations.length,
+      totalObservations: 0,
+      entityTypes: this.countEntityTypes(entities),
+    };
+
+    // 统计所有观察记录
+    entities.forEach(entity => {
+      const observations = this.observationService.getObservations(entity.id);
+      stats.totalObservations += observations.length;
+    });
+
+    summary += `## 📊 统计概览\n\n`;
+    summary += `- 实体总数：${stats.totalEntities}\n`;
+    summary += `- 关系总数：${stats.totalRelations}\n`;
+    summary += `- 观察记录：${stats.totalObservations}\n\n`;
+
+    summary += `**实体类型分布：**\n`;
+    for (const [type, count] of Object.entries(stats.entityTypes)) {
+      summary += `- ${this.getTypeIcon(type)} ${type}: ${count}\n`;
+    }
+    summary += `\n`;
+
+    // 关键组件（有观察记录或关系多的实体）
+    const keyEntities = entities
+      .map(entity => {
+        const observations = this.observationService.getObservations(entity.id);
+        const relations = this.relationService.getRelationsByEntity(entity.id);
+        return {
+          entity,
+          score: observations.length * 2 + relations.length,
+          observations,
+          relations,
+        };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+    if (keyEntities.length > 0) {
+      summary += `## 🎯 关键组件\n\n`;
+      keyEntities.forEach((item, i) => {
+        const { entity, observations, relations } = item;
+        summary += `${i + 1}. **${entity.name}** (\`${entity.type}\`)\n`;
+        summary += `   - 位置：\`${entity.filePath}:${entity.startLine}\`\n`;
+        
+        if (entity.description) {
+          summary += `   - 描述：${entity.description}\n`;
+        }
+
+        if (observations.length > 0) {
+          summary += `   - 观察记录 (${observations.length})：\n`;
+          observations.slice(0, 2).forEach(obs => {
+            const preview = obs.content.length > 60 
+              ? obs.content.substring(0, 60) + '...'
+              : obs.content;
+            summary += `     · ${preview}\n`;
+          });
+          if (observations.length > 2) {
+            summary += `     · ...还有 ${observations.length - 2} 条\n`;
+          }
+        }
+
+        if (relations.length > 0) {
+          summary += `   - 关系数量：${relations.length}\n`;
+        }
+
+        summary += `\n`;
+      });
+    }
+
+    // 重要观察记录（包含 TODO、FIXME、WARNING 等关键词）
+    const importantKeywords = ['todo', 'fixme', 'bug', 'warning', 'performance', '性能', '问题', '待办', '优化'];
+    const importantObservations: Array<{ entity: Entity; observation: Observation }> = [];
+
+    entities.forEach(entity => {
+      const observations = this.observationService.getObservations(entity.id);
+      observations.forEach(obs => {
+        const lowerContent = obs.content.toLowerCase();
+        if (importantKeywords.some(keyword => lowerContent.includes(keyword))) {
+          importantObservations.push({ entity, observation: obs });
+        }
+      });
+    });
+
+    if (importantObservations.length > 0) {
+      summary += `## ⚠️ 重要提示\n\n`;
+      importantObservations.slice(0, 5).forEach(({ entity, observation }, i) => {
+        summary += `${i + 1}. **${entity.name}**：${observation.content}\n`;
+      });
+      if (importantObservations.length > 5) {
+        summary += `\n_...还有 ${importantObservations.length - 5} 条重要观察记录_\n`;
+      }
+      summary += `\n`;
+    }
+
+    // 架构概览（显示主要关系）
+    const relationsByVerb = this.groupRelationsByVerb(relations);
+    if (Object.keys(relationsByVerb).length > 0) {
+      summary += `## 🔗 架构概览\n\n`;
+      for (const [verb, verbRelations] of Object.entries(relationsByVerb)) {
+        summary += `**${verb}** (${verbRelations.length} 个关系)\n`;
+      }
+      summary += `\n`;
+    }
+
+    summary += `---\n`;
+    summary += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+    summary += `\n`;
+    summary += `> 💡 **使用提示**：此摘要包含了项目的关键信息，您可以：\n`;
+    summary += `> - 将其作为 AI 对话的上下文，帮助 AI 更好地理解项目结构\n`;
+    summary += `> - 用于快速了解项目的核心组件和重要注意事项\n`;
+    summary += `> - 分享给团队成员作为项目概览\n`;
+
+    return summary;
+  }
 }
 

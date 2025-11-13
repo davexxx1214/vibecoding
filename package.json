@@ -96,6 +96,50 @@
         "command": "knowledge.generateAllAIConfigs",
         "title": "Knowledge: Generate All AI Configs",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "knowledge.copyEntityContext",
+        "title": "Knowledge: Copy Entity Context to Clipboard",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "knowledge.exportCurrentFileContext",
+        "title": "Knowledge: Export Current File Context",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "knowledge.generateAISummary",
+        "title": "Knowledge: Generate AI Summary",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "knowledge.rag.searchDocuments",
+        "title": "Knowledge: Search Documents",
+        "icon": "$(search)"
+      },
+      {
+        "command": "knowledge.rag.askQuestion",
+        "title": "Knowledge: Ask Question",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "knowledge.rag.viewIndexedDocuments",
+        "title": "Knowledge: View Indexed Documents",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "knowledge.rag.testConnection",
+        "title": "Knowledge: Test Gemini API Connection",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "knowledge.rag.openDocument",
+        "title": "Open Document"
+      },
+      {
+        "command": "knowledge.rag.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -115,6 +159,14 @@
         {
           "command": "knowledge.viewEntityDetails",
           "group": "knowledge@4"
+        },
+        {
+          "command": "knowledge.copyEntityContext",
+          "group": "knowledge@5"
+        },
+        {
+          "command": "knowledge.exportCurrentFileContext",
+          "group": "knowledge@6"
         }
       ],
       "explorer/context": [
@@ -150,8 +202,52 @@
           "command": "knowledge.refresh",
           "when": "view == knowledgeGraphExplorer",
           "group": "navigation@3"
+        },
+        {
+          "command": "knowledge.rag.searchDocuments",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "knowledge.rag.askQuestion",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@2"
+        },
+        {
+          "command": "knowledge.rag.refresh",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@3"
         }
       ]
+    },
+    "configuration": {
+      "title": "Knowledge Graph",
+      "properties": {
+        "knowledgeGraph.gemini.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Google Gemini API Key（用于 RAG 功能）。获取地址：https://makersuite.google.com/app/apikey",
+          "order": 1
+        },
+        "knowledgeGraph.gemini.model": {
+          "type": "string",
+          "default": "gemini-2.5-flash",
+          "enum": [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-pro",
+            "gemini-1.5-flash"
+          ],
+          "description": "Gemini 模型选择（推荐使用 gemini-2.5-flash）",
+          "order": 2
+        },
+        "knowledgeGraph.rag.autoIndex": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动索引 Knowledge/ 文件夹中的新文件",
+          "order": 3
+        }
+      }
     },
     "viewsContainers": {
       "activitybar": [
@@ -167,6 +263,10 @@
         {
           "id": "knowledgeGraphExplorer",
           "name": "Explorer"
+        },
+        {
+          "id": "knowledgeRAGExplorer",
+          "name": "Documents (RAG)"
         }
       ]
     },
@@ -195,6 +295,7 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "sql.js": "^1.13.0",
     "vis-network": "^10.0.2"
   }

@@ -3,10 +3,14 @@ import { DatabaseService } from './services/database';
 import { EntityService } from './services/entityService';
 import { RelationService } from './services/relationService';
 import { ObservationService } from './services/observationService';
+import { GeminiClient } from './services/geminiClient';
+import { RAGService } from './services/ragService';
 import { KnowledgeHoverProvider } from './providers/hoverProvider';
 import { KnowledgeCodeLensProvider } from './providers/codeLensProvider';
 import { KnowledgeTreeDataProvider } from './providers/treeDataProvider';
+import { RAGTreeDataProvider } from './providers/ragTreeDataProvider';
 import { EntityCommands } from './ui/commands/entityCommands';
+import { RAGCommands } from './ui/commands/ragCommands';
 import { GraphView } from './ui/webview/graphView';
 
 /**
@@ -38,12 +42,42 @@ export async function activate(context: vscode.ExtensionContext) {
     const relationService = new RelationService(dbService, entityService);
     const observationService = new ObservationService(dbService, entityService);
 
+    // 初始化 Gemini 客户端和 RAG 服务
+    const geminiClient = new GeminiClient();
+    const ragService = new RAGService(geminiClient, dbService);
+
+    // 尝试初始化 Gemini 客户端（可选，静默模式）
+    try {
+      await geminiClient.initialize(true); // 静默模式，不弹提示
+      await ragService.initialize(workspaceRoot);
+      console.log('RAG Service initialized');
+    } catch (error) {
+      console.log('RAG Service initialization skipped:', error);
+      // RAG 功能是可选的，初始化失败不影响主功能
+    }
+
+    // 监听配置变化，当 API Key 改变时重新初始化
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(async (e) => {
+        if (e.affectsConfiguration('knowledgeGraph.gemini.apiKey')) {
+          console.log('Gemini API Key changed, reinitializing...');
+          const success = await geminiClient.initialize(true);
+          if (success) {
+            vscode.window.showInformationMessage('✅ Gemini API 已重新连接');
+            ragTreeDataProvider.refresh();
+          }
+        }
+      })
+    );
+
     // 初始化命令处理器
     const entityCommands = new EntityCommands(
       entityService,
       relationService,
       observationService
     );
+
+    const ragCommands = new RAGCommands(ragService, geminiClient);
 
     // 注册树视图
     const treeDataProvider = new KnowledgeTreeDataProvider(
@@ -56,6 +90,14 @@ export async function activate(context: vscode.ExtensionContext) {
       showCollapseAll: true,
     });
     context.subscriptions.push(treeView);
+
+    // 注册 RAG 树视图
+    const ragTreeDataProvider = new RAGTreeDataProvider(ragService);
+    const ragTreeView = vscode.window.createTreeView('knowledgeRAGExplorer', {
+      treeDataProvider: ragTreeDataProvider,
+      showCollapseAll: true,
+    });
+    context.subscriptions.push(ragTreeView);
 
     // 注册 CodeLens Provider
     const codeLensProvider = new KnowledgeCodeLensProvider(
@@ -345,6 +387,43 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 快速上下文导出命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.copyEntityContext', async (entityId?: string) => {
+        try {
+          console.log('Executing: knowledge.copyEntityContext');
+          await entityCommands.copyEntityContext(entityId);
+        } catch (error) {
+          console.error('Error in copyEntityContext:', error);
+          vscode.window.showErrorMessage(`Error copying entity context: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.exportCurrentFileContext', async () => {
+        try {
+          console.log('Executing: knowledge.exportCurrentFileContext');
+          await entityCommands.exportCurrentFileContext();
+        } catch (error) {
+          console.error('Error in exportCurrentFileContext:', error);
+          vscode.window.showErrorMessage(`Error exporting file context: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.generateAISummary', async () => {
+        try {
+          console.log('Executing: knowledge.generateAISummary');
+          await entityCommands.generateAISummary();
+        } catch (error) {
+          console.error('Error in generateAISummary:', error);
+          vscode.window.showErrorMessage(`Error generating AI summary: ${error}`);
+        }
+      })
+    );
+
     // 注册 Hover Provider
     const hoverProvider = new KnowledgeHoverProvider(
       entityService,
@@ -367,10 +446,79 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // RAG 命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.searchDocuments', async () => {
+        try {
+          await ragCommands.searchDocuments();
+        } catch (error) {
+          console.error('Error in searchDocuments:', error);
+          vscode.window.showErrorMessage(`搜索失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.askQuestion', async () => {
+        try {
+          await ragCommands.askQuestion();
+        } catch (error) {
+          console.error('Error in askQuestion:', error);
+          vscode.window.showErrorMessage(`问答失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.viewIndexedDocuments', async () => {
+        try {
+          await ragCommands.viewIndexedDocuments();
+        } catch (error) {
+          console.error('Error in viewIndexedDocuments:', error);
+          vscode.window.showErrorMessage(`查看失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.testConnection', async () => {
+        try {
+          await ragCommands.testConnection();
+        } catch (error) {
+          console.error('Error in testConnection:', error);
+          vscode.window.showErrorMessage(`测试失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.openDocument', async (filePath: string) => {
+        try {
+          const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+          if (workspaceFolder) {
+            const uri = vscode.Uri.joinPath(workspaceFolder.uri, filePath);
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc);
+          }
+        } catch (error) {
+          console.error('Error opening document:', error);
+          vscode.window.showErrorMessage(`打开文档失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.refresh', () => {
+        ragTreeDataProvider.refresh();
+        vscode.window.showInformationMessage('RAG Documents refreshed');
+      })
+    );
+
     // 清理资源
     context.subscriptions.push({
       dispose: () => {
         dbService.close();
+        ragService.dispose();
       },
     });
 
@@ -409,6 +557,15 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.generateCursorRules',
     'knowledge.generateCopilotInstructions',
     'knowledge.generateAllAIConfigs',
+    'knowledge.copyEntityContext',
+    'knowledge.exportCurrentFileContext',
+    'knowledge.generateAISummary',
+    'knowledge.rag.searchDocuments',
+    'knowledge.rag.askQuestion',
+    'knowledge.rag.viewIndexedDocuments',
+    'knowledge.rag.testConnection',
+    'knowledge.rag.openDocument',
+    'knowledge.rag.refresh',
   ];
 
   placeholderCommands.forEach(commandId => {

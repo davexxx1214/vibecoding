@@ -1134,5 +1134,252 @@ export class EntityCommands {
       vscode.window.showErrorMessage(`生成 AI 配置失败: ${error}`);
     }
   }
+
+  /**
+   * 复制实体上下文到剪贴板
+   */
+  public async copyEntityContext(entityId?: string | any): Promise<void> {
+    let targetEntityId: string | undefined;
+
+    // 检查 entityId 参数类型
+    if (entityId && typeof entityId === 'string') {
+      targetEntityId = entityId;
+    }
+
+    // 如果没有提供有效的实体 ID，尝试从当前位置查找或让用户选择
+    if (!targetEntityId) {
+      const editor = vscode.window.activeTextEditor;
+      
+      // 尝试从当前位置查找
+      if (editor) {
+        const relativePath = this.getRelativePath(editor.document);
+        if (relativePath) {
+          const line = editor.selection.active.line + 1;
+          const entity = this.entityService.findEntityAtLocation(relativePath, line);
+          if (entity) {
+            targetEntityId = entity.id;
+          }
+        }
+      }
+
+      // 如果当前位置没有实体，让用户选择
+      if (!targetEntityId) {
+        const entities = this.entityService.listEntities();
+        if (entities.length === 0) {
+          vscode.window.showWarningMessage('没有可用的实体');
+          return;
+        }
+
+        const selected = await vscode.window.showQuickPick(
+          entities.map(e => ({
+            label: e.name,
+            description: `${e.type} - ${e.filePath}:${e.startLine}`,
+            detail: e.description,
+            entity: e,
+          })),
+          {
+            placeHolder: '选择要复制上下文的实体',
+          }
+        );
+
+        if (!selected) {
+          return;
+        }
+
+        targetEntityId = selected.entity.id;
+      }
+    }
+
+    try {
+      // 生成实体上下文
+      const context = this.exportService.generateEntityContext(targetEntityId);
+      
+      // 复制到剪贴板
+      await vscode.env.clipboard.writeText(context);
+      
+      const entity = this.entityService.getEntity(targetEntityId);
+      vscode.window.showInformationMessage(
+        `✅ 已将 "${entity?.name}" 的上下文复制到剪贴板`
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage(`复制实体上下文失败: ${error}`);
+    }
+  }
+
+  /**
+   * 导出当前文件上下文
+   */
+  public async exportCurrentFileContext(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('请先打开一个文件');
+      return;
+    }
+
+    const relativePath = this.getRelativePath(editor.document);
+    if (!relativePath) {
+      vscode.window.showWarningMessage('文件不在工作区中');
+      return;
+    }
+
+    try {
+      // 生成文件上下文
+      const context = this.exportService.generateFileContext(relativePath);
+      
+      // 选择操作：复制到剪贴板或保存到文件
+      const action = await vscode.window.showQuickPick(
+        [
+          {
+            label: '📋 复制到剪贴板',
+            description: '将文件上下文复制到剪贴板',
+            action: 'copy',
+          },
+          {
+            label: '💾 保存到文件',
+            description: '将文件上下文保存为 Markdown 文件',
+            action: 'save',
+          },
+        ],
+        {
+          placeHolder: '选择操作',
+        }
+      );
+
+      if (!action) {
+        return;
+      }
+
+      if (action.action === 'copy') {
+        // 复制到剪贴板
+        await vscode.env.clipboard.writeText(context);
+        vscode.window.showInformationMessage(
+          `✅ 已将 "${path.basename(relativePath)}" 的上下文复制到剪贴板`
+        );
+      } else {
+        // 保存到文件
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+          return;
+        }
+
+        const fileName = `${path.basename(relativePath, path.extname(relativePath))}-context.md`;
+        const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+
+        const saveUri = await vscode.window.showSaveDialog({
+          defaultUri,
+          filters: { 'Markdown': ['md'] },
+          saveLabel: '保存',
+        });
+
+        if (saveUri) {
+          const fs = require('fs');
+          fs.writeFileSync(saveUri.fsPath, context, 'utf-8');
+          
+          const openAction = await vscode.window.showInformationMessage(
+            `✅ 文件上下文已保存到 ${path.basename(saveUri.fsPath)}`,
+            '打开文件'
+          );
+
+          if (openAction === '打开文件') {
+            const doc = await vscode.workspace.openTextDocument(saveUri);
+            await vscode.window.showTextDocument(doc);
+          }
+        }
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`导出文件上下文失败: ${error}`);
+    }
+  }
+
+  /**
+   * 生成 AI 摘要
+   */
+  public async generateAISummary(): Promise<void> {
+    try {
+      // 生成 AI 摘要
+      const summary = this.exportService.generateAISummary();
+      
+      // 选择操作
+      const action = await vscode.window.showQuickPick(
+        [
+          {
+            label: '📋 复制到剪贴板',
+            description: '将 AI 摘要复制到剪贴板，方便粘贴给 AI',
+            action: 'copy',
+          },
+          {
+            label: '👁️ 预览',
+            description: '在新标签页中预览摘要内容',
+            action: 'preview',
+          },
+          {
+            label: '💾 保存到文件',
+            description: '将摘要保存为 Markdown 文件',
+            action: 'save',
+          },
+        ],
+        {
+          placeHolder: '选择操作',
+        }
+      );
+
+      if (!action) {
+        return;
+      }
+
+      switch (action.action) {
+        case 'copy':
+          // 复制到剪贴板
+          await vscode.env.clipboard.writeText(summary);
+          vscode.window.showInformationMessage('✅ AI 摘要已复制到剪贴板');
+          break;
+
+        case 'preview':
+          // 在新标签页中预览
+          const doc = await vscode.workspace.openTextDocument({
+            content: summary,
+            language: 'markdown',
+          });
+          await vscode.window.showTextDocument(doc, { preview: false });
+          break;
+
+        case 'save':
+          // 保存到文件
+          const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+          if (!workspaceFolder) {
+            vscode.window.showErrorMessage('请先打开一个工作区');
+            return;
+          }
+
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const fileName = `ai-summary-${timestamp}.md`;
+          const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+
+          const saveUri = await vscode.window.showSaveDialog({
+            defaultUri,
+            filters: { 'Markdown': ['md'] },
+            saveLabel: '保存',
+          });
+
+          if (saveUri) {
+            const fs = require('fs');
+            fs.writeFileSync(saveUri.fsPath, summary, 'utf-8');
+            
+            const openAction = await vscode.window.showInformationMessage(
+              `✅ AI 摘要已保存到 ${path.basename(saveUri.fsPath)}`,
+              '打开文件'
+            );
+
+            if (openAction === '打开文件') {
+              const savedDoc = await vscode.workspace.openTextDocument(saveUri);
+              await vscode.window.showTextDocument(savedDoc);
+            }
+          }
+          break;
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`生成 AI 摘要失败: ${error}`);
+    }
+  }
 }
 

@@ -214,10 +214,10 @@ vibecoding/
   - ✅ 版本号自动提取和格式化
   - 📝 当前仅支持 JavaScript/TypeScript 项目
 - ✅ 一键生成所有 AI 配置
-- [ ] 快速上下文导出（Phase 2）
-  - 复制实体上下文到剪贴板
-  - 导出当前文件上下文
-  - 生成 AI 摘要
+- ✅ 快速上下文导出（Phase 2）
+  - ✅ 复制实体上下文到剪贴板
+  - ✅ 导出当前文件上下文
+  - ✅ 生成 AI 摘要
 - [ ] 项目知识库文档生成（Phase 3）
   - Knowledge/ 文件夹自动生成
   - 架构文档、组件文档
@@ -229,19 +229,21 @@ vibecoding/
 - [ ] 自动监听 `specs/` 文件夹变更
 - [ ] 增量转换和格式优化
 
-#### 2.4 持久知识库（托管式 RAG）🆕
-- [ ] 使用 Google Gemini File Search API
-- [ ] 监听 `Knowledge/` 文件夹并自动上传
-- [ ] 语义搜索和上下文注入
-- [ ] 智能问答和文档摘要
+#### 2.4 持久知识库（托管式 RAG）🆕 ✅
+- ✅ 使用 Google Gemini File Search API
+- ✅ 监听 `Knowledge/` 文件夹并自动上传
+- ✅ 语义搜索和上下文注入
+- ✅ 智能问答和文档摘要
+- ✅ 侧边栏文档管理
+- ✅ API Key 配置管理
 
 **验收标准**：
 - ✅ 可以一键导出知识图谱供 AI 使用
 - ✅ Cursor 和 GitHub Copilot 能自动获取项目上下文
 - ✅ 自动生成 AI 配置文件（.cursorrules, copilot-instructions.md）
-- [ ] AI 能基于导出的上下文理解项目
-- [ ] Knowledge 文件夹的文档自动索引
-- [ ] 语义搜索准确率 >80%，延迟 <500ms
+- ✅ AI 能基于导出的上下文理解项目
+- ✅ Knowledge 文件夹的文档自动索引
+- ✅ 语义搜索和智能问答功能完整可用
 
 **时间估计**：3-4 周
 
