@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { RAGService, SearchResult, QuestionAnswerResult } from '../../services/ragService';
+import { RAGService, SearchResult, QuestionAnswerResult, StoreInfo } from '../../services/ragService';
 import { GeminiClient } from '../../services/geminiClient';
 
 /**
@@ -86,21 +86,86 @@ export class RAGCommands {
     results: SearchResult[],
     query: string
   ): Promise<void> {
-    const items = results.map(result => ({
-      label: `$(file-text) ${result.fileName}`,
-      description: `相关度: ${result.relevance}%`,
-      detail: result.snippet,
-      result,
-    }));
+    // 构建 Markdown 格式的搜索结果
+    let markdown = `# 文档搜索结果\n\n`;
+    markdown += `**查询**：${query}\n\n`;
+    markdown += `**找到 ${results.length} 个相关文档**\n\n`;
+    markdown += `---\n\n`;
 
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: `找到 ${results.length} 个相关文档`,
-      matchOnDescription: true,
-      matchOnDetail: true,
+    // 按相关度排序
+    const sortedResults = results.sort((a, b) => b.relevance - a.relevance);
+
+    sortedResults.forEach((result, index) => {
+      markdown += `## ${index + 1}. ${result.fileName}\n\n`;
+      markdown += `**文件路径**：\`${result.filePath}\`\n\n`;
+      markdown += `**相关度**：${result.relevance}%\n\n`;
+      
+      if (result.snippet) {
+        markdown += `**相关内容**：\n\n`;
+        markdown += `> ${result.snippet}\n\n`;
+      }
+      
+      markdown += `[📂 打开文件](command:knowledge.rag.openDocument?${encodeURIComponent(JSON.stringify(result.filePath))})\n\n`;
+      markdown += `---\n\n`;
     });
 
-    if (selected) {
-      await this.openDocument(selected.result.filePath);
+    markdown += `\n_搜索时间：${new Date().toLocaleString('zh-CN')}_\n`;
+
+    // 在新标签页显示
+    const doc = await vscode.workspace.openTextDocument({
+      content: markdown,
+      language: 'markdown',
+    });
+
+    await vscode.window.showTextDocument(doc, { 
+      preview: false,
+      viewColumn: vscode.ViewColumn.Beside  // 在侧边打开，不覆盖当前文件
+    });
+
+    // 提供操作选项
+    const action = await vscode.window.showInformationMessage(
+      `✅ 找到 ${results.length} 个相关文档`,
+      '复制结果',
+      '保存为文件'
+    );
+
+    if (action === '复制结果') {
+      await vscode.env.clipboard.writeText(markdown);
+      vscode.window.showInformationMessage('搜索结果已复制到剪贴板');
+    } else if (action === '保存为文件') {
+      await this.saveSearchResultsToFile(markdown, query);
+    }
+  }
+
+  /**
+   * 保存搜索结果到文件
+   */
+  private async saveSearchResultsToFile(
+    markdown: string,
+    query: string
+  ): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return;
+    }
+
+    // 生成文件名
+    const safeQuery = query.substring(0, 30).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const fileName = `search-${safeQuery}-${timestamp}.md`;
+
+    const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, 'Knowledge', fileName);
+
+    const saveUri = await vscode.window.showSaveDialog({
+      defaultUri,
+      filters: { 'Markdown': ['md'] },
+      saveLabel: '保存',
+    });
+
+    if (saveUri) {
+      const fs = require('fs');
+      fs.writeFileSync(saveUri.fsPath, markdown, 'utf-8');
+      vscode.window.showInformationMessage(`搜索结果已保存到 ${saveUri.fsPath}`);
     }
   }
 
@@ -371,6 +436,46 @@ export class RAGCommands {
 
     // TODO: 实现重新索引逻辑
     vscode.window.showInformationMessage('重新索引功能开发中...');
+  }
+
+  /**
+   * 查看 Store 信息
+   */
+  public async viewStoreInfo(): Promise<void> {
+    const storeInfo = this.ragService.getStoreInfo();
+    
+    if (!storeInfo) {
+      vscode.window.showWarningMessage('Store 信息不可用');
+      return;
+    }
+
+    // 构建信息文本
+    const infoLines = [
+      `# RAG Store 信息\n`,
+      `**项目名称**：${storeInfo.projectName}`,
+      `**Store ID**：\`${storeInfo.storeId}\``,
+      `**工作区路径**：\`${storeInfo.workspaceRoot}\``,
+      `**已索引文件数**：${storeInfo.fileCount}`,
+      `**创建时间**：${new Date(storeInfo.createdAt).toLocaleString('zh-CN')}`,
+      storeInfo.lastSyncAt 
+        ? `**最后同步**：${new Date(storeInfo.lastSyncAt).toLocaleString('zh-CN')}` 
+        : '',
+      `\n---\n`,
+      `## 📝 说明\n`,
+      `每个项目都有唯一的 Store ID，确保文档不会与其他项目混淆。`,
+      `\nStore ID 基于项目路径生成，即使使用相同的 API Key，`,
+      `不同项目的文档也完全隔离。`,
+      `\n**当前状态**：本地模式`,
+      `文档索引存储在本地 SQLite 数据库中。`,
+    ].filter(Boolean).join('\n');
+
+    // 显示在新标签页
+    const doc = await vscode.workspace.openTextDocument({
+      content: infoLines,
+      language: 'markdown',
+    });
+
+    await vscode.window.showTextDocument(doc, { preview: false });
   }
 }
 

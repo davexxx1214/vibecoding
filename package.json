@@ -140,6 +140,11 @@
         "command": "knowledge.rag.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "knowledge.rag.viewStoreInfo",
+        "title": "Knowledge: View RAG Store Info",
+        "icon": "$(info)"
       }
     ],
     "menus": {

@@ -514,6 +514,17 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.viewStoreInfo', async () => {
+        try {
+          await ragCommands.viewStoreInfo();
+        } catch (error) {
+          console.error('Error in viewStoreInfo:', error);
+          vscode.window.showErrorMessage(`查看 Store 信息失败: ${error}`);
+        }
+      })
+    );
+
     // 清理资源
     context.subscriptions.push({
       dispose: () => {
@@ -566,6 +577,7 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.rag.testConnection',
     'knowledge.rag.openDocument',
     'knowledge.rag.refresh',
+    'knowledge.rag.viewStoreInfo',
   ];
 
   placeholderCommands.forEach(commandId => {
