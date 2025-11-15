@@ -113,11 +113,6 @@
         "icon": "$(lightbulb)"
       },
       {
-        "command": "knowledge.rag.searchDocuments",
-        "title": "Knowledge: Search Documents",
-        "icon": "$(search)"
-      },
-      {
         "command": "knowledge.rag.askQuestion",
         "title": "Knowledge: Ask Question",
         "icon": "$(comment-discussion)"
@@ -131,6 +126,11 @@
         "command": "knowledge.rag.testConnection",
         "title": "Knowledge: Test Gemini API Connection",
         "icon": "$(plug)"
+      },
+      {
+        "command": "knowledge.rag.diagnose",
+        "title": "Knowledge: Diagnose RAG Status",
+        "icon": "$(debug-console)"
       },
       {
         "command": "knowledge.rag.openDocument",
@@ -209,14 +209,9 @@
           "group": "navigation@3"
         },
         {
-          "command": "knowledge.rag.searchDocuments",
-          "when": "view == knowledgeRAGExplorer",
-          "group": "navigation@1"
-        },
-        {
           "command": "knowledge.rag.askQuestion",
           "when": "view == knowledgeRAGExplorer",
-          "group": "navigation@2"
+          "group": "navigation@1"
         },
         {
           "command": "knowledge.rag.refresh",
@@ -300,7 +295,7 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^1.29.1",
     "sql.js": "^1.13.0",
     "vis-network": "^10.0.2"
   }

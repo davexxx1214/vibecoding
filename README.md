@@ -149,12 +149,19 @@ vibecoding/
 项目根目录/
 ├── .vscode/
 │   └── .knowledge/
-│       └── graph.sqlite              # 知识图谱数据库（1-10MB）
-└── Knowledge/                        # 🔜 阶段二：文档知识库
-    ├── architecture.md
-    ├── decisions/
-    └── guides/
+│       └── graph.sqlite              # 知识图谱数据库（包含 RAG 索引）
+└── Knowledge/                        # ✅ RAG 文档知识库
+    ├── architecture.md               # 架构文档
+    ├── api-guide.md                  # API 指南
+    └── decisions/                    # 设计决策
+        └── adr-001.md
 ```
+
+**RAG Store 隔离机制**：
+- 每个项目自动生成唯一的 Store ID（基于项目路径 hash）
+- 多个项目可以使用同一个 Gemini API Key
+- 文档索引完全隔离，不会混淆
+- Store 信息存储在本地 SQLite 数据库
 
 ---
 
@@ -229,13 +236,17 @@ vibecoding/
 - [ ] 自动监听 `specs/` 文件夹变更
 - [ ] 增量转换和格式优化
 
-#### 2.4 持久知识库（托管式 RAG）🆕 ✅
-- ✅ 使用 Google Gemini File Search API
-- ✅ 监听 `Knowledge/` 文件夹并自动上传
-- ✅ 语义搜索和上下文注入
-- ✅ 智能问答和文档摘要
-- ✅ 侧边栏文档管理
-- ✅ API Key 配置管理
+#### 2.4 持久知识库（托管式 RAG）🆕 ✅ **已完成**
+- ✅ 使用 **真正的 Google Gemini File Search Store API**（`@google/genai` SDK）
+- ✅ 监听 `Knowledge/` 文件夹并自动上传到 Gemini
+- ✅ **真正的语义搜索**：Gemini 自动分块、嵌入和检索
+- ✅ **智能问答**：基于 Gemini File Search 工具的 RAG 问答
+- ✅ 侧边栏文档管理（Documents RAG 视图）
+- ✅ API Key 配置管理（自动重连机制）
+- ✅ **项目隔离**：每个项目独立的 File Search Store，多项目完全隔离
+- ✅ **搜索结果展示优化**：Markdown 文档展示，保留查询，可复制内容
+- ✅ **问答结果展示优化**：Markdown 文档展示，包含来源引用（Grounding）
+- ✅ **多格式支持**：Gemini 原生支持 PDF、TXT、MD、DOCX、JSON、代码等 100+ 种格式
 
 **验收标准**：
 - ✅ 可以一键导出知识图谱供 AI 使用
@@ -244,8 +255,10 @@ vibecoding/
 - ✅ AI 能基于导出的上下文理解项目
 - ✅ Knowledge 文件夹的文档自动索引
 - ✅ 语义搜索和智能问答功能完整可用
+- ✅ 多项目使用同一 API Key 时文档完全隔离
+- ✅ 搜索和问答结果以 Markdown 文档展示，可复制和保存
 
-**时间估计**：3-4 周
+**时间**：已完成（约 3 周）
 
 ---
 

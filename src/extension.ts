@@ -44,15 +44,58 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // 初始化 Gemini 客户端和 RAG 服务
     const geminiClient = new GeminiClient();
-    const ragService = new RAGService(geminiClient, dbService);
+    const ragService = new RAGService(dbService, geminiClient);
 
-    // 尝试初始化 Gemini 客户端（可选，静默模式）
+    // 尝试初始化 Gemini 客户端和 RAG 服务（可选功能）
+    let ragInitialized = false;
     try {
-      await geminiClient.initialize(true); // 静默模式，不弹提示
-      await ragService.initialize(workspaceRoot);
-      console.log('RAG Service initialized');
+      const geminiInitialized = await geminiClient.initialize(true); // 静默模式，不弹提示
+      console.log(`Gemini client initialized: ${geminiInitialized}`);
+      
+      if (geminiInitialized) {
+        await ragService.initialize(workspaceRoot);
+        console.log('✅ RAG Service initialized successfully');
+        ragInitialized = true;
+        
+        // 显示初始化成功的弹窗
+        vscode.window.showInformationMessage(
+          '✅ Knowledge Graph RAG 功能已启用！文档将自动上传到云端。',
+          '查看 Store 信息'
+        ).then(action => {
+          if (action === '查看 Store 信息') {
+            vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
+          }
+        });
+      } else {
+        console.log('⚠️ RAG Service not initialized (Gemini API Key not configured)');
+        vscode.window.showWarningMessage(
+          '⚠️ RAG 功能未启用：请配置 Gemini API Key',
+          '配置 API Key',
+          '查看教程'
+        ).then(action => {
+          if (action === '配置 API Key') {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+          } else if (action === '查看教程') {
+            vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
+          }
+        });
+      }
     } catch (error) {
-      console.log('RAG Service initialization skipped:', error);
+      console.error('⚠️ RAG Service initialization failed:', error);
+      
+      // 显示详细的错误信息
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(
+        `❌ RAG 功能初始化失败: ${errorMessage}`,
+        '查看日志',
+        '重试'
+      ).then(action => {
+        if (action === '查看日志') {
+          vscode.commands.executeCommand('workbench.action.output.show');
+        } else if (action === '重试') {
+          vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+      });
       // RAG 功能是可选的，初始化失败不影响主功能
     }
 
@@ -61,10 +104,29 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.workspace.onDidChangeConfiguration(async (e) => {
         if (e.affectsConfiguration('knowledgeGraph.gemini.apiKey')) {
           console.log('Gemini API Key changed, reinitializing...');
-          const success = await geminiClient.initialize(true);
-          if (success) {
-            vscode.window.showInformationMessage('✅ Gemini API 已重新连接');
-            ragTreeDataProvider.refresh();
+          
+          try {
+            const success = await geminiClient.initialize(true);
+            if (success) {
+              // 重新初始化 RAG Service
+              await ragService.initialize(workspaceRoot);
+              
+              vscode.window.showInformationMessage(
+                '✅ Gemini API 已重新连接，RAG 功能已启用！',
+                '查看 Store 信息'
+              ).then(action => {
+                if (action === '查看 Store 信息') {
+                  vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
+                }
+              });
+              
+              ragTreeDataProvider.refresh();
+            } else {
+              vscode.window.showWarningMessage('⚠️ API Key 无效，请检查配置');
+            }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            vscode.window.showErrorMessage(`❌ RAG 初始化失败: ${errorMessage}`);
           }
         }
       })
@@ -448,17 +510,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // RAG 命令
     context.subscriptions.push(
-      vscode.commands.registerCommand('knowledge.rag.searchDocuments', async () => {
-        try {
-          await ragCommands.searchDocuments();
-        } catch (error) {
-          console.error('Error in searchDocuments:', error);
-          vscode.window.showErrorMessage(`搜索失败: ${error}`);
-        }
-      })
-    );
-
-    context.subscriptions.push(
       vscode.commands.registerCommand('knowledge.rag.askQuestion', async () => {
         try {
           await ragCommands.askQuestion();
@@ -487,6 +538,17 @@ export async function activate(context: vscode.ExtensionContext) {
         } catch (error) {
           console.error('Error in testConnection:', error);
           vscode.window.showErrorMessage(`测试失败: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.rag.diagnose', async () => {
+        try {
+          await ragCommands.diagnoseRAGStatus();
+        } catch (error) {
+          console.error('Error in diagnoseRAGStatus:', error);
+          vscode.window.showErrorMessage(`诊断失败: ${error}`);
         }
       })
     );
@@ -571,7 +633,6 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.copyEntityContext',
     'knowledge.exportCurrentFileContext',
     'knowledge.generateAISummary',
-    'knowledge.rag.searchDocuments',
     'knowledge.rag.askQuestion',
     'knowledge.rag.viewIndexedDocuments',
     'knowledge.rag.testConnection',

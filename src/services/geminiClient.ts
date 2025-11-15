@@ -1,12 +1,13 @@
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import * as vscode from 'vscode';
 
 /**
  * Gemini API 客户端封装
  * 处理 API 密钥管理和客户端初始化
+ * 使用新的 @google/genai SDK，支持 File Search Store API
  */
 export class GeminiClient {
-  private client: GoogleGenerativeAI | null = null;
+  private client: GoogleGenAI | null = null;
   private apiKey: string | null = null;
 
   /**
@@ -51,10 +52,12 @@ export class GeminiClient {
 
       this.apiKey = apiKey;
 
-      // 初始化客户端
-      this.client = new GoogleGenerativeAI(this.apiKey);
+      // 初始化新的 GoogleGenAI 客户端
+      this.client = new GoogleGenAI({
+        apiKey: this.apiKey
+      });
       
-      console.log('Gemini API client initialized successfully');
+      console.log('Gemini API client initialized successfully (using @google/genai SDK)');
       return true;
     } catch (error) {
       console.error('Failed to initialize Gemini client:', error);
@@ -66,17 +69,10 @@ export class GeminiClient {
   }
 
   /**
-   * 获取 Generative Model 实例
+   * 获取客户端实例（用于 RAG Service）
    */
-  public getModel(modelName?: string): GenerativeModel | null {
-    if (!this.client) {
-      vscode.window.showWarningMessage('Gemini 客户端未初始化，请先配置 API Key');
-      return null;
-    }
-
-    // 如果没有指定模型，使用配置的模型
-    const model = modelName || this.getConfiguredModel();
-    return this.client.getGenerativeModel({ model });
+  public getClient(): GoogleGenAI | null {
+    return this.client;
   }
 
   /**
@@ -86,26 +82,22 @@ export class GeminiClient {
     return this.client !== null && this.apiKey !== null;
   }
 
-
   /**
    * 测试 API 连接
    */
   public async testConnection(): Promise<boolean> {
-    if (!this.isInitialized()) {
+    if (!this.isInitialized() || !this.client) {
       return false;
     }
 
     try {
-      const model = this.getModel();
-      if (!model) {
-        return false;
-      }
+      // 使用新 SDK 的 generateContent 方法
+      const result = await this.client.models.generateContent({
+        model: this.getConfiguredModel(),
+        contents: 'Hello'
+      });
 
-      // 发送测试请求
-      const result = await model.generateContent('Hello');
-      const response = await result.response;
-      
-      if (response.text()) {
+      if (result.text) {
         vscode.window.showInformationMessage('✅ Gemini API 连接测试成功');
         return true;
       }
@@ -125,5 +117,11 @@ export class GeminiClient {
     const config = vscode.workspace.getConfiguration('knowledgeGraph');
     return config.get<string>('gemini.model') || 'gemini-2.5-flash';
   }
-}
 
+  /**
+   * 获取 API Key（用于日志和调试）
+   */
+  public getApiKey(): string | null {
+    return this.apiKey;
+  }
+}

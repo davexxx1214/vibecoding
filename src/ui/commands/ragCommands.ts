@@ -12,164 +12,6 @@ export class RAGCommands {
   ) {}
 
   /**
-   * 搜索文档
-   */
-  public async searchDocuments(): Promise<void> {
-    // 确保客户端已初始化
-    if (!this.geminiClient.isInitialized()) {
-      await this.geminiClient.initialize();
-      if (!this.geminiClient.isInitialized()) {
-        vscode.window.showWarningMessage(
-          '请先在设置中配置 Gemini API Key',
-          '打开设置'
-        ).then(action => {
-          if (action === '打开设置') {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
-          }
-        });
-        return;
-      }
-    }
-
-    // 检查是否有已索引的文档
-    const indexedFiles = this.ragService.getIndexedFiles();
-    if (indexedFiles.length === 0) {
-      vscode.window.showWarningMessage(
-        '没有已索引的文档。请在 Knowledge/ 文件夹中添加文档。'
-      );
-      return;
-    }
-
-    // 输入搜索查询
-    const query = await vscode.window.showInputBox({
-      prompt: '输入搜索查询',
-      placeHolder: '例如：如何配置数据库连接？',
-      validateInput: (value) => {
-        return value.trim() ? null : '查询不能为空';
-      },
-    });
-
-    if (!query) {
-      return;
-    }
-
-    try {
-      // 显示进度
-      const results = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: '正在搜索文档...',
-          cancellable: false,
-        },
-        async () => {
-          return await this.ragService.searchDocuments(query);
-        }
-      );
-
-      if (results.length === 0) {
-        vscode.window.showInformationMessage('未找到相关文档');
-        return;
-      }
-
-      // 显示搜索结果
-      await this.showSearchResults(results, query);
-    } catch (error) {
-      console.error('Search error:', error);
-      vscode.window.showErrorMessage(`搜索失败: ${error}`);
-    }
-  }
-
-  /**
-   * 显示搜索结果
-   */
-  private async showSearchResults(
-    results: SearchResult[],
-    query: string
-  ): Promise<void> {
-    // 构建 Markdown 格式的搜索结果
-    let markdown = `# 文档搜索结果\n\n`;
-    markdown += `**查询**：${query}\n\n`;
-    markdown += `**找到 ${results.length} 个相关文档**\n\n`;
-    markdown += `---\n\n`;
-
-    // 按相关度排序
-    const sortedResults = results.sort((a, b) => b.relevance - a.relevance);
-
-    sortedResults.forEach((result, index) => {
-      markdown += `## ${index + 1}. ${result.fileName}\n\n`;
-      markdown += `**文件路径**：\`${result.filePath}\`\n\n`;
-      markdown += `**相关度**：${result.relevance}%\n\n`;
-      
-      if (result.snippet) {
-        markdown += `**相关内容**：\n\n`;
-        markdown += `> ${result.snippet}\n\n`;
-      }
-      
-      markdown += `[📂 打开文件](command:knowledge.rag.openDocument?${encodeURIComponent(JSON.stringify(result.filePath))})\n\n`;
-      markdown += `---\n\n`;
-    });
-
-    markdown += `\n_搜索时间：${new Date().toLocaleString('zh-CN')}_\n`;
-
-    // 在新标签页显示
-    const doc = await vscode.workspace.openTextDocument({
-      content: markdown,
-      language: 'markdown',
-    });
-
-    await vscode.window.showTextDocument(doc, { 
-      preview: false,
-      viewColumn: vscode.ViewColumn.Beside  // 在侧边打开，不覆盖当前文件
-    });
-
-    // 提供操作选项
-    const action = await vscode.window.showInformationMessage(
-      `✅ 找到 ${results.length} 个相关文档`,
-      '复制结果',
-      '保存为文件'
-    );
-
-    if (action === '复制结果') {
-      await vscode.env.clipboard.writeText(markdown);
-      vscode.window.showInformationMessage('搜索结果已复制到剪贴板');
-    } else if (action === '保存为文件') {
-      await this.saveSearchResultsToFile(markdown, query);
-    }
-  }
-
-  /**
-   * 保存搜索结果到文件
-   */
-  private async saveSearchResultsToFile(
-    markdown: string,
-    query: string
-  ): Promise<void> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return;
-    }
-
-    // 生成文件名
-    const safeQuery = query.substring(0, 30).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    const fileName = `search-${safeQuery}-${timestamp}.md`;
-
-    const defaultUri = vscode.Uri.joinPath(workspaceFolder.uri, 'Knowledge', fileName);
-
-    const saveUri = await vscode.window.showSaveDialog({
-      defaultUri,
-      filters: { 'Markdown': ['md'] },
-      saveLabel: '保存',
-    });
-
-    if (saveUri) {
-      const fs = require('fs');
-      fs.writeFileSync(saveUri.fsPath, markdown, 'utf-8');
-      vscode.window.showInformationMessage(`搜索结果已保存到 ${saveUri.fsPath}`);
-    }
-  }
-
-  /**
    * 智能问答
    */
   public async askQuestion(): Promise<void> {
@@ -382,6 +224,110 @@ export class RAGCommands {
   }
 
   /**
+   * 诊断 RAG 状态
+   */
+  public async diagnoseRAGStatus(): Promise<void> {
+    const diagnosticInfo: string[] = [
+      '# RAG 功能诊断报告\n',
+      `**生成时间**: ${new Date().toLocaleString('zh-CN')}\n`,
+      '---\n',
+      '## 1. Gemini Client 状态\n'
+    ];
+
+    // 检查 Gemini Client
+    const clientInitialized = this.geminiClient.isInitialized();
+    diagnosticInfo.push(`- **初始化状态**: ${clientInitialized ? '✅ 已初始化' : '❌ 未初始化'}`);
+    
+    if (clientInitialized) {
+      diagnosticInfo.push(`- **配置的模型**: ${this.geminiClient.getConfiguredModel()}`);
+      const apiKey = this.geminiClient.getApiKey();
+      if (apiKey) {
+        diagnosticInfo.push(`- **API Key**: ${apiKey.substring(0, 10)}... (已配置)`);
+      }
+    } else {
+      diagnosticInfo.push('\n⚠️ **问题**: Gemini Client 未初始化');
+      diagnosticInfo.push('**解决方案**: 请配置 Gemini API Key');
+      diagnosticInfo.push('设置路径: `knowledgeGraph.gemini.apiKey`\n');
+    }
+
+    diagnosticInfo.push('\n## 2. Store 状态\n');
+
+    // 检查 Store 信息
+    const storeInfo = this.ragService.getStoreInfo();
+    if (storeInfo) {
+      diagnosticInfo.push(`- **Store 名称**: \`${storeInfo.storeName}\``);
+      diagnosticInfo.push(`- **项目名称**: ${storeInfo.projectName}`);
+      diagnosticInfo.push(`- **本地记录文件数**: ${storeInfo.fileCount}`);
+      diagnosticInfo.push(`- **创建时间**: ${new Date(storeInfo.createdAt).toLocaleString('zh-CN')}`);
+      
+      // 尝试获取云端信息
+      diagnosticInfo.push('\n**正在查询云端状态...**');
+      
+      try {
+        const cloudInfo = await this.ragService.getStoreInfoFromCloud();
+        if (cloudInfo) {
+          diagnosticInfo.push('\n### 云端实时数据');
+          diagnosticInfo.push(`- **活跃文档数**: ${cloudInfo.activeDocumentsCount}`);
+          diagnosticInfo.push(`- **处理中文档数**: ${cloudInfo.pendingDocumentsCount}`);
+          diagnosticInfo.push(`- **失败文档数**: ${cloudInfo.failedDocumentsCount}`);
+          
+          if (cloudInfo.activeDocumentsCount === 0) {
+            diagnosticInfo.push('\n⚠️ **提示**: 云端没有活跃文档，请添加文档到 `Knowledge/` 文件夹');
+          } else {
+            diagnosticInfo.push('\n✅ **状态**: 云端 Store 正常，可以使用搜索功能');
+          }
+        } else {
+          diagnosticInfo.push('\n⚠️ **无法获取云端信息** (网络问题或 Store 不存在)');
+        }
+      } catch (error) {
+        diagnosticInfo.push(`\n❌ **错误**: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      diagnosticInfo.push('❌ **Store 信息不可用**\n');
+      diagnosticInfo.push('**可能原因**:');
+      diagnosticInfo.push('1. RAG Service 未正确初始化');
+      diagnosticInfo.push('2. Store 创建失败');
+      diagnosticInfo.push('3. 数据库损坏\n');
+      diagnosticInfo.push('**建议操作**:');
+      diagnosticInfo.push('1. 检查 OUTPUT 面板的 "Knowledge Graph" 日志');
+      diagnosticInfo.push('2. 重新加载 VS Code 窗口');
+      diagnosticInfo.push('3. 删除 `.vscode/.knowledge/graph.sqlite` 并重启');
+    }
+
+    diagnosticInfo.push('\n## 3. 已索引文件\n');
+    const indexedFiles = this.ragService.getIndexedFiles();
+    if (indexedFiles.length > 0) {
+      diagnosticInfo.push(`✅ **本地记录**: ${indexedFiles.length} 个文件\n`);
+      indexedFiles.slice(0, 10).forEach(file => {
+        diagnosticInfo.push(`- ${file.fileName} (${(file.fileSize / 1024).toFixed(2)} KB)`);
+      });
+      if (indexedFiles.length > 10) {
+        diagnosticInfo.push(`\n...还有 ${indexedFiles.length - 10} 个文件`);
+      }
+    } else {
+      diagnosticInfo.push('⚠️ **本地无文件记录**\n');
+      diagnosticInfo.push('**注意**: 即使本地无记录，云端可能有文档。');
+      diagnosticInfo.push('请检查云端状态（上面的"云端实时数据"）。');
+    }
+
+    diagnosticInfo.push('\n---\n');
+    diagnosticInfo.push('## 💡 故障排查步骤\n');
+    diagnosticInfo.push('1. **配置 API Key**: 设置 → 搜索 "gemini" → 配置 API Key');
+    diagnosticInfo.push('2. **测试连接**: 运行命令 "Knowledge: Test Gemini API Connection"');
+    diagnosticInfo.push('3. **添加文档**: 在 `Knowledge/` 文件夹添加测试文档');
+    diagnosticInfo.push('4. **查看日志**: OUTPUT 面板 → Knowledge Graph');
+    diagnosticInfo.push('5. **查看教程**: [QUICKSTART_RAG.md](./QUICKSTART_RAG.md)');
+
+    // 显示诊断报告
+    const doc = await vscode.workspace.openTextDocument({
+      content: diagnosticInfo.join('\n'),
+      language: 'markdown',
+    });
+
+    await vscode.window.showTextDocument(doc, { preview: false });
+  }
+
+  /**
    * 测试 API 连接
    */
   public async testConnection(): Promise<void> {
@@ -442,40 +388,67 @@ export class RAGCommands {
    * 查看 Store 信息
    */
   public async viewStoreInfo(): Promise<void> {
-    const storeInfo = this.ragService.getStoreInfo();
-    
-    if (!storeInfo) {
-      vscode.window.showWarningMessage('Store 信息不可用');
-      return;
-    }
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: '正在获取 Store 信息...',
+      },
+      async () => {
+        const storeInfo = this.ragService.getStoreInfo();
+        
+        if (!storeInfo) {
+          vscode.window.showWarningMessage('Store 信息不可用');
+          return;
+        }
 
-    // 构建信息文本
-    const infoLines = [
-      `# RAG Store 信息\n`,
-      `**项目名称**：${storeInfo.projectName}`,
-      `**Store ID**：\`${storeInfo.storeId}\``,
-      `**工作区路径**：\`${storeInfo.workspaceRoot}\``,
-      `**已索引文件数**：${storeInfo.fileCount}`,
-      `**创建时间**：${new Date(storeInfo.createdAt).toLocaleString('zh-CN')}`,
-      storeInfo.lastSyncAt 
-        ? `**最后同步**：${new Date(storeInfo.lastSyncAt).toLocaleString('zh-CN')}` 
-        : '',
-      `\n---\n`,
-      `## 📝 说明\n`,
-      `每个项目都有唯一的 Store ID，确保文档不会与其他项目混淆。`,
-      `\nStore ID 基于项目路径生成，即使使用相同的 API Key，`,
-      `不同项目的文档也完全隔离。`,
-      `\n**当前状态**：本地模式`,
-      `文档索引存储在本地 SQLite 数据库中。`,
-    ].filter(Boolean).join('\n');
+        // 从云端获取实时信息
+        const cloudInfo = await this.ragService.getStoreInfoFromCloud();
 
-    // 显示在新标签页
-    const doc = await vscode.workspace.openTextDocument({
-      content: infoLines,
-      language: 'markdown',
-    });
+        // 构建信息文本
+        const infoLines = [
+          `# RAG Store 信息\n`,
+          `**项目名称**：${storeInfo.projectName}`,
+          `**Store 名称**：\`${storeInfo.storeName}\``,
+          `**Display Name**：\`${cloudInfo?.displayName || 'N/A'}\``,
+          `**工作区路径**：\`${storeInfo.workspaceRoot}\``,
+          `\n## 📊 文档统计（云端实时数据）\n`,
+          cloudInfo
+            ? [
+                `- **活跃文档数**：${cloudInfo.activeDocumentsCount}`,
+                `- **处理中文档数**：${cloudInfo.pendingDocumentsCount}`,
+                `- **失败文档数**：${cloudInfo.failedDocumentsCount}`,
+                `- **总计**：${cloudInfo.activeDocumentsCount + cloudInfo.pendingDocumentsCount + cloudInfo.failedDocumentsCount}`,
+              ].join('\n')
+            : '⚠️ 无法获取云端信息（请检查网络连接）',
+          `\n## 📝 本地元数据\n`,
+          `- **本地记录的文件数**：${storeInfo.fileCount}`,
+          `- **创建时间**：${new Date(storeInfo.createdAt).toLocaleString('zh-CN')}`,
+          storeInfo.lastSyncAt 
+            ? `- **最后同步**：${new Date(storeInfo.lastSyncAt).toLocaleString('zh-CN')}` 
+            : '',
+          `\n---\n`,
+          `## 🔐 项目隔离说明\n`,
+          `每个项目都有唯一的 **File Search Store**，确保文档不会与其他项目混淆。`,
+          `\nStore 基于项目路径自动创建，即使使用相同的 API Key，`,
+          `不同项目的文档也完全隔离在独立的 Store 中。`,
+          `\n## ☁️ 云端 RAG\n`,
+          `文档已上传到 **Google Gemini File Search Store**：`,
+          `- ✅ 真正的向量语义搜索`,
+          `- ✅ 自动分块和嵌入`,
+          `- ✅ 支持 100+ 种文件格式`,
+          `- ✅ 无需本地处理`,
+          `\n💡 **提示**：本地仅保存元数据，实际文档和索引都在云端。`,
+        ].filter(Boolean).join('\n');
 
-    await vscode.window.showTextDocument(doc, { preview: false });
+        // 显示在新标签页
+        const doc = await vscode.workspace.openTextDocument({
+          content: infoLines,
+          language: 'markdown',
+        });
+
+        await vscode.window.showTextDocument(doc, { preview: false });
+      }
+    );
   }
 }
 
