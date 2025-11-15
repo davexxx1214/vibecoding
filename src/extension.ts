@@ -12,6 +12,8 @@ import { RAGTreeDataProvider } from './providers/ragTreeDataProvider';
 import { EntityCommands } from './ui/commands/entityCommands';
 import { RAGCommands } from './ui/commands/ragCommands';
 import { GraphView } from './ui/webview/graphView';
+import { I18nService } from './i18n/i18nService';
+import { t } from './i18n/i18nService';
 
 /**
  * 插件激活时调用
@@ -19,10 +21,14 @@ import { GraphView } from './ui/webview/graphView';
 export async function activate(context: vscode.ExtensionContext) {
   console.log('Knowledge Graph extension is now active');
 
+  // 初始化国际化服务
+  const i18nService = I18nService.getInstance();
+  console.log(`Current language: ${i18nService.getCurrentLanguage()}`);
+
   // 检查是否有工作区
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
-    vscode.window.showWarningMessage('Knowledge Graph: Please open a folder to use this extension');
+    vscode.window.showWarningMessage(t().extension.noWorkspace);
     // 注册占位命令，避免命令未定义错误
     registerPlaceholderCommands(context);
     return;
@@ -593,6 +599,35 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 切换语言命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.switchLanguage', async () => {
+        try {
+          const i18nService = I18nService.getInstance();
+          const currentLang = i18nService.getCurrentLanguage();
+          const availableLangs = i18nService.getAvailableLanguages();
+
+          const selected = await vscode.window.showQuickPick(
+            availableLangs.map(lang => ({
+              label: lang.label,
+              code: lang.code,
+              picked: lang.code === currentLang
+            })),
+            {
+              placeHolder: '选择语言 / Select Language'
+            }
+          );
+
+          if (selected && selected.code !== currentLang) {
+            await i18nService.setLanguage(selected.code as Language);
+          }
+        } catch (error) {
+          console.error('Error in switchLanguage:', error);
+          vscode.window.showErrorMessage(`切换语言失败: ${error}`);
+        }
+      })
+    );
+
     // 清理资源
     context.subscriptions.push({
       dispose: () => {
@@ -602,7 +637,7 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     console.log('All commands registered successfully');
-    vscode.window.showInformationMessage('✅ Knowledge Graph extension activated successfully!');
+    vscode.window.showInformationMessage(t().extension.activated);
   } catch (error) {
     console.error('Failed to activate Knowledge Graph:', error);
     vscode.window.showErrorMessage(`Failed to activate Knowledge Graph: ${error}`);

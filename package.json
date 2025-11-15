@@ -145,6 +145,11 @@
         "command": "knowledge.rag.viewStoreInfo",
         "title": "Knowledge: View RAG Store Info",
         "icon": "$(info)"
+      },
+      {
+        "command": "knowledge.switchLanguage",
+        "title": "Knowledge: Switch Language",
+        "icon": "$(globe)"
       }
     ],
     "menus": {
@@ -246,6 +251,20 @@
           "default": true,
           "description": "自动索引 Knowledge/ 文件夹中的新文件",
           "order": 3
+        },
+        "knowledgeGraph.language": {
+          "type": "string",
+          "default": "zh",
+          "enum": [
+            "zh",
+            "en"
+          ],
+          "enumDescriptions": [
+            "中文 (Chinese)",
+            "English"
+          ],
+          "description": "界面语言 / Display language",
+          "order": 4
         }
       }
     },

@@ -6,6 +6,7 @@ import { ObservationService } from '../../services/observationService';
 import { ExportService } from '../../services/exportService';
 import { AIIntegrationService } from '../../services/aiIntegrationService';
 import { Entity, EntityType } from '../../utils/types';
+import { t } from '../../i18n/i18nService';
 
 /**
  * 实体相关的命令处理器
@@ -55,14 +56,14 @@ export class EntityCommands {
   public async createEntityFromSelection(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-      vscode.window.showWarningMessage('No active editor');
+      vscode.window.showWarningMessage(t().common.noActiveEditor);
       return;
     }
 
     const selection = editor.selection;
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
     if (!workspaceFolder) {
-      vscode.window.showWarningMessage('File is not in a workspace');
+      vscode.window.showWarningMessage(t().common.fileNotInWorkspace);
       return;
     }
 
@@ -72,10 +73,10 @@ export class EntityCommands {
 
     // 输入实体名称
     const name = await vscode.window.showInputBox({
-      prompt: 'Enter entity name',
+      prompt: t().commands.createEntity.prompt,
       value: defaultName,
       validateInput: (value) => {
-        return value.trim() ? null : 'Name cannot be empty';
+        return value.trim() ? null : t().commands.createEntity.validateEmpty;
       },
     });
 
@@ -84,20 +85,13 @@ export class EntityCommands {
     }
 
     // 选择实体类型
-    const typeOptions: vscode.QuickPickItem[] = [
-      { label: 'function', description: 'Function or method' },
-      { label: 'class', description: 'Class definition' },
-      { label: 'interface', description: 'Interface definition' },
-      { label: 'variable', description: 'Variable or constant' },
-      { label: 'component', description: 'UI Component' },
-      { label: 'service', description: 'Service class' },
-      { label: 'api', description: 'API endpoint' },
-      { label: 'config', description: 'Configuration' },
-      { label: 'other', description: 'Other type' },
-    ];
+    const typeOptions: vscode.QuickPickItem[] = Object.entries(t().entityTypes).map(([key, value]) => ({
+      label: value.label,
+      description: value.description
+    }));
 
     const selectedType = await vscode.window.showQuickPick(typeOptions, {
-      placeHolder: 'Select entity type',
+      placeHolder: t().commands.createEntity.placeholder,
     });
 
     if (!selectedType) {
@@ -106,18 +100,17 @@ export class EntityCommands {
 
     // 输入描述（可选）
     const description = await vscode.window.showInputBox({
-      prompt: 'Enter description (optional)',
-      placeHolder: 'Brief description of this entity',
+      prompt: t().common.description,
     });
 
     // 创建实体
     try {
       const relativePath = this.getRelativePath(editor.document);
       if (!relativePath) {
-        vscode.window.showWarningMessage('File is not in a workspace');
+        vscode.window.showWarningMessage(t().common.fileNotInWorkspace);
         return;
       }
-      
+
       const entity = this.entityService.createEntity(
         name,
         selectedType.label as EntityType,
@@ -129,9 +122,13 @@ export class EntityCommands {
         description
       );
 
-      vscode.window.showInformationMessage(`Entity "${entity.name}" created successfully`);
+      vscode.window.showInformationMessage(
+        t().commands.createEntity.success(entity.name)
+      );
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to create entity: ${error}`);
+      vscode.window.showErrorMessage(
+        t().commands.createEntity.error(String(error))
+      );
     }
   }
 
@@ -151,7 +148,7 @@ export class EntityCommands {
     if (!targetEntityId) {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
-        vscode.window.showWarningMessage('No active editor');
+        vscode.window.showWarningMessage(t().common.noActiveEditor);
         return;
       }
 
@@ -164,7 +161,7 @@ export class EntityCommands {
       const entity = this.entityService.findEntityAtLocation(relativePath, line);
 
       if (!entity) {
-        vscode.window.showWarningMessage('No entity found at current location');
+        vscode.window.showWarningMessage(t().commands.viewEntityDetails.notFound);
         return;
       }
 
@@ -173,10 +170,10 @@ export class EntityCommands {
 
     // 输入观察内容
     const content = await vscode.window.showInputBox({
-      prompt: 'Enter observation',
-      placeHolder: 'e.g., Performance issue: N+1 query problem',
+      prompt: t().commands.addObservation.prompt,
+      placeHolder: t().commands.addObservation.placeholder,
       validateInput: (value) => {
-        return value.trim() ? null : 'Observation cannot be empty';
+        return value.trim() ? null : t().commands.addObservation.validateEmpty;
       },
     });
 
@@ -186,9 +183,11 @@ export class EntityCommands {
 
     try {
       this.observationService.addObservation(targetEntityId!, content);
-      vscode.window.showInformationMessage('Observation added successfully');
+      vscode.window.showInformationMessage(t().commands.addObservation.success);
     } catch (error) {
-      vscode.window.showErrorMessage(`Failed to add observation: ${error}`);
+      vscode.window.showErrorMessage(
+        t().commands.addObservation.error(String(error))
+      );
     }
   }
 
