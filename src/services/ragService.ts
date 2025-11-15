@@ -804,6 +804,60 @@ export class RAGService {
   }
 
   /**
+   * 重新索引所有文档（删除云端 Store 并重建）
+   */
+  public async reindexAll(): Promise<void> {
+    const client = this.geminiClient.getClient();
+    if (!client) {
+      throw new Error('Gemini 客户端未初始化');
+    }
+
+    console.log('🔄 Starting full reindex...');
+
+    try {
+      // 1. 删除云端 Store
+      if (this.storeName) {
+        console.log(`Deleting cloud Store: ${this.storeName}`);
+        try {
+          await client.fileSearchStores.delete({ name: this.storeName });
+          console.log('✅ Cloud Store deleted');
+        } catch (error) {
+          console.warn('⚠️ Could not delete Store (may not exist):', error);
+        }
+      }
+
+      // 2. 清空本地数据库
+      console.log('Clearing local database...');
+      const db = this.dbService.getDatabase();
+      db.run(`DELETE FROM indexed_files WHERE store_id = ?`, [this.storeId]);
+      db.run(`DELETE FROM rag_store_info WHERE store_id = ?`, [this.storeId]);
+      this.dbService.save();
+      console.log('✅ Local database cleared');
+
+      // 3. 清空内存中的索引
+      this.indexedFiles.clear();
+      this.storeName = '';
+
+      // 4. 重新创建 Store
+      console.log('Creating new Store...');
+      await this.initializeStore();
+      console.log('✅ New Store created');
+
+      // 5. 重新扫描并索引文件
+      console.log('Rescanning Knowledge folder...');
+      await this.initialScan(this.workspaceRoot);
+      console.log('✅ Reindex completed');
+
+      // 6. 更新 Store 文件数量
+      await this.updateStoreFileCount();
+
+    } catch (error) {
+      console.error('❌ Reindex failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 清理资源
    */
   public dispose(): void {

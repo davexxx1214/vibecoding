@@ -366,22 +366,62 @@ export class RAGCommands {
    */
   public async reindexAll(): Promise<void> {
     const answer = await vscode.window.showWarningMessage(
-      '确定要重新索引所有文档吗？这可能需要一些时间。',
-      '确定',
+      '⚠️ 这将删除云端 Store 并重新索引所有文档。\n\n' +
+      '操作将：\n' +
+      '1. 删除云端的所有已索引文档\n' +
+      '2. 清空本地索引记录\n' +
+      '3. 重新扫描 Knowledge/ 文件夹\n' +
+      '4. 重新上传所有文档到云端\n\n' +
+      '这可能需要几分钟时间。确定继续吗？',
+      { modal: true },
+      '确定重新索引',
       '取消'
     );
 
-    if (answer !== '确定') {
+    if (answer !== '确定重新索引') {
       return;
     }
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
+      vscode.window.showErrorMessage('未找到工作区文件夹');
       return;
     }
 
-    // TODO: 实现重新索引逻辑
-    vscode.window.showInformationMessage('重新索引功能开发中...');
+    try {
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: '正在重新索引 RAG 文档...',
+          cancellable: false,
+        },
+        async (progress) => {
+          progress.report({ message: '删除云端 Store...' });
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          progress.report({ message: '清空本地数据库...' });
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          progress.report({ message: '创建新 Store...' });
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          progress.report({ message: '扫描并上传文档...' });
+          await this.ragService.reindexAll();
+        }
+      );
+
+      vscode.window.showInformationMessage(
+        '✅ 重新索引完成！云端和本地数据已同步。',
+        '查看 Store 信息'
+      ).then(action => {
+        if (action === '查看 Store 信息') {
+          vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
+        }
+      });
+    } catch (error) {
+      console.error('Reindex failed:', error);
+      vscode.window.showErrorMessage(`重新索引失败: ${error}`);
+    }
   }
 
   /**

@@ -59,7 +59,7 @@ export async function activate(context: vscode.ExtensionContext) {
         
         // 显示初始化成功的弹窗
         vscode.window.showInformationMessage(
-          '✅ Knowledge Graph RAG 功能已启用！文档将自动上传到云端。',
+          '✅ Knowledge Graph RAG 功能已启用！新增文档将自动索引到云端。',
           '查看 Store 信息'
         ).then(action => {
           if (action === '查看 Store 信息') {
@@ -570,9 +570,15 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-      vscode.commands.registerCommand('knowledge.rag.refresh', () => {
-        ragTreeDataProvider.refresh();
-        vscode.window.showInformationMessage('RAG Documents refreshed');
+      vscode.commands.registerCommand('knowledge.rag.refresh', async () => {
+        try {
+          await ragCommands.reindexAll();
+          // 刷新树视图以显示更新
+          ragTreeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in reindexAll:', error);
+          vscode.window.showErrorMessage(`重新索引失败: ${error}`);
+        }
       })
     );
 

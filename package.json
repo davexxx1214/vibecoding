@@ -138,7 +138,7 @@
       },
       {
         "command": "knowledge.rag.refresh",
-        "title": "Refresh",
+        "title": "Knowledge: Rebuild RAG Index",
         "icon": "$(refresh)"
       },
       {
