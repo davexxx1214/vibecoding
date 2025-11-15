@@ -17,6 +17,11 @@
     - [建立关系](#14-建立关系3-分钟)
     - [树视图](#15-在树视图中查看1-分钟)
     - [**可视化图谱** 🌟](#16-可视化知识图谱10-分钟-核心功能)
+  - [第二部分：RAG 持久知识库](#第二部分rag-持久知识库5-分钟) 🆕
+    - [配置 API Key](#21-配置-gemini-api-key1-分钟)
+    - [添加文档](#22-添加文档到-knowledge-文件夹1-分钟)
+    - [智能问答](#23-使用-ask-question-进行智能问答2-分钟)
+    - [查看 Store 信息](#24-查看-rag-store-信息1-分钟)
 - [最佳实践](#-最佳实践)
 - [附录](#-附录)
 
@@ -207,13 +212,20 @@ code .
 - 😵 多个项目的文档容易混淆
 
 **使用 VibeCoding 解决**：
-1. 在 `Knowledge/` 文件夹添加文档
-2. 文档自动索引（本地 + 预留云端上传）
-3. 语义搜索快速找到相关内容
-4. AI 基于文档内容智能问答
-5. **项目自动隔离**：多项目文档不会混淆
+1. 在 `Knowledge/` 文件夹添加文档（支持 PDF、MD、TXT 等）
+2. 文档自动上传到 **Google Gemini File Search Store**（云端 RAG）
+3. 使用 **Ask Question** 进行智能问答
+4. AI 基于文档内容回答，并显示来源引用（Grounding）
+5. **项目自动隔离**：每个项目独立的 Store，多项目文档完全隔离
+6. **增量索引**：已索引文档不会重复上传
+7. **Rebuild RAG Index**：需要时可完全同步本地和云端
 
-**实际演示**：见 [第六部分](#第六部分rag-持久知识库-gemini15-分钟-新功能)
+**核心特性**：
+- ✅ 真正的向量语义搜索（Gemini 自动分块和嵌入）
+- ✅ 统一问答体验（Ask Question）
+- ✅ 来源可追溯（显示引用的文档）
+- ✅ 多格式支持（100+ 种文件格式）
+- ✅ 项目完全隔离（多项目使用同一 API Key 也不会混淆）
 
 ---
 
@@ -842,6 +854,172 @@ ArticleService ────⚠️ uses────⤴
 
 ---
 
+### 第二部分：RAG 持久知识库（5 分钟）🆕
+
+#### 2.1 配置 Gemini API Key（1 分钟）
+
+**操作**：
+```
+1. 命令面板（Ctrl+Shift+P）
+2. 输入 "Preferences: Open Settings (UI)"
+3. 搜索 "Gemini API Key"
+4. 找到 "Knowledge Graph > Gemini: Api Key"
+5. 填入你的 Gemini API Key
+6. 保存设置
+```
+
+**预期效果**：
+- ✅ 弹出提示："✅ Knowledge Graph RAG 功能已启用！新增文档将自动索引到云端。"
+- ✅ 侧边栏出现 "Documents (RAG)" 视图
+
+**获取 API Key**：
+- 访问 https://aistudio.google.com/apikey
+- 登录 Google 账号
+- 创建或复制 API Key
+
+---
+
+#### 2.2 添加文档到 Knowledge 文件夹（1 分钟）
+
+**操作**：
+```
+1. 在项目根目录创建 Knowledge/ 文件夹
+2. 添加一些文档：
+   - architecture.md（架构文档）
+   - database-design.pdf（数据库设计）
+   - api-guide.txt（API 指南）
+3. 保存文件
+```
+
+**预期效果**：
+- ✅ 文件自动被检测到
+- ✅ 后台自动上传到 Gemini File Search Store
+- ✅ 侧边栏 "Documents (RAG)" 显示文档列表
+- ✅ 控制台输出：`Indexing file: Knowledge/architecture.md`
+
+💡 **支持的格式**：PDF、TXT、MD、DOCX、JSON、TS、JS 等 100+ 种格式
+
+---
+
+#### 2.3 使用 Ask Question 进行智能问答（2 分钟）
+
+**操作**：
+```
+1. 点击侧边栏 "Documents (RAG)" 的问号图标 (?)
+   或命令面板 → "Knowledge: Ask Question"
+2. 输入问题，例如：
+   "项目使用了哪些数据库？"
+   "如何实现用户认证？"
+   "文章模块的 API 有哪些？"
+3. 等待 Gemini 分析（约 3-5 秒）
+```
+
+**预期效果**：
+
+打开一个新的 Markdown 文档，显示：
+
+```markdown
+# 💬 RAG 问答结果
+
+**问题**：项目使用了哪些数据库？
+
+**回答时间**：2025/11/15 18:30:45
+
+---
+
+## 🤖 AI 回答
+
+项目使用 **MySQL** 作为主数据库，通过 **TypeORM** 进行数据访问。
+配置中还提到了使用连接池，大小设置为 20。
+
+---
+
+## 📚 来源引用（Grounding）
+
+1. **architecture.md**
+   - 提到了 TypeORM + MySQL 的技术栈
+
+2. **database-design.pdf**
+   - 包含完整的数据库表结构设计
+
+---
+
+_💡 点击文件名可以直接跳转查看原文档_
+```
+
+✅ **关键特性**：
+- AI 基于文档内容回答
+- 显示来源引用（Grounding Metadata）
+- Markdown 格式，可复制内容
+- 可以保存为文件
+
+---
+
+#### 2.4 查看 RAG Store 信息（1 分钟）
+
+**操作**：
+```
+1. 点击侧边栏 "Documents (RAG)" 的信息图标 (ℹ️)
+   或命令面板 → "Knowledge: View RAG Store Info"
+```
+
+**预期效果**：
+
+打开一个新的 Markdown 文档，显示：
+
+```markdown
+# RAG Store 信息
+
+**项目名称**：nestjs-realworld-example-app
+**Store 名称**：`fileSearchStores/vibecodingnestjsrealworldex-xxx`
+**工作区路径**：`d:\workspace\nestjs-realworld-example-app`
+
+## 📊 文档统计（云端实时数据）
+- **活跃文档数**：3
+- **处理中文档数**：0
+- **失败文档数**：0
+- **总计**：3
+
+## 📝 本地元数据
+- **本地记录的文件数**：3
+- **创建时间**：2025/11/15 18:25:30
+- **最后同步**：2025/11/15 18:30:45
+
+---
+
+## 🔐 项目隔离说明
+每个项目都有唯一的 **File Search Store**，确保文档不会与其他项目混淆。
+```
+
+💡 **项目隔离机制**：
+- 每个项目自动生成唯一 Store ID（基于项目路径 hash）
+- 多个项目使用同一 API Key 也完全隔离
+- 文档索引不会混淆
+
+---
+
+#### 2.5 增量索引和重建索引（选读）
+
+**增量索引**：
+- ✅ 已索引的文档不会重复上传
+- ✅ 只有新增或修改的文档会被上传
+- ✅ 每次启动插件时自动检查
+
+**重建索引**：
+
+如果本地和云端不同步（例如删除了本地文件），可以：
+
+```
+1. 点击侧边栏 "Documents (RAG)" 的刷新图标 (🔄)
+   或命令面板 → "Knowledge: Rebuild RAG Index"
+2. 确认操作
+3. 等待完成（会删除云端 Store 并重新上传所有文档）
+```
+
+⚠️ **注意**：Rebuild 会删除云端所有文档并重新上传，确保本地和云端完全一致。
+
+---
+
 ## 🎉 演示完成
 
 **恭喜！你已经掌握了 VibeCoding 的核心功能：**
@@ -852,12 +1030,22 @@ ArticleService ────⚠️ uses────⤴
 3. 建立关系（Link to Entity）
 4. 树视图查看
 5. **可视化图谱** 🌟
+6. **RAG 智能问答** 🆕
 
-### 🌟 可视化图谱的价值
+### 🌟 核心功能价值
+
+**可视化图谱**：
 - 🕸️ 图形化展示项目架构
 - ⚡ 双击节点跳转代码
 - 🔍 快速影响分析
 - 🐛 自动检测循环依赖
+
+**RAG 智能问答**：
+- ☁️ 云端托管的语义搜索
+- 🤖 基于文档的智能问答
+- 📚 来源可追溯（Grounding）
+- 🔐 多项目完全隔离
+- ⚡ 增量索引，高效快速
 
 ### 📖 进一步学习
 
@@ -890,17 +1078,44 @@ ArticleService ────⚠️ uses────⤴
    查看图谱 → 检查循环依赖
    ```
 
+4. **管理项目文档** 🆕
+   ```
+   写架构文档 → 放到 Knowledge/ 文件夹 → 自动索引
+   需要查找信息 → Ask Question → AI 基于文档回答
+   ```
+
+5. **使用 AI 编程工具** 🆕
+   ```
+   配置 Gemini API Key → 文档自动上传到云端
+   使用 Cursor/Copilot → AI 可以访问项目文档
+   ```
+
 ### 团队协作
 
 1. **知识图谱随代码提交**
    ```bash
-   git add .kg/
+   git add .vscode/.knowledge/
    git commit -m "Add knowledge graph for user module"
    ```
 
-2. **新人入职**
+2. **项目文档共享** 🆕
+   ```bash
+   git add Knowledge/
+   git commit -m "Add architecture documentation"
+   # 团队成员 clone 后，文档自动索引到各自的云端 Store
+   ```
+
+3. **新人入职**
    ```
    打开项目 → 查看图谱 → 快速理解架构
+   配置 API Key → 文档自动索引 → Ask Question 快速上手
+   ```
+
+4. **多项目开发** 🆕
+   ```
+   使用同一个 API Key 在多个项目中
+   → 每个项目自动隔离到独立的 Store
+   → 文档不会混淆
 ```
 
 ---
@@ -911,7 +1126,10 @@ ArticleService ────⚠️ uses────⤴
 1. 在你的项目中使用 VibeCoding
 2. 标记核心实体和关系
 3. 使用可视化图谱理解项目架构
-4. 让知识随代码一起演进
+4. 配置 Gemini API Key，启用 RAG 功能
+5. 在 Knowledge/ 文件夹添加项目文档
+6. 使用 Ask Question 进行智能问答
+7. 让知识随代码一起演进
 
 **Happy Coding!** 🎉
 
@@ -928,6 +1146,10 @@ ArticleService ────⚠️ uses────⤴
 | Link to Entity | 右键菜单 | 建立关系 |
 | Visualize Graph | Ctrl+Shift+P | 可视化图谱 |
 | View Entity Details | 右键菜单 | 查看实体详情 |
+| **Ask Question** 🆕 | 侧边栏 (?) | RAG 智能问答 |
+| **View Store Info** 🆕 | 侧边栏 (ℹ️) | 查看 RAG Store 信息 |
+| **Rebuild RAG Index** 🆕 | 侧边栏 (🔄) | 重建云端索引 |
+| **Test Gemini API** 🆕 | Ctrl+Shift+P | 测试 API 连接 |
 
 ### 实体类型
 

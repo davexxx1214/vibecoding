@@ -105,10 +105,19 @@ npm run compile
 
 ### 基本使用
 
+#### 知识图谱功能
 1. **创建实体**：选中代码 → 右键 → "Knowledge: Create Entity from Selection"
 2. **添加观察记录**：鼠标悬停在实体上 → 点击"Add Observation"
 3. **查看知识图谱**：点击侧边栏的"Knowledge Graph"图标
 4. **搜索**：命令面板 → "Knowledge: Search Graph"
+
+#### RAG 知识库功能 🆕
+1. **配置 API Key**：设置 → 搜索 "Gemini API Key" → 填入你的密钥
+2. **添加文档**：在项目根目录创建 `Knowledge/` 文件夹，添加文档（支持 PDF、MD、TXT 等）
+3. **自动索引**：文档自动上传到 Gemini，无需手动操作
+4. **智能问答**：侧边栏 → Documents (RAG) → 点击问号图标 → 输入问题
+5. **查看 Store 信息**：侧边栏 → Documents (RAG) → 点击信息图标
+6. **重建索引**：侧边栏 → Documents (RAG) → 点击刷新图标（删除云端索引并重新上传）
 
 ---
 
@@ -237,26 +246,29 @@ vibecoding/
 - [ ] 增量转换和格式优化
 
 #### 2.4 持久知识库（托管式 RAG）🆕 ✅ **已完成**
-- ✅ 使用 **真正的 Google Gemini File Search Store API**（`@google/genai` SDK）
-- ✅ 监听 `Knowledge/` 文件夹并自动上传到 Gemini
+- ✅ 使用 **Google Gemini File Search Store API**（`@google/genai` SDK）
+- ✅ 监听 `Knowledge/` 文件夹，新增文档自动上传到云端（增量索引）
 - ✅ **真正的语义搜索**：Gemini 自动分块、嵌入和检索
-- ✅ **智能问答**：基于 Gemini File Search 工具的 RAG 问答
+- ✅ **统一智能问答**：基于 Gemini File Search 工具的 RAG 问答（Ask Question）
 - ✅ 侧边栏文档管理（Documents RAG 视图）
-- ✅ API Key 配置管理（自动重连机制）
-- ✅ **项目隔离**：每个项目独立的 File Search Store，多项目完全隔离
-- ✅ **搜索结果展示优化**：Markdown 文档展示，保留查询，可复制内容
-- ✅ **问答结果展示优化**：Markdown 文档展示，包含来源引用（Grounding）
+- ✅ API Key 配置管理（VS Code 设置 + 自动重连）
+- ✅ **项目隔离**：每个项目独立的 File Search Store，多项目文档完全隔离
+- ✅ **结果展示优化**：Markdown 文档展示，包含 AI 答案和来源引用（Grounding）
 - ✅ **多格式支持**：Gemini 原生支持 PDF、TXT、MD、DOCX、JSON、代码等 100+ 种格式
+- ✅ **增量索引**：已索引文档不会重复上传，启动速度快
+- ✅ **索引重建**：Rebuild RAG Index 命令，完全同步本地和云端
 
 **验收标准**：
 - ✅ 可以一键导出知识图谱供 AI 使用
 - ✅ Cursor 和 GitHub Copilot 能自动获取项目上下文
 - ✅ 自动生成 AI 配置文件（.cursorrules, copilot-instructions.md）
 - ✅ AI 能基于导出的上下文理解项目
-- ✅ Knowledge 文件夹的文档自动索引
-- ✅ 语义搜索和智能问答功能完整可用
+- ✅ Knowledge 文件夹的文档自动索引到云端
+- ✅ 智能问答功能完整可用（Ask Question）
 - ✅ 多项目使用同一 API Key 时文档完全隔离
-- ✅ 搜索和问答结果以 Markdown 文档展示，可复制和保存
+- ✅ 问答结果以 Markdown 文档展示，包含来源引用
+- ✅ 已索引文档不会重复上传（增量索引）
+- ✅ 支持 Rebuild RAG Index 完全同步本地和云端
 
 **时间**：已完成（约 3 周）
 
