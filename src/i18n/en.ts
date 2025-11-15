@@ -226,6 +226,10 @@ export const en = {
       title: 'Knowledge: Switch Language',
       placeholder: '选择语言 / Select Language',
       error: (error: string) => `Failed to switch language: ${error}`
+    },
+
+    expandAll: {
+      title: 'Knowledge: Expand All'
     }
   },
 

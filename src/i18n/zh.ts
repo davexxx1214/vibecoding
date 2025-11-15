@@ -225,6 +225,10 @@ export const zh = {
       title: '知识图谱: 切换语言',
       placeholder: '选择语言 / Select Language',
       error: (error: string) => `切换语言失败: ${error}`
+    },
+
+    expandAll: {
+      title: '知识图谱: 展开所有'
     }
   },
 

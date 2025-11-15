@@ -173,6 +173,7 @@ export interface LanguagePack {
       placeholder: string;
       error: (error: string) => string;
     };
+    expandAll: CommandTranslations;
   };
 
   rag: {

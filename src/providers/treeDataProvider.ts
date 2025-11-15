@@ -88,12 +88,20 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
     this._onDidChangeTreeData.event;
 
   private searchQuery: string = '';
+  private expandAllState: boolean = false;
+  private treeView?: vscode.TreeView<KnowledgeTreeItem>;
+  private cachedRootNodes: KnowledgeTreeItem[] = [];
+  private cachedCategoryNodes: Map<string, KnowledgeTreeItem> = new Map();
 
   constructor(
     private entityService: EntityService,
     private relationService: RelationService,
     private observationService: ObservationService
   ) {}
+
+  public setTreeView(treeView: vscode.TreeView<KnowledgeTreeItem>): void {
+    this.treeView = treeView;
+  }
 
   public refresh(): void {
     this._onDidChangeTreeData.fire();
@@ -104,8 +112,67 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
     this.refresh();
   }
 
+  public async expandAll(): Promise<void> {
+    if (!this.treeView) {
+      return;
+    }
+
+    this.expandAllState = true;
+    this.refresh();
+
+    // 等待视图刷新完成后展开节点
+    setTimeout(async () => {
+      try {
+        // 使用缓存的节点引用来展开
+        if (this.cachedRootNodes.length > 1) {
+          const relationsNode = this.cachedRootNodes[1];
+          await this.treeView?.reveal(relationsNode, { 
+            expand: 2,
+            select: false, 
+            focus: false 
+          }).catch((err) => {
+            console.log('Failed to expand Relations node:', err);
+          });
+        }
+
+        // 展开所有缓存的分类节点
+        for (const [type, node] of this.cachedCategoryNodes.entries()) {
+          await this.treeView?.reveal(node, { 
+            expand: 1,
+            select: false, 
+            focus: false 
+          }).catch((err) => {
+            console.log(`Failed to expand ${type} node:`, err);
+          });
+        }
+      } catch (error) {
+        console.error('Error expanding all:', error);
+      }
+    }, 200); // 增加延迟到 200ms
+  }
+
   getTreeItem(element: KnowledgeTreeItem): vscode.TreeItem {
     return element;
+  }
+
+  getParent(element: KnowledgeTreeItem): vscode.ProviderResult<KnowledgeTreeItem> {
+    // 如果是分类节点，返回 Entities 根节点
+    if (element.type === 'category') {
+      return this.cachedRootNodes[0]; // Entities 节点
+    }
+    
+    // 如果是实体节点，找到它的分类节点
+    if (element.type === 'entity' && element.entity) {
+      return this.cachedCategoryNodes.get(element.entity.type);
+    }
+    
+    // 如果是关系节点，返回 Relations 根节点
+    if (element.type === 'relation') {
+      return this.cachedRootNodes[1]; // Relations 节点
+    }
+    
+    // 根节点没有父节点
+    return undefined;
   }
 
   getChildren(element?: KnowledgeTreeItem): Thenable<KnowledgeTreeItem[]> {
@@ -146,7 +213,7 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
     const entities = this.entityService.listEntities();
     const relations = this.getAllRelations();
     
-    return [
+    const nodes = [
       new KnowledgeTreeItem(
         `Entities (${entities.length})`,
         vscode.TreeItemCollapsibleState.Expanded,
@@ -155,11 +222,15 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
       ),
       new KnowledgeTreeItem(
         `Relations (${relations.length})`,
-        vscode.TreeItemCollapsibleState.Collapsed,
+        this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
         undefined,
         'root'
       )
     ];
+    
+    // 缓存根节点
+    this.cachedRootNodes = nodes;
+    return nodes;
   }
 
   /**
@@ -193,14 +264,16 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
         updatedAt: 0,
       };
       
-      categories.push(
-        new KnowledgeTreeItem(
-          label,
-          vscode.TreeItemCollapsibleState.Collapsed,
-          categoryEntity,
-          'category'
-        )
+      const categoryNode = new KnowledgeTreeItem(
+        label,
+        this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+        categoryEntity,
+        'category'
       );
+      
+      // 缓存分类节点
+      this.cachedCategoryNodes.set(type, categoryNode);
+      categories.push(categoryNode);
     });
 
     return categories;

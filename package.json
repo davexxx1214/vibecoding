@@ -151,6 +151,11 @@
         "command": "knowledge.switchLanguage",
         "title": "Knowledge: Switch Language",
         "icon": "$(globe)"
+      },
+      {
+        "command": "knowledge.expandAll",
+        "title": "Knowledge: Expand All",
+        "icon": "$(expand-all)"
       }
     ],
     "menus": {
@@ -200,6 +205,11 @@
       ],
       "view/title": [
         {
+          "command": "knowledge.expandAll",
+          "when": "view == knowledgeGraphExplorer",
+          "group": "navigation@0"
+        },
+        {
           "command": "knowledge.exportGraph",
           "when": "view == knowledgeGraphExplorer",
           "group": "navigation@1"
@@ -218,6 +228,11 @@
           "command": "knowledge.switchLanguage",
           "when": "view == knowledgeGraphExplorer",
           "group": "navigation@4"
+        },
+        {
+          "command": "knowledge.expandAll",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@0"
         },
         {
           "command": "knowledge.rag.askQuestion",

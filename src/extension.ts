@@ -157,6 +157,7 @@ export async function activate(context: vscode.ExtensionContext) {
       treeDataProvider,
       showCollapseAll: true,
     });
+    treeDataProvider.setTreeView(treeView);
     context.subscriptions.push(treeView);
 
     // 注册 RAG 树视图
@@ -165,6 +166,7 @@ export async function activate(context: vscode.ExtensionContext) {
       treeDataProvider: ragTreeDataProvider,
       showCollapseAll: true,
     });
+    ragTreeDataProvider.setTreeView(ragTreeView);
     context.subscriptions.push(ragTreeView);
 
     // 注册 CodeLens Provider
@@ -628,6 +630,18 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 展开所有命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.expandAll', async () => {
+        try {
+          await treeDataProvider.expandAll();
+          await ragTreeDataProvider.expandAll();
+        } catch (error) {
+          console.error('Error in expandAll:', error);
+        }
+      })
+    );
+
     // 清理资源
     context.subscriptions.push({
       dispose: () => {
@@ -680,6 +694,8 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.rag.openDocument',
     'knowledge.rag.refresh',
     'knowledge.rag.viewStoreInfo',
+    'knowledge.switchLanguage',
+    'knowledge.expandAll',
   ];
 
   placeholderCommands.forEach(commandId => {

@@ -63,7 +63,15 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
   readonly onDidChangeTreeData: vscode.Event<RAGTreeItem | undefined | null | void> =
     this._onDidChangeTreeData.event;
 
+  private expandAllState: boolean = false;
+  private treeView?: vscode.TreeView<RAGTreeItem>;
+  private cachedFolderNodes: RAGTreeItem[] = [];
+
   constructor(private ragService: RAGService) {}
+
+  public setTreeView(treeView: vscode.TreeView<RAGTreeItem>): void {
+    this.treeView = treeView;
+  }
 
   /**
    * 刷新树视图
@@ -73,10 +81,54 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
   }
 
   /**
+   * 展开所有节点
+   */
+  public async expandAll(): Promise<void> {
+    if (!this.treeView) {
+      return;
+    }
+
+    this.expandAllState = true;
+    this.refresh();
+
+    // 等待视图刷新完成后展开节点
+    setTimeout(async () => {
+      try {
+        // 使用缓存的文件夹节点引用
+        for (const folderNode of this.cachedFolderNodes) {
+          await this.treeView?.reveal(folderNode, { 
+            expand: 1,
+            select: false, 
+            focus: false 
+          }).catch((err) => {
+            console.log(`Failed to expand folder node:`, err);
+          });
+        }
+      } catch (error) {
+        console.error('Error expanding all in RAG:', error);
+      }
+    }, 200); // 增加延迟到 200ms
+  }
+
+  /**
    * 获取树节点
    */
   getTreeItem(element: RAGTreeItem): vscode.TreeItem {
     return element;
+  }
+
+  /**
+   * 获取父节点
+   */
+  getParent(element: RAGTreeItem): vscode.ProviderResult<RAGTreeItem> {
+    // 如果是文件节点，找到它的文件夹节点
+    if (element.type === 'file' && element.fileInfo) {
+      const folder = this.getFolder(element.fileInfo.filePath);
+      return this.cachedFolderNodes.find(node => node.folderName === folder);
+    }
+    
+    // 文件夹节点和统计节点没有父节点（它们是根级别）
+    return undefined;
   }
 
   /**
@@ -122,21 +174,26 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
     // 按文件夹分组
     const folders = this.groupFilesByFolder(indexedFiles);
 
+    // 清空缓存
+    this.cachedFolderNodes = [];
+
     // 添加文件夹节点
     for (const folder of folders) {
       const fileCount = indexedFiles.filter(f =>
         this.getFolder(f.filePath) === folder
       ).length;
 
-      children.push(
-        new RAGTreeItem(
-          `${folder || 'Knowledge'} (${fileCount})`,
-          vscode.TreeItemCollapsibleState.Collapsed,
-          'folder',
-          undefined,  // fileInfo
-          folder      // folderName
-        )
+      const folderNode = new RAGTreeItem(
+        `${folder || 'Knowledge'} (${fileCount})`,
+        this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+        'folder',
+        undefined,  // fileInfo
+        folder      // folderName
       );
+      
+      // 缓存文件夹节点
+      this.cachedFolderNodes.push(folderNode);
+      children.push(folderNode);
     }
 
     return children;
