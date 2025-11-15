@@ -934,15 +934,17 @@ export class EntityCommands {
    * 导出知识图谱
    */
   public async exportGraph(): Promise<void> {
+    const translations = t().commands.exportGraph;
+    
     // 选择导出格式
     const format = await vscode.window.showQuickPick(
       [
-        { label: 'Markdown', description: '导出为 Markdown 格式 (.md)', value: 'md' },
-        { label: 'Markdown with Dependency Analysis', description: '包含依赖链分析的 Markdown (.md)', value: 'md-deps' },
-        { label: 'JSON', description: '导出为 JSON 格式 (.json)', value: 'json' },
+        { label: translations.format.markdown.label, description: translations.format.markdown.description, value: 'md' },
+        { label: translations.format.markdownWithDeps.label, description: translations.format.markdownWithDeps.description, value: 'md-deps' },
+        { label: translations.format.json.label, description: translations.format.json.description, value: 'json' },
       ],
       {
-        placeHolder: '选择导出格式',
+        placeHolder: translations.placeholder,
       }
     );
 
@@ -957,7 +959,7 @@ export class EntityCommands {
     // 选择保存位置
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage('请先打开一个工作区');
+      vscode.window.showErrorMessage(translations.noWorkspace);
       return;
     }
 
@@ -969,7 +971,7 @@ export class EntityCommands {
       filters: actualFormat === 'md' 
         ? { 'Markdown': ['md'] }
         : { 'JSON': ['json'] },
-      saveLabel: '导出',
+      saveLabel: translations.saveLabel,
     });
 
     if (!saveUri) {
@@ -981,42 +983,42 @@ export class EntityCommands {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: '正在导出知识图谱...',
+          title: translations.progress.title,
           cancellable: false,
         },
         async (progress) => {
-          progress.report({ increment: 0, message: '收集数据...' });
+          progress.report({ increment: 0, message: translations.progress.collecting });
 
           // 执行导出
           if (actualFormat === 'md') {
-            progress.report({ increment: 30, message: '生成 Markdown...' });
+            progress.report({ increment: 30, message: translations.progress.generatingMarkdown });
             await this.exportService.exportToMarkdown(saveUri.fsPath, {
               includeDependencyAnalysis: includeDeps,
             });
           } else {
-            progress.report({ increment: 30, message: '生成 JSON...' });
+            progress.report({ increment: 30, message: translations.progress.generatingJSON });
             await this.exportService.exportToJSON(saveUri.fsPath);
           }
 
-          progress.report({ increment: 100, message: '完成！' });
+          progress.report({ increment: 100, message: translations.progress.complete });
         }
       );
 
       // 询问是否打开导出的文件
       const action = await vscode.window.showInformationMessage(
-        `✅ 知识图谱已成功导出到 ${path.basename(saveUri.fsPath)}`,
-        '打开文件',
-        '在文件夹中显示'
+        translations.success(path.basename(saveUri.fsPath)),
+        translations.openFile,
+        translations.showInFolder
       );
 
-      if (action === '打开文件') {
+      if (action === translations.openFile) {
         const doc = await vscode.workspace.openTextDocument(saveUri);
         await vscode.window.showTextDocument(doc);
-      } else if (action === '在文件夹中显示') {
+      } else if (action === translations.showInFolder) {
         await vscode.commands.executeCommand('revealFileInOS', saveUri);
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`导出失败: ${error}`);
+      vscode.window.showErrorMessage(translations.error(String(error)));
     }
   }
 

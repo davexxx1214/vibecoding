@@ -408,3 +408,4 @@ npm run lint
 - [sql.js 文档](https://sql.js.org/)
 - [vis-network 文档](https://visjs.github.io/vis-network/)
 - [TypeScript Compiler API](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
+- [Google File Search Tool](https://ai.google.dev/gemini-api/docs/file-search)

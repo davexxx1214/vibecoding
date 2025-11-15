@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { RAGService } from '../services/ragService';
+import { t, getLocale } from '../i18n/i18nService';
 
 /**
  * RAG 文档树视图节点类型
@@ -33,7 +34,8 @@ class RAGTreeItem extends vscode.TreeItem {
       
       // 添加tooltip
       if (fileInfo) {
-        this.tooltip = `${fileInfo.filePath}\n大小: ${(fileInfo.fileSize / 1024).toFixed(2)} KB\n索引时间: ${new Date(fileInfo.indexedAt).toLocaleString('zh-CN')}`;
+        const common = t().common;
+        this.tooltip = `${fileInfo.filePath}\n${common.size}: ${(fileInfo.fileSize / 1024).toFixed(2)} KB\n${common.indexedAt}: ${new Date(fileInfo.indexedAt).toLocaleString(getLocale())}`;
         this.description = `${(fileInfo.fileSize / 1024).toFixed(2)} KB`;
       }
     } else if (type === 'stat') {
@@ -44,7 +46,7 @@ class RAGTreeItem extends vscode.TreeItem {
     if (type === 'file' && fileInfo) {
       this.command = {
         command: 'knowledge.rag.openDocument',
-        title: '打开文档',
+        title: t().common.openDocument,
         arguments: [fileInfo.filePath],
       };
     }
@@ -106,7 +108,7 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
 
     children.push(
       new RAGTreeItem(
-        `📊 已索引 ${totalFiles} 个文档 (${(totalSize / 1024 / 1024).toFixed(2)} MB)`,
+        t().common.indexed(totalFiles, totalSize / 1024 / 1024),
         vscode.TreeItemCollapsibleState.None,
         'stat'
       )

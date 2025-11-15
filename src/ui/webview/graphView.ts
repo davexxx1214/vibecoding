@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
+import { t } from '../../i18n/i18nService';
 
 /**
  * 图谱可视化 Webview
@@ -87,7 +88,7 @@ export class GraphView {
 
   private _update() {
     const webview = this._panel.webview;
-    this._panel.title = 'Knowledge Graph Visualization';
+    this._panel.title = t().graphView.title;
     this._panel.webview.html = this._getHtmlForWebview(webview);
   }
 
@@ -175,12 +176,14 @@ export class GraphView {
   }
 
   private _getHtmlForWebview(webview: vscode.Webview) {
+    const translations = t().graphView;
+    
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Graph</title>
+    <title>${translations.title}</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
     <style>
         body {
@@ -284,19 +287,19 @@ export class GraphView {
 </head>
 <body>
     <div id="toolbar">
-        <button onclick="fitGraph()" title="适应窗口">⛶</button>
-        <button onclick="refreshGraph()" title="刷新">↻</button>
+        <button onclick="fitGraph()" title="${translations.toolbar.fit}">⛶</button>
+        <button onclick="refreshGraph()" title="${translations.toolbar.refresh}">↻</button>
     </div>
     
     <div id="loading">
         <div class="spinner"></div>
-        <div>加载知识图谱中...</div>
+        <div>${translations.loading}</div>
     </div>
     
     <div id="empty-state" class="hidden">
-        <h2>📊 知识图谱为空</h2>
-        <p>请先创建实体和关系</p>
-        <p style="margin-top: 10px;">使用右键菜单 "Knowledge: Create Entity" 开始</p>
+        <h2>${translations.emptyState.title}</h2>
+        <p>${translations.emptyState.description}</p>
+        <p style="margin-top: 10px;">${translations.emptyState.hint}</p>
     </div>
     
     <div id="mynetwork"></div>
@@ -304,6 +307,16 @@ export class GraphView {
     <script>
         const vscode = acquireVsCodeApi();
         let network = null;
+        
+        // 翻译文本
+        const i18n = {
+            tooltip: {
+                type: '${translations.tooltip.type}',
+                file: '${translations.tooltip.file}',
+                description: '${translations.tooltip.description}'
+            },
+            cyclicDependency: '${translations.cyclicDependency}'
+        };
         
         // 实体类型颜色映射
         const typeColors = {
@@ -421,9 +434,9 @@ export class GraphView {
                 id: entity.id,
                 label: entity.name,
                 title: \`<strong>\${entity.name}</strong><br>
-                        类型: \${entity.type}<br>
-                        文件: \${entity.filePath}:\${entity.startLine}<br>
-                        \${entity.description ? '描述: ' + entity.description : ''}\`,
+                        \${i18n.tooltip.type}: \${entity.type}<br>
+                        \${i18n.tooltip.file}: \${entity.filePath}:\${entity.startLine}<br>
+                        \${entity.description ? i18n.tooltip.description + ': ' + entity.description : ''}\`,
                 color: {
                     background: typeColors[entity.type] || typeColors['other'],
                     border: '#2B2B2B',
@@ -474,7 +487,7 @@ export class GraphView {
                     from: relation.sourceId,
                     to: relation.targetId,
                     label: isCycle ? \`⚠️ \${relation.verb}\` : relation.verb,
-                    title: isCycle ? '循环依赖' : undefined,  // 鼠标悬停提示
+                    title: isCycle ? i18n.cyclicDependency : undefined,  // 鼠标悬停提示
                     arrows: {
                         to: {
                             enabled: true,

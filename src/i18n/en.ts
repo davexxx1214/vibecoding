@@ -129,11 +129,18 @@ export const en = {
       },
       placeholder: 'Select export format',
       noWorkspace: 'Please open a workspace first',
-      progress: 'Exporting knowledge graph...',
+      saveLabel: 'Export',
+      progress: {
+        title: 'Exporting knowledge graph...',
+        collecting: 'Collecting data...',
+        generatingMarkdown: 'Generating Markdown...',
+        generatingJSON: 'Generating JSON...',
+        complete: 'Complete!'
+      },
       success: (fileName: string) => `✅ Knowledge graph successfully exported to ${fileName}`,
       error: (error: string) => `Export failed: ${error}`,
-      openFile: 'Open file',
-      showInFolder: 'Show in folder'
+      openFile: 'Open File',
+      showInFolder: 'Show in Folder'
     },
 
     importGraph: {
@@ -213,6 +220,12 @@ export const en = {
       saveToFile: '💾 Save to file',
       successCopy: '✅ AI summary copied to clipboard',
       successSave: (fileName: string) => `✅ AI summary saved to ${fileName}`
+    },
+
+    switchLanguage: {
+      title: 'Knowledge: Switch Language',
+      placeholder: '选择语言 / Select Language',
+      error: (error: string) => `Failed to switch language: ${error}`
     }
   },
 
@@ -231,6 +244,16 @@ export const en = {
       success: '✅ Question answered',
       copyToClipboard: 'Copy to clipboard',
       saveToFile: 'Save as file',
+      result: {
+        title: '# Question & Answer Result\n\n',
+        questionLabel: '**Question**',
+        answerLabel: '## Answer\n\n',
+        sourcesLabel: '## References\n\n',
+        citationsLabel: '\n## Citations\n\n',
+        generatedAt: (date: string) => `_Generated at: ${date}_\n`
+      },
+      saved: (filename: string) => `✅ Saved to ${filename}`,
+      copiedToClipboard: 'Copied to clipboard',
       error: (error: string) => `Question answering failed: ${error}`
     },
 
@@ -402,7 +425,11 @@ export const en = {
     observations: 'Observations',
     relations: 'Relations',
     details: 'Details',
-    entity: 'Entity'
+    entity: 'Entity',
+    size: 'Size',
+    indexedAt: 'Indexed at',
+    openDocument: 'Open Document',
+    indexed: (count: number, sizeMB: number) => `📊 Indexed ${count} document${count > 1 ? 's' : ''} (${sizeMB.toFixed(2)} MB)`
   },
 
   entityTypes: {
@@ -427,5 +454,59 @@ export const en = {
     references: { label: 'references', description: 'References or mentions' },
     imports: { label: 'imports', description: 'Imports from' },
     exports: { label: 'exports', description: 'Exports to' }
+  },
+
+  graphView: {
+    title: 'Knowledge Graph Visualization',
+    toolbar: {
+      fit: 'Fit to window',
+      refresh: 'Refresh'
+    },
+    loading: 'Loading knowledge graph...',
+    emptyState: {
+      title: '📊 Knowledge Graph is Empty',
+      description: 'Please create entities and relations first',
+      hint: 'Use right-click menu "Knowledge: Create Entity" to start'
+    },
+    tooltip: {
+      type: 'Type',
+      file: 'File',
+      description: 'Description'
+    },
+    cyclicDependency: 'Cyclic Dependency'
+  },
+
+  export: {
+    title: 'Knowledge Graph Export',
+    exportedAt: 'Exported At',
+    overview: {
+      title: '📊 Overview',
+      totalEntities: 'Total Entities',
+      totalRelations: 'Total Relations',
+      entityTypeDistribution: 'Entity Type Distribution'
+    },
+    entityList: {
+      title: '📦 Entity List',
+      type: 'Type',
+      location: 'Location',
+      description: 'Description',
+      createdAt: 'Created At',
+      observations: '📝 Observations',
+      relations: '🔗 Relations',
+      outgoing: 'Outgoing (Source)',
+      incoming: 'Incoming (Target)'
+    },
+    relationGraph: {
+      title: '🔗 Relation Graph',
+      source: 'Source',
+      target: 'Target'
+    },
+    statistics: {
+      title: '📊 Statistics Overview',
+      totalEntities: 'Total Entities',
+      totalRelations: 'Total Relations',
+      typeDistribution: 'Entity Type Distribution'
+    },
+    architectureOverview: '🔗 Architecture Overview'
   }
 };

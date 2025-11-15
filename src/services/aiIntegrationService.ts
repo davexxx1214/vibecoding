@@ -6,6 +6,7 @@ import { RelationService } from './relationService';
 import { ObservationService } from './observationService';
 import { DependencyAnalyzer } from './dependencyAnalyzer';
 import { Entity } from '../utils/types';
+import { getLocale } from '../i18n/i18nService';
 
 /**
  * 技术栈信息
@@ -84,7 +85,7 @@ export class AIIntegrationService {
     const techStack = this.extractTechStack();
 
     let content = `# ${workspaceName} - Cursor AI Rules\n\n`;
-    content += `> 自动生成时间：${new Date().toLocaleString('zh-CN')}\n`;
+    content += `> 自动生成时间：${new Date().toLocaleString(getLocale())}\n`;
     content += `> 来源：Knowledge Graph Extension\n\n`;
     content += `---\n\n`;
 

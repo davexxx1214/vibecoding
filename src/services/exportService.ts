@@ -6,6 +6,7 @@ import { RelationService } from './relationService';
 import { ObservationService } from './observationService';
 import { DependencyAnalyzer } from './dependencyAnalyzer';
 import { Entity, Relation, Observation } from '../utils/types';
+import { t, getLocale } from '../i18n/i18nService';
 
 /**
  * 导出服务
@@ -50,10 +51,11 @@ export class ExportService {
    * 生成 Markdown 文件头部
    */
   private generateMarkdownHeader(): string {
-    const timestamp = new Date().toLocaleString('zh-CN');
-    return `# 知识图谱导出
+    const translations = t().export;
+    const timestamp = new Date().toLocaleString(getLocale());
+    return `# ${translations.title}
 
-> 导出时间：${timestamp}
+> ${translations.exportedAt}：${timestamp}
 
 ---
 
@@ -64,12 +66,13 @@ export class ExportService {
    * 生成概览部分
    */
   private generateOverview(entities: Entity[], relations: Relation[]): string {
+    const translations = t().export.overview;
     const entityTypeCount = this.countEntityTypes(entities);
     
-    let overview = `## 📊 概览\n\n`;
-    overview += `- **实体总数**：${entities.length}\n`;
-    overview += `- **关系总数**：${relations.length}\n`;
-    overview += `- **实体类型分布**：\n`;
+    let overview = `## ${translations.title}\n\n`;
+    overview += `- **${translations.totalEntities}**：${entities.length}\n`;
+    overview += `- **${translations.totalRelations}**：${relations.length}\n`;
+    overview += `- **${translations.entityTypeDistribution}**：\n`;
     
     for (const [type, count] of Object.entries(entityTypeCount)) {
       overview += `  - ${this.getTypeIcon(type)} ${type}: ${count}\n`;
@@ -83,10 +86,11 @@ export class ExportService {
    * 生成实体部分
    */
   private generateEntitySections(entities: Entity[]): string {
+    const translations = t().export.entityList;
     // 按类型分组
     const entitiesByType = this.groupEntitiesByType(entities);
     
-    let sections = `## 📦 实体列表\n\n`;
+    let sections = `## ${translations.title}\n\n`;
     
     for (const [type, typeEntities] of Object.entries(entitiesByType)) {
       sections += `### ${this.getTypeIcon(type)} ${type.toUpperCase()} (${typeEntities.length})\n\n`;
@@ -105,24 +109,25 @@ export class ExportService {
    * 生成单个实体的详细信息
    */
   private generateEntityDetail(entity: Entity): string {
+    const translations = t().export.entityList;
     let detail = `#### ${entity.name}\n\n`;
     
     // 基本信息
-    detail += `**类型**：${entity.type}  \n`;
-    detail += `**位置**：\`${entity.filePath}\` (行 ${entity.startLine}-${entity.endLine})  \n`;
+    detail += `**${translations.type}**：${entity.type}  \n`;
+    detail += `**${translations.location}**：\`${entity.filePath}\` (行 ${entity.startLine}-${entity.endLine})  \n`;
     
     if (entity.description) {
-      detail += `**描述**：${entity.description}  \n`;
+      detail += `**${translations.description}**：${entity.description}  \n`;
     }
     
-    detail += `**创建时间**：${new Date(entity.createdAt).toLocaleString('zh-CN')}  \n`;
+    detail += `**${translations.createdAt}**：${new Date(entity.createdAt).toLocaleString(getLocale())}  \n`;
     
     // 观察记录
     const observations = this.observationService.getObservations(entity.id);
     if (observations.length > 0) {
-      detail += `\n**📝 观察记录** (${observations.length})：\n\n`;
+      detail += `\n**${translations.observations}** (${observations.length})：\n\n`;
       for (const obs of observations) {
-        const obsTime = new Date(obs.createdAt).toLocaleString('zh-CN');
+        const obsTime = new Date(obs.createdAt).toLocaleString(getLocale());
         detail += `- ${obs.content} _(${obsTime})_\n`;
       }
     }
@@ -130,12 +135,12 @@ export class ExportService {
     // 关系
     const relations = this.relationService.getRelationsByEntity(entity.id);
     if (relations.length > 0) {
-      detail += `\n**🔗 关系** (${relations.length})：\n\n`;
+      detail += `\n**${translations.relations}** (${relations.length})：\n\n`;
       
       // 出边（作为源）
       const outgoing = relations.filter(r => r.sourceEntityId === entity.id);
       if (outgoing.length > 0) {
-        detail += `_出边 (源)：_\n`;
+        detail += `_${translations.outgoing}：_\n`;
         for (const rel of outgoing) {
           const target = this.entityService.getEntity(rel.targetEntityId);
           if (target) {
@@ -147,7 +152,7 @@ export class ExportService {
       // 入边（作为目标）
       const incoming = relations.filter(r => r.targetEntityId === entity.id);
       if (incoming.length > 0) {
-        detail += `\n_入边 (目标)：_\n`;
+        detail += `\n_${translations.incoming}：_\n`;
         for (const rel of incoming) {
           const source = this.entityService.getEntity(rel.sourceEntityId);
           if (source) {
@@ -165,7 +170,8 @@ export class ExportService {
    * 生成关系部分
    */
   private generateRelationSection(relations: Relation[], entities: Entity[]): string {
-    let section = `## 🔗 关系图谱\n\n`;
+    const translations = t().export.relationGraph;
+    let section = `## ${translations.title}\n\n`;
     
     if (relations.length === 0) {
       section += `_暂无关系_\n\n`;
@@ -184,8 +190,8 @@ export class ExportService {
         
         if (source && target) {
           section += `- **${source.name}** (\`${source.type}\`) → **${target.name}** (\`${target.type}\`)\n`;
-          section += `  - 源：\`${source.filePath}:${source.startLine}\`\n`;
-          section += `  - 目标：\`${target.filePath}:${target.startLine}\`\n`;
+          section += `  - ${translations.source}：\`${source.filePath}:${source.startLine}\`\n`;
+          section += `  - ${translations.target}：\`${target.filePath}:${target.startLine}\`\n`;
         }
       }
       
@@ -457,7 +463,7 @@ export class ExportService {
     }
 
     context += `---\n`;
-    context += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+    context += `_生成时间：${new Date().toLocaleString(getLocale())}_\n`;
 
     return context;
   }
@@ -535,7 +541,7 @@ export class ExportService {
       context += `---\n\n`;
     }
 
-    context += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+    context += `_生成时间：${new Date().toLocaleString(getLocale())}_\n`;
 
     return context;
   }
@@ -568,12 +574,13 @@ export class ExportService {
       stats.totalObservations += observations.length;
     });
 
-    summary += `## 📊 统计概览\n\n`;
-    summary += `- 实体总数：${stats.totalEntities}\n`;
-    summary += `- 关系总数：${stats.totalRelations}\n`;
+    const translations = t().export.statistics;
+    summary += `## ${translations.title}\n\n`;
+    summary += `- ${translations.totalEntities}：${stats.totalEntities}\n`;
+    summary += `- ${translations.totalRelations}：${stats.totalRelations}\n`;
     summary += `- 观察记录：${stats.totalObservations}\n\n`;
 
-    summary += `**实体类型分布：**\n`;
+    summary += `**${translations.typeDistribution}：**\n`;
     for (const [type, count] of Object.entries(stats.entityTypes)) {
       summary += `- ${this.getTypeIcon(type)} ${type}: ${count}\n`;
     }
@@ -655,7 +662,7 @@ export class ExportService {
     // 架构概览（显示主要关系）
     const relationsByVerb = this.groupRelationsByVerb(relations);
     if (Object.keys(relationsByVerb).length > 0) {
-      summary += `## 🔗 架构概览\n\n`;
+      summary += `## ${t().export.architectureOverview}\n\n`;
       for (const [verb, verbRelations] of Object.entries(relationsByVerb)) {
         summary += `**${verb}** (${verbRelations.length} 个关系)\n`;
       }
@@ -663,7 +670,7 @@ export class ExportService {
     }
 
     summary += `---\n`;
-    summary += `_生成时间：${new Date().toLocaleString('zh-CN')}_\n`;
+    summary += `_生成时间：${new Date().toLocaleString(getLocale())}_\n`;
     summary += `\n`;
     summary += `> 💡 **使用提示**：此摘要包含了项目的关键信息，您可以：\n`;
     summary += `> - 将其作为 AI 对话的上下文，帮助 AI 更好地理解项目结构\n`;

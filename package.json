@@ -214,14 +214,29 @@
           "group": "navigation@3"
         },
         {
+          "command": "knowledge.switchLanguage",
+          "when": "view == knowledgeGraphExplorer",
+          "group": "navigation@4"
+        },
+        {
           "command": "knowledge.rag.askQuestion",
           "when": "view == knowledgeRAGExplorer",
           "group": "navigation@1"
         },
         {
+          "command": "knowledge.rag.viewStoreInfo",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@2"
+        },
+        {
           "command": "knowledge.rag.refresh",
           "when": "view == knowledgeRAGExplorer",
           "group": "navigation@3"
+        },
+        {
+          "command": "knowledge.switchLanguage",
+          "when": "view == knowledgeRAGExplorer",
+          "group": "navigation@4"
         }
       ]
     },

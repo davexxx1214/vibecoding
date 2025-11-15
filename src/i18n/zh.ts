@@ -4,7 +4,25 @@
 export const zh = {
   extension: {
     name: '知识图谱',
-    description: '将工作区转化为智能知识网络的 VS Code 插件'
+    description: '将工作区转化为智能知识网络的 VS Code 插件',
+    activated: '✅ Knowledge Graph 插件激活成功！',
+    noWorkspace: '知识图谱：请打开一个文件夹来使用此插件',
+    refresh: '知识图谱已刷新',
+    placeholder: '请打开一个文件夹来使用知识图谱功能',
+    rag: {
+      enabled: '✅ Knowledge Graph RAG 功能已启用！新增文档将自动索引到云端。',
+      viewStoreInfo: '查看 Store 信息',
+      notEnabled: {
+        title: '⚠️ RAG 功能未启用：请配置 Gemini API Key',
+        configure: '配置 API Key',
+        viewTutorial: '查看教程'
+      },
+      initializationFailed: (error: string) => `❌ RAG 功能初始化失败: ${error}`,
+      viewLogs: '查看日志',
+      retry: '重试',
+      reconnected: '✅ Gemini API 已重新连接，RAG 功能已启用！',
+      invalidKey: '⚠️ API Key 无效，请检查配置'
+    }
   },
 
   commands: {
@@ -105,12 +123,19 @@ export const zh = {
       title: '知识图谱: 导出图谱',
       format: {
         markdown: { label: 'Markdown', description: '导出为 Markdown 格式 (.md)' },
-        markdownWithDeps: { label: 'Markdown（含依赖分析）', description: '包含依赖链分析的 Markdown (.md)' },
+        markdownWithDeps: { label: 'Markdown with Dependency Analysis', description: '包含依赖链分析的 Markdown (.md)' },
         json: { label: 'JSON', description: '导出为 JSON 格式 (.json)' }
       },
       placeholder: '选择导出格式',
       noWorkspace: '请先打开一个工作区',
-      progress: '正在导出知识图谱...',
+      saveLabel: '导出',
+      progress: {
+        title: '正在导出知识图谱...',
+        collecting: '收集数据...',
+        generatingMarkdown: '生成 Markdown...',
+        generatingJSON: '生成 JSON...',
+        complete: '完成！'
+      },
       success: (fileName: string) => `✅ 知识图谱已成功导出到 ${fileName}`,
       error: (error: string) => `导出失败: ${error}`,
       openFile: '打开文件',
@@ -194,6 +219,12 @@ export const zh = {
       saveToFile: '💾 保存到文件',
       successCopy: '✅ AI 摘要已复制到剪贴板',
       successSave: (fileName: string) => `✅ AI 摘要已保存到 ${fileName}`
+    },
+
+    switchLanguage: {
+      title: '知识图谱: 切换语言',
+      placeholder: '选择语言 / Select Language',
+      error: (error: string) => `切换语言失败: ${error}`
     }
   },
 
@@ -208,10 +239,20 @@ export const zh = {
       prompt: '向文档提问',
       placeholder: '例如：这个项目使用了什么数据库？',
       validateEmpty: '问题不能为空',
-      thinking: '思考中...',
+      thinking: '正在思考...',
       success: '✅ 问答完成',
       copyToClipboard: '复制到剪贴板',
       saveToFile: '保存为文件',
+      result: {
+        title: '# 问答结果\n\n',
+        questionLabel: '**问题**',
+        answerLabel: '## 答案\n\n',
+        sourcesLabel: '## 参考来源\n\n',
+        citationsLabel: '\n## 引用\n\n',
+        generatedAt: (date: string) => `_生成时间：${date}_\n`
+      },
+      saved: (filename: string) => `✅ 已保存到 ${filename}`,
+      copiedToClipboard: '已复制到剪贴板',
       error: (error: string) => `问答失败: ${error}`
     },
 
@@ -383,7 +424,11 @@ export const zh = {
     observations: '观察记录',
     relations: '关系',
     details: '详情',
-    entity: '实体'
+    entity: '实体',
+    size: '大小',
+    indexedAt: '索引时间',
+    openDocument: '打开文档',
+    indexed: (count: number, sizeMB: number) => `📊 已索引 ${count} 个文档 (${sizeMB.toFixed(2)} MB)`
   },
 
   entityTypes: {
@@ -408,5 +453,59 @@ export const zh = {
     references: { label: 'references', description: '引用' },
     imports: { label: 'imports', description: '导入' },
     exports: { label: 'exports', description: '导出' }
+  },
+
+  graphView: {
+    title: '知识图谱可视化',
+    toolbar: {
+      fit: '适应窗口',
+      refresh: '刷新'
+    },
+    loading: '加载知识图谱中...',
+    emptyState: {
+      title: '📊 知识图谱为空',
+      description: '请先创建实体和关系',
+      hint: '使用右键菜单 "Knowledge: Create Entity" 开始'
+    },
+    tooltip: {
+      type: '类型',
+      file: '文件',
+      description: '描述'
+    },
+    cyclicDependency: '循环依赖'
+  },
+
+  export: {
+    title: '知识图谱导出',
+    exportedAt: '导出时间',
+    overview: {
+      title: '📊 概览',
+      totalEntities: '实体总数',
+      totalRelations: '关系总数',
+      entityTypeDistribution: '实体类型分布'
+    },
+    entityList: {
+      title: '📦 实体列表',
+      type: '类型',
+      location: '位置',
+      description: '描述',
+      createdAt: '创建时间',
+      observations: '📝 观察记录',
+      relations: '🔗 关系',
+      outgoing: '出边 (源)',
+      incoming: '入边 (目标)'
+    },
+    relationGraph: {
+      title: '🔗 关系图谱',
+      source: '源',
+      target: '目标'
+    },
+    statistics: {
+      title: '📊 统计概览',
+      totalEntities: '实体总数',
+      totalRelations: '关系总数',
+      typeDistribution: '实体类型分布'
+    },
+    architectureOverview: '🔗 架构概览'
   }
 };

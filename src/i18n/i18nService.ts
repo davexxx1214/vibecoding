@@ -119,6 +119,13 @@ export class I18nService {
       { code: 'en', label: 'English' },
     ];
   }
+
+  /**
+   * 获取当前语言的 locale 代码（用于日期格式化等）
+   */
+  public getLocaleCode(): string {
+    return this.currentLanguage === 'zh' ? 'zh-CN' : 'en-US';
+  }
 }
 
 /**
@@ -133,4 +140,11 @@ export function t(): LanguagePack {
  */
 export function currentLang(): Language {
   return I18nService.getInstance().getCurrentLanguage();
+}
+
+/**
+ * 快捷函数：获取当前 locale 代码（用于日期格式化）
+ */
+export function getLocale(): string {
+  return I18nService.getInstance().getLocaleCode();
 }

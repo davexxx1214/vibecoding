@@ -65,23 +65,23 @@ export async function activate(context: vscode.ExtensionContext) {
         
         // 显示初始化成功的弹窗
         vscode.window.showInformationMessage(
-          '✅ Knowledge Graph RAG 功能已启用！新增文档将自动索引到云端。',
-          '查看 Store 信息'
+          t().extension.rag.enabled,
+          t().extension.rag.viewStoreInfo
         ).then(action => {
-          if (action === '查看 Store 信息') {
+          if (action === t().extension.rag.viewStoreInfo) {
             vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
           }
         });
       } else {
         console.log('⚠️ RAG Service not initialized (Gemini API Key not configured)');
         vscode.window.showWarningMessage(
-          '⚠️ RAG 功能未启用：请配置 Gemini API Key',
-          '配置 API Key',
-          '查看教程'
+          t().extension.rag.notEnabled.title,
+          t().extension.rag.notEnabled.configure,
+          t().extension.rag.notEnabled.viewTutorial
         ).then(action => {
-          if (action === '配置 API Key') {
+          if (action === t().extension.rag.notEnabled.configure) {
             vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
-          } else if (action === '查看教程') {
+          } else if (action === t().extension.rag.notEnabled.viewTutorial) {
             vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
           }
         });
@@ -92,13 +92,13 @@ export async function activate(context: vscode.ExtensionContext) {
       // 显示详细的错误信息
       const errorMessage = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(
-        `❌ RAG 功能初始化失败: ${errorMessage}`,
-        '查看日志',
-        '重试'
+        t().extension.rag.initializationFailed(errorMessage),
+        t().extension.rag.viewLogs,
+        t().extension.rag.retry
       ).then(action => {
-        if (action === '查看日志') {
+        if (action === t().extension.rag.viewLogs) {
           vscode.commands.executeCommand('workbench.action.output.show');
-        } else if (action === '重试') {
+        } else if (action === t().extension.rag.retry) {
           vscode.commands.executeCommand('workbench.action.reloadWindow');
         }
       });
@@ -118,21 +118,21 @@ export async function activate(context: vscode.ExtensionContext) {
               await ragService.initialize(workspaceRoot);
               
               vscode.window.showInformationMessage(
-                '✅ Gemini API 已重新连接，RAG 功能已启用！',
-                '查看 Store 信息'
+                t().extension.rag.reconnected,
+                t().extension.rag.viewStoreInfo
               ).then(action => {
-                if (action === '查看 Store 信息') {
+                if (action === t().extension.rag.viewStoreInfo) {
                   vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
                 }
               });
               
               ragTreeDataProvider.refresh();
             } else {
-              vscode.window.showWarningMessage('⚠️ API Key 无效，请检查配置');
+              vscode.window.showWarningMessage(t().extension.rag.invalidKey);
             }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            vscode.window.showErrorMessage(`❌ RAG 初始化失败: ${errorMessage}`);
+            vscode.window.showErrorMessage(t().extension.rag.initializationFailed(errorMessage));
           }
         }
       })
@@ -521,7 +521,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await ragCommands.askQuestion();
         } catch (error) {
           console.error('Error in askQuestion:', error);
-          vscode.window.showErrorMessage(`问答失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.askQuestion.error(String(error)));
         }
       })
     );
@@ -532,7 +532,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await ragCommands.viewIndexedDocuments();
         } catch (error) {
           console.error('Error in viewIndexedDocuments:', error);
-          vscode.window.showErrorMessage(`查看失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.viewIndexedDocuments.error(String(error)));
         }
       })
     );
@@ -543,7 +543,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await ragCommands.testConnection();
         } catch (error) {
           console.error('Error in testConnection:', error);
-          vscode.window.showErrorMessage(`测试失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.testConnection.error(String(error)));
         }
       })
     );
@@ -554,7 +554,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await ragCommands.diagnoseRAGStatus();
         } catch (error) {
           console.error('Error in diagnoseRAGStatus:', error);
-          vscode.window.showErrorMessage(`诊断失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.diagnose.error(String(error)));
         }
       })
     );
@@ -570,7 +570,7 @@ export async function activate(context: vscode.ExtensionContext) {
           }
         } catch (error) {
           console.error('Error opening document:', error);
-          vscode.window.showErrorMessage(`打开文档失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.openDocument.error(String(error)));
         }
       })
     );
@@ -583,7 +583,7 @@ export async function activate(context: vscode.ExtensionContext) {
           ragTreeDataProvider.refresh();
         } catch (error) {
           console.error('Error in reindexAll:', error);
-          vscode.window.showErrorMessage(`重新索引失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.reindex.error(String(error)));
         }
       })
     );
@@ -594,7 +594,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await ragCommands.viewStoreInfo();
         } catch (error) {
           console.error('Error in viewStoreInfo:', error);
-          vscode.window.showErrorMessage(`查看 Store 信息失败: ${error}`);
+          vscode.window.showErrorMessage(t().rag.viewStoreInfo.error(String(error)));
         }
       })
     );
@@ -614,7 +614,7 @@ export async function activate(context: vscode.ExtensionContext) {
               picked: lang.code === currentLang
             })),
             {
-              placeHolder: '选择语言 / Select Language'
+              placeHolder: t().commands.switchLanguage.placeholder
             }
           );
 
@@ -623,7 +623,7 @@ export async function activate(context: vscode.ExtensionContext) {
           }
         } catch (error) {
           console.error('Error in switchLanguage:', error);
-          vscode.window.showErrorMessage(`切换语言失败: ${error}`);
+          vscode.window.showErrorMessage(t().commands.switchLanguage.error(String(error)));
         }
       })
     );

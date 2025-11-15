@@ -97,7 +97,14 @@ export interface LanguagePack {
       };
       placeholder: string;
       noWorkspace: string;
-      progress: string;
+      saveLabel: string;
+      progress: {
+        title: string;
+        collecting: string;
+        generatingMarkdown: string;
+        generatingJSON: string;
+        complete: string;
+      };
       success: (fileName: string) => string;
       error: (error: string) => string;
       openFile: string;
@@ -162,6 +169,10 @@ export interface LanguagePack {
       successCopy: string;
       successSave: (fileName: string) => string;
     };
+    switchLanguage: CommandTranslations & {
+      placeholder: string;
+      error: (error: string) => string;
+    };
   };
 
   rag: {
@@ -175,6 +186,16 @@ export interface LanguagePack {
       success: string;
       copyToClipboard: string;
       saveToFile: string;
+      result: {
+        title: string;
+        questionLabel: string;
+        answerLabel: string;
+        sourcesLabel: string;
+        citationsLabel: string;
+        generatedAt: (date: string) => string;
+      };
+      saved: (filename: string) => string;
+      copiedToClipboard: string;
     };
     viewIndexedDocuments: CommandTranslations & {
       noDocuments: string;
@@ -252,12 +273,18 @@ export interface LanguagePack {
     relations: string;
     details: string;
     entity: string;
+    size: string;
+    indexedAt: string;
+    openDocument: string;
+    indexed: (count: number, sizeMB: number) => string;
   };
 
   entityTypes: Record<string, EntityTypeTranslation>;
   relationTypes: Record<string, RelationTypeTranslation>;
 
   extension: {
+    name: string;
+    description: string;
     activated: string;
     noWorkspace: string;
     refresh: string;
@@ -265,7 +292,7 @@ export interface LanguagePack {
     rag: {
       enabled: string;
       viewStoreInfo: string;
-      notInitialized: {
+      notEnabled: {
         title: string;
         configure: string;
         viewTutorial: string;
@@ -276,5 +303,59 @@ export interface LanguagePack {
       reconnected: string;
       invalidKey: string;
     };
+  };
+
+  graphView: {
+    title: string;
+    toolbar: {
+      fit: string;
+      refresh: string;
+    };
+    loading: string;
+    emptyState: {
+      title: string;
+      description: string;
+      hint: string;
+    };
+    tooltip: {
+      type: string;
+      file: string;
+      description: string;
+    };
+    cyclicDependency: string;
+  };
+
+  export: {
+    title: string;
+    exportedAt: string;
+    overview: {
+      title: string;
+      totalEntities: string;
+      totalRelations: string;
+      entityTypeDistribution: string;
+    };
+    entityList: {
+      title: string;
+      type: string;
+      location: string;
+      description: string;
+      createdAt: string;
+      observations: string;
+      relations: string;
+      outgoing: string;
+      incoming: string;
+    };
+    relationGraph: {
+      title: string;
+      source: string;
+      target: string;
+    };
+    statistics: {
+      title: string;
+      totalEntities: string;
+      totalRelations: string;
+      typeDistribution: string;
+    };
+    architectureOverview: string;
   };
 }
