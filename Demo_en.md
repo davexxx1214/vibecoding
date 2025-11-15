@@ -1,0 +1,1210 @@
+# VibeCoding Demo Guide
+
+> Complete demo based on [NestJS RealWorld Example App](https://github.com/lujakob/nestjs-realworld-example-app)
+
+---
+
+## 📋 Table of Contents
+
+- [Project Introduction](#project-introduction)
+- [Why This Project](#why-this-project)
+- [Preparation](#preparation)
+  - [Set Language](#step-4-set-language-optional) 🌐
+- [Demo Scenarios](#demo-scenarios)
+- [Complete Demo Script](#complete-demo-script)
+  - [Part 1: Basic Features Demo](#part-1-basic-features-demo-19-minutes)
+    - [Create Entity](#11-create-first-entity-2-minutes)
+    - [Add Observation](#12-add-observation-2-minutes)
+    - [Create Relations](#14-create-relations-3-minutes)
+    - [Tree View](#15-view-in-tree-view-1-minute)
+    - [**Visualize Graph** 🌟](#16-visualize-knowledge-graph-10-minutes-core-feature)
+  - [Part 2: RAG Persistent Knowledge Base](#part-2-rag-persistent-knowledge-base-5-minutes) 🆕
+    - [Configure API Key](#21-configure-gemini-api-key-1-minute)
+    - [Add Documents](#22-add-documents-to-knowledge-folder-1-minute)
+    - [Intelligent Q&A](#23-use-ask-question-for-intelligent-qa-2-minutes)
+    - [View Store Info](#24-view-rag-store-info-1-minute)
+- [Best Practices](#-best-practices)
+- [Appendix](#-appendix)
+
+---
+
+## 🎯 Project Introduction
+
+### NestJS RealWorld Example App
+
+A complete backend API implementation following the [RealWorld](https://github.com/gothinkster/realworld) spec, built with NestJS + TypeORM.
+
+**Project URL**: https://github.com/lujakob/nestjs-realworld-example-app
+
+**Tech Stack**:
+- **Framework**: NestJS (Node.js framework similar to Spring Boot)
+- **Database**: TypeORM + MySQL
+- **Language**: TypeScript
+- **Architecture**: Layered architecture (Controller → Service → Repository → Entity)
+
+**Functional Modules**:
+```
+src/
+├── user/                    # User module
+│   ├── user.controller.ts   # User controller
+│   ├── user.service.ts      # User service
+│   ├── user.entity.ts       # User entity
+│   └── user.module.ts       # User module
+├── article/                 # Article module
+│   ├── article.controller.ts
+│   ├── article.service.ts
+│   ├── article.entity.ts
+│   └── article.module.ts
+├── profile/                 # Profile module
+├── tag/                     # Tag module
+└── app.module.ts           # Root module
+```
+
+**Business Features**:
+- User registration, login, authentication (JWT)
+- Article CRUD (Create, Read, Update, Delete)
+- Article favorites
+- Comment system
+- User follow
+- Tag management
+
+---
+
+## 💡 Why This Project
+
+### 1. **Clear Layered Architecture**
+```
+API Layer (Controllers)
+  ↓ uses
+Business Layer (Services)
+  ↓ uses
+Data Layer (Repositories/Entities)
+```
+
+This layering is perfect for demonstrating the knowledge graph's **relationship tracking** capabilities.
+
+### 2. **Real Business Logic**
+
+Not just simple CRUD, includes complex business relationships:
+- User ← → Article (users create articles)
+- Article ← → Comment (articles have comments)
+- User ← → User (user follow relationship)
+- Article ← → Tag (article tag relationship)
+
+### 3. **Moderate Code Size**
+
+- About 3000-5000 lines of code
+- Not too simple (loses demo value)
+- Not too complex (hard to understand)
+
+### 4. **Easy to Understand**
+
+Based on Medium.com clone, business logic is easy to understand:
+- Users publish articles
+- Other users like and comment
+- Users follow each other
+
+---
+
+## 🛠️ Preparation
+
+### Step 1: Clone Project
+
+```bash
+# Clone project
+git clone https://github.com/lujakob/nestjs-realworld-example-app.git
+cd nestjs-realworld-example-app
+
+# Install dependencies
+npm install
+
+# Configure database (optional, only for demo code structure)
+cp src/config.ts.example src/config.ts
+```
+
+**Note**: Demonstrating VibeCoding extension doesn't require running the project, just the code files.
+
+### Step 2: Open Project in VS Code
+
+```bash
+code .
+```
+
+### Step 3: Start VibeCoding Extension
+
+1. Press `F5` in your `vibecoding` project to start extension debugging
+2. Open `nestjs-realworld-example-app` project in the newly opened Extension Development Host window
+
+### Step 4: Set Language (Optional) 🌐
+
+VibeCoding supports Chinese and English interfaces:
+
+**Method 1: Through Settings**
+```
+1. Settings → Search "Knowledge Graph Language"
+2. Select "zh" (Chinese) or "en" (English)
+```
+
+**Method 2: Through Command**
+```
+1. Command Palette (Ctrl+Shift+P)
+2. Type "Knowledge: Switch Language"
+3. Select language
+```
+
+**Method 3: Quick Button**
+```
+Click the 🌐 icon in Knowledge Graph view title bar
+```
+
+💡 **Tip**: Language switching takes effect immediately, no restart required!
+
+---
+
+## 🎬 Demo Scenarios
+
+### Scenario 1: New Developer Joins Team 👶
+
+**Background**: A new developer just joined the team and needs to quickly understand the project structure.
+
+**Problems**:
+- 😵 Don't know where to start
+- 😵 Don't know where UserService is called
+- 😵 Don't know what modifying ArticleService will affect
+
+**Solution with VibeCoding**:
+1. Quickly mark core entities
+2. Build relationship graph
+3. Export to AI to generate project overview
+
+---
+
+### Scenario 2: Impact Analysis Before Refactoring 🔧
+
+**Background**: Need to add parameters to `ArticleService.create` method.
+
+**Problems**:
+- 😵 Don't know how many places call this method
+- 😵 Don't know what features might break after modification
+
+**Solution with VibeCoding**:
+1. View ArticleService dependency chain
+2. Show all call sites
+3. Assess impact scope
+
+---
+
+### Scenario 3: Team Knowledge Accumulation 📚
+
+**Background**: Team has accumulated lots of experience and lessons during development.
+
+**Problems**:
+- 😵 Experience scattered in Slack chat history
+- 😵 New developers don't know which code has pitfalls
+- 😵 Performance optimization experience can't be passed down
+
+**Solution with VibeCoding**:
+1. Add observations to key entities
+2. Record performance issues and optimization plans
+3. Knowledge graph committed to Git with code
+
+---
+
+### Scenario 4: AI-Assisted Development 🤖
+
+**Background**: Using Cursor AI to develop new features.
+
+**Problems**:
+- 😵 AI doesn't understand project structure
+- 😵 Need to re-explain context every time
+- 😵 AI doesn't know team's coding standards
+
+**Solution with VibeCoding**:
+1. Export knowledge graph as Markdown
+2. Generate `.cursorrules` configuration
+3. AI automatically learns project knowledge
+
+---
+
+### Scenario 5: Persistent Knowledge Base (RAG + Gemini) ☁️
+
+**Background**: Project has detailed architecture docs and design decision documents.
+
+**Problems**:
+- 😵 Documentation and code are disconnected
+- 😵 AI can't access document content
+- 😵 Searching documents is inefficient
+- 😵 Documents from multiple projects easily get confused
+
+**Solution with VibeCoding**:
+1. Add documents to `Knowledge/` folder (supports PDF, MD, TXT, etc.)
+2. Documents automatically uploaded to **Google Gemini File Search Store** (cloud RAG)
+3. Use **Ask Question** for intelligent Q&A
+4. AI answers based on document content and shows source citations (Grounding)
+5. **Automatic Project Isolation**: Each project has independent Store, multi-project docs completely isolated
+6. **Incremental Indexing**: Already indexed documents won't be re-uploaded
+7. **Rebuild RAG Index**: Can fully sync local and cloud when needed
+
+**Core Features**:
+- ✅ Vector semantic search (Gemini auto-chunks and embeds)
+- ✅ Intelligent Q&A (Ask Question)
+- ✅ Traceable sources (Grounding Metadata)
+- ✅ Multi-format support (100+ formats)
+- ✅ Complete project isolation
+- ✅ Incremental indexing (no duplicate uploads)
+- ✅ Index rebuild (full sync)
+
+---
+
+## 📖 Complete Demo Script
+
+### VibeCoding Complete Features Demo (About 25 minutes)
+
+This demo includes two core features: **Knowledge Graph Visualization** and **RAG Intelligent Q&A**!
+
+#### 1.1 Create First Entity (2 minutes)
+
+**Operations**:
+```
+1. Open src/user/user.service.ts
+2. Select UserService class (entire class definition)
+3. Right-click → "Knowledge: Create Entity from Selection"
+4. Extension auto-detects:
+   - Name: UserService
+   - Type: Class
+   - Location: src/user/user.service.ts:15-120
+5. Add description: "Core user management service"
+6. Confirm creation
+```
+
+**Expected Result**:
+- ✅ "Classes (1)" group appears in sidebar
+- ✅ Shows UserService entity
+- ✅ Hovering over code shows entity info
+
+---
+
+#### 1.2 Add Observation (2 minutes)
+
+**Operations**:
+```
+1. Hover over UserService
+2. Click "Add Observation"
+3. Enter observation:
+   "⚠️ Note: findOne method has no cache, may have performance issues in high concurrency scenarios"
+4. Save
+```
+
+**Expected Result**:
+- ✅ Hover tip shows observation
+- ✅ CodeLens shows: `[KG: 1 observation]`
+
+---
+
+#### 1.3 Batch Create Entities (3 minutes)
+
+**Operations**: Create following entities in sequence
+
+| Entity | Type | File | Description |
+|--------|------|------|-------------|
+| `UserController` | Class | src/user/user.controller.ts | User API endpoints |
+| `ArticleService` | Class | src/article/article.service.ts | Article management service |
+| `ArticleController` | Class | src/article/article.controller.ts | Article API endpoints |
+| `UserEntity` | Class | src/user/user.entity.ts | User data model |
+| `ArticleEntity` | Class | src/article/article.entity.ts | Article data model |
+
+**Tips**:
+- Can quickly select class name → right-click to create
+- Description can be left blank, add later
+
+**Expected Result**:
+- ✅ Sidebar shows 6 entities
+- ✅ Grouped by type
+
+---
+
+#### 1.4 Create Relations (3 minutes)
+
+**Method: Link to Entity (Quick link from current location)** ⭐
+
+**Trigger**: Right-click menu or command palette
+
+**Scenario**: You're browsing ArticleController and want to quickly mark that it uses ArticleService
+
+**Operations**:
+```
+1. Open src/article/article.controller.ts
+2. Place cursor inside ArticleController class (anywhere)
+3. Right-click → "Knowledge: Link Selection to Entity..."
+4. Select target entity: ArticleService
+5. Select relation type: uses
+6. Done!
+```
+
+**Expected Result**:
+- ✅ Success message: `✅ Linked: ArticleController uses ArticleService`
+- ✅ Sidebar auto-refreshes
+
+---
+
+**Continue Creating More Relations**
+
+**Use Quick Method to Continue**:
+
+```
+Relation 3: ArticleService → UserService
+  1. Open src/article/article.service.ts
+  2. Cursor inside ArticleService class
+  3. Right-click → "Link Selection to Entity..."
+  4. Select: UserService
+  5. Type: uses (needs to get article author info)
+
+Relation 4: ArticleController → ArticleService (call relation)
+  1. Stay inside ArticleController class
+  2. Right-click → "Link Selection to Entity..."
+  3. Select: ArticleService
+  4. Type: calls (calls service methods)
+
+Relation 5: ArticleService → UserEntity (association query)
+  1. Open src/article/article.service.ts
+  2. Cursor inside ArticleService class
+  3. Right-click → "Link Selection to Entity..."
+  4. Select: UserEntity
+  5. Type: references (needs to reference user info)
+
+Relation 6: ArticleService → ArticleEntity (data model relation)
+  1. Stay inside ArticleService class
+  2. Right-click → "Link Selection to Entity..."
+  3. Select: ArticleEntity
+  4. Type: uses (operates article data model)
+
+Relation 7: UserService → UserEntity (data model relation)
+  1. Open src/user/user.service.ts
+  2. Cursor inside UserService class
+  3. Right-click → "Link Selection to Entity..."
+  4. Select: UserEntity
+  5. Type: uses (operates user data model)
+```
+
+💡 **Tip**: Creating more relations makes the visualization graph richer and easier to see dependencies between modules!
+
+**Now we have 7 relations total**:
+1. UserController → UserService (uses)
+2. ArticleController → ArticleService (uses)
+3. ArticleController → ArticleService (calls) ⚠️ Forms multi-edge with relation 2
+4. ArticleService → UserService (uses)
+5. ArticleService → UserEntity (references)
+6. ArticleService → ArticleEntity (uses)
+7. UserService → UserEntity (uses) ⚠️ UserEntity has 2 incoming edges from relations 5 and 7
+
+---
+
+**Verify Relations**
+
+**Check Hover Tip**:
+
+```
+Hover over UserService:
+
+📦 UserService (Class)
+📄 src/user/user.service.ts:15-120
+
+💭 Observations (1)
+  • ⚠️ Note: findOne method has no cache, may have performance issues in high concurrency scenarios
+
+🔗 Relations (2)
+  ← uses ← UserController
+  ← uses ← ArticleService
+
+[View Details] [Add Observation]
+```
+
+**View Entity Details**:
+```
+1. Right-click UserService → "Knowledge: View Entity Details"
+2. Or Command Palette → "Knowledge: View Entity Details"
+
+Output panel shows:
+Entity: UserService
+Type: class
+Location: src/user/user.service.ts:15-120
+
+Description: Core user management service
+
+Observations (1):
+  1. ⚠️ Note: findOne method has no cache, may have performance issues in high concurrency scenarios
+
+Relations (2):
+  ← uses ← UserController
+  ← uses ← ArticleService
+```
+
+---
+
+#### 1.5 View in Tree View (1 minute)
+
+**Operations**: Check Knowledge Graph view in sidebar
+
+**Expected Result**:
+```
+📦 Entities (6)
+  ├─ 📁 Classes (6)
+     │   ├─ UserService
+     │   ├─ UserController
+     │   ├─ ArticleService
+  │   ├─ ArticleController
+  │   ├─ UserEntity
+  │   └─ ArticleEntity
+
+🔗 Relations (7)
+  ├─ UserController → UserService [uses]
+  ├─ ArticleController → ArticleService [uses]
+  ├─ ArticleController → ArticleService [calls]      ← Note: 2 edges to same node
+  ├─ ArticleService → UserService [uses]
+  ├─ ArticleService → UserEntity [references]
+  ├─ ArticleService → ArticleEntity [uses]
+  └─ UserService → UserEntity [uses]                ← Note: UserEntity has 2 incoming edges
+```
+
+💡 **Tip**: Click entity or relation to jump to code location
+
+---
+
+#### 1.6 Visualize Knowledge Graph (10 minutes) 🌟 Core Feature
+
+**Why Visualization?**
+
+Tree view displays in list form, while **visualization graph** displays as graphical network:
+- 🕸️ See overall architecture at a glance
+- 🔍 Quickly discover dependency relationships
+- 🐛 Automatically identify circular dependencies
+- ⚡ Double-click node to jump directly to code
+
+---
+
+##### 1.6.1 First Time Opening Graph (1 minute)
+
+**Operations**:
+```
+1. Command Palette (Ctrl+Shift+P)
+2. Type "visualize"
+3. Select "Knowledge: Visualize Graph"
+4. Wait for graph to load (about 2-3 seconds)
+```
+
+**Expected Result**:
+
+New window opens, titled "Knowledge Graph Visualization"
+
+**What You See**:
+
+```
+┌─────────────────────────────────────────────────┐
+│                                    [⛶] [↻]     │
+│                                                 │
+│         UserEntity          UserController      │
+│         (red ellipse)        (red ellipse)      │
+│              ↑                   │ uses         │
+│     references│                  ↓              │
+│              │              UserService         │
+│         ArticleEntity       (red ellipse)       │
+│         (red ellipse)            ↑              │
+│              ↑                  │ uses          │
+│         uses │                  │               │
+│              │             ArticleService       │
+│              └────────────  (red ellipse)       │
+│                              ↑   ↑              │
+│                         uses │   │ calls        │
+│                              │   │              │
+│                        ArticleController        │
+│                        (red ellipse)            │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+💡 **Note**: Two buttons in top-right corner
+- **⛶** - Fit to window (auto-adjust zoom, show all nodes)
+- **↻** - Refresh graph (reload data)
+
+✅ **Visual Verification**:
+- 6 nodes (entities) auto-arranged, all shown as red ellipses (Class type)
+- **7 arrows edges (relations)**, all clearly visible:
+  - **2 edges** from ArticleController to ArticleService (uses and calls)
+    - ✨ Auto-separated display: one curves right, one curves left
+  - **UserEntity has 2 incoming edges** (auto-separated):
+    - ArticleService → UserEntity (references)
+    - UserService → UserEntity (uses)
+  - Other 3 relations clearly visible
+- Relation labels are larger font (16px), with black stroke and background, clearly readable
+- Multi-edges automatically separated with different arcs, no overlap ⭐
+- Nodes automatically avoid overlap, reasonable layout
+- Connection lines obvious (gray lines + arrows)
+- Two simple icon buttons in top-right (⛶ fit window, ↻ refresh)
+
+---
+
+##### 1.6.2 Test Interactive Features (2 minutes)
+
+✨ **Multi-relation Auto-separation Display**
+
+Graph automatically detects and separates multiple edges in same direction:
+- **ArticleController → ArticleService** has 2 relations (uses and calls), shown with different arcs
+- **UserEntity** has 2 incoming edges, clearly separated
+
+**Visual Effect**:
+- 1st edge: Curves right (curvedCW)
+- 2nd edge: Curves left (curvedCCW)
+- Two edges don't overlap, crystal clear!
+
+💡 **Tip**: Hover over edge to see specific relation type
+
+---
+
+**Operation 1: Hover to View Details**
+```
+Hover over UserService node
+```
+
+✅ **Expected Result**: Shows hover tooltip
+```
+UserService
+Type: class
+File: src/user/user.service.ts:15
+Description: Core user management service
+```
+
+---
+
+**Operation 2: Double-click to Jump to Code**
+```
+Double-click UserService node
+```
+
+✅ **Expected Result**:
+- Auto-opens `src/user/user.service.ts` file
+- Cursor jumps to UserService class definition (line 15)
+- Code line is highlighted
+
+💡 **Tip**: This is the fastest way to view code!
+
+---
+
+**Operation 3: Drag Nodes**
+```
+1. Drag ArticleController node
+2. Observe ArticleService's 2 curved connections
+3. Note the two edges curve in different directions
+```
+
+✅ **Expected Result**:
+- Node follows mouse movement
+- Connected edges automatically follow
+- **ArticleController → ArticleService's 2 edges** clearly separated
+  - One curves right (uses)
+  - One curves left (calls)
+- **UserEntity's 2 incoming edges** also clearly separated
+- Physics engine slightly adjusts surrounding nodes
+- After release, node stays in new position
+
+---
+
+**Operation 4: Zoom and Pan**
+```
+Zoom: Scroll mouse wheel
+Pan: Drag blank area
+```
+
+✅ **Expected Result**:
+- Scroll forward: Zoom in on graph
+- Scroll backward: Zoom out on graph
+- Drag background: Entire graph follows movement
+
+---
+
+**Operation 5: Use Toolbar**
+```
+Click top-right "⛶" button (fit window)
+```
+
+✅ **Expected Result**: Graph auto-zooms and centers, all nodes visible
+
+```
+After adding new entity, click "↻" button (refresh)
+```
+
+✅ **Expected Result**: Graph reloads, shows latest entities and relations
+
+---
+
+##### 1.6.3 Value of Relation Network (2 minutes)
+
+**Scenario**: You've created 6 relations, now you can see a rich relation network!
+
+**Observe Relation Network in Graph**:
+
+From visualization graph, you can clearly see:
+
+1. **Controller Layer → Service Layer**
+   - UserController → UserService (uses)
+   - ArticleController → ArticleService (uses)
+   - ArticleController → ArticleService (calls)
+
+2. **Service Layer → Service Layer**
+   - ArticleService → UserService (uses)
+
+3. **Service Layer → Entity Layer**
+   - UserService → UserEntity (uses)
+   - ArticleService → ArticleEntity (uses)
+   - ArticleService → UserEntity (references)
+
+**Layered Architecture at a Glance**:
+```
+Controller Layer
+    ↓ uses
+Service Layer
+    ↓ uses/references
+Entity Layer (Data Models)
+```
+
+💡 **Value Demonstrated**:
+- ✅ 7 relations form a coherent dependency network
+- ✅ Clearly shows three-tier architecture (Controller → Service → Entity)
+- ✅ **ArticleService is core node** (most connections)
+- ✅ **UserEntity is depended on by multiple services** (2 incoming edges clearly separated)
+- ✅ **ArticleController has two types of relations to ArticleService** (uses and calls)
+  - ✨ Two edges auto-separated with different arcs, see at a glance
+- ✅ **Multi-edges auto-separated**: Don't need manual dragging to see all relations ⭐
+- ✅ Label font large (16px) + stroke, clearly readable
+
+---
+
+**Optional: Add More Entities (Demo Purpose)**
+
+If you want to make graph richer, can add:
+
+```
+1. Create CommentService entity (service type)
+2. Create AuthService entity (service type)
+3. Create relations:
+   - ArticleService → CommentService (uses)
+   - UserController → AuthService (depends_on)
+4. Click 🔄 refresh button to view update
+```
+
+This gives **8 entities, 8 relations**, much richer graph!
+
+```
+┌─────────────────────────────────────────────────┐
+│                                    [⛶] [↻]     │
+│                                                 │
+│         UserController                          │
+│              ↙        ↘                         │
+│         uses        depends_on                  │
+│           ↙              ↘                      │
+│    UserService        AuthService               │
+│         ↑                (cyan rectangle)       │
+│         │ uses                                  │
+│         │                                       │
+│    ArticleController                            │
+│         │ uses                                  │
+│         ↓                                       │
+│    ArticleService                               │
+│         │ uses                                  │
+│         ↓                                       │
+│    CommentService                               │
+│    (cyan rectangle)                             │
+│                                                 │
+│    UserEntity      ArticleEntity                │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+**Observe Graph Changes**:
+- ✅ New nodes CommentService and AuthService appear
+- ✅ Auto-layout adjusts, avoiding overlap
+- ✅ New relation arrows displayed
+- ✅ Service type nodes shown as cyan rectangles
+- ✅ Statistics auto-update
+
+---
+
+##### 1.6.4 Impact Analysis Using Graph (1 minute)
+
+**Scenario**: Preparing to modify UserService, want to know what components will be affected.
+
+**Operations**:
+```
+Observe UserService node in visualization graph
+```
+
+**Analysis Result**:
+
+See at a glance from graph:
+- **UserService** is depended on by **2 components**:
+  1. ← UserController (uses)
+  2. ← ArticleService (uses)
+
+**Impact Assessment**:
+```
+Modifying UserService interface
+  ↓
+Need to update synchronously:
+  1. UserController (direct caller)
+  2. ArticleService (indirect caller)
+  3. ArticleController (caller of ArticleService, may be affected)
+```
+
+💡 **Value Demonstrated**:
+- Traditional way: Need global search + manual analysis (10+ minutes)
+- Using graph: See dependency relationships at a glance (10 seconds)
+- **60x efficiency improvement!** 🚀
+
+---
+
+##### 1.6.5 Auto-detect Circular Dependencies (Optional) ⭐
+
+**Scenario**: Automatically discover potential architecture issues from graph.
+
+**Smart Detection**:
+```
+Extension automatically detects circular dependencies
+  ↓
+Marks them with prominent visual effects
+  ↓
+Helps you quickly find problems!
+```
+
+**Example**:
+Suppose we mistakenly created:
+- ArticleService → UserService (uses)
+- UserService → ArticleService (uses)
+
+**Graph Display (Enhanced Effect)**:
+```
+    ArticleService ────⚠️ uses────⤴
+                               ↓
+                  ⤷────⚠️ uses──── UserService
+         Gray lines + ⚠️ warning icon
+         (Circular dependency auto-detected!)
+```
+
+**Visual Enhancement Features**:
+
+1. **⚠️ Warning Icon**
+   - Normal relation: `uses`
+   - Circular dependency: `⚠️ uses` (warning icon shown next to label)
+
+2. **🖱️ Hover Tip**
+   - When hovering over circular dependency edge, shows "Circular Dependency" tip
+
+3. **🌊 Arc Separation**
+   - Two edges of circular dependency auto-separated, avoiding overlap
+   - Forms beautiful arc shape
+
+4. **🎨 Visual Consistency**
+   - Line color, thickness, style consistent with normal relations
+   - Only identified by ⚠️ icon
+   - Simple, beautiful, not obtrusive
+
+5. **💬 Console Warning**
+   - Auto-outputs: `⚠️ Detected N circular dependencies!`
+
+**Actual Effect Example**:
+
+```
+Normal relation:
+ArticleService ───uses───→ CommentService
+  Gray, 2px, solid line
+
+Circular dependency:
+ArticleService ────⚠️ uses────⤴
+                           ↓
+              ⤷────⚠️ uses──── UserService
+  Gray, 2px, solid line, only with ⚠️ icon
+  (Hover shows "Circular Dependency" tip)
+```
+
+💡 **Value**:
+- ✅ **Auto-detection**: No manual search needed, extension auto-identifies
+- ✅ **Subtle Alert**: Only ⚠️ icon marks, doesn't affect overall aesthetics
+- ✅ **Visual Consistency**: Same line style as normal relations
+- ✅ **Clear Tip**: Hover shows "Circular Dependency" details
+- ✅ **Timely Refactor**: Refactor immediately after finding issue, avoid technical debt
+- ✅ **Architecture Review**: Quickly find architecture issues during Code Review
+
+**How to Trigger Demo**:
+```
+1. Create ArticleService → UserService relation
+2. Create UserService → ArticleService relation (reverse)
+3. Click ↻ refresh button
+4. Immediately see red thick dashed line + ⚠️ warning!
+```
+
+---
+
+##### 1.6.6 Compare with Tree View
+
+**Tree View vs Graphical View**
+
+| Feature | Tree View | Visualization Graph |
+|---------|-----------|-------------------|
+| **Display** | 📁 List form | 🕸️ Graph network |
+| **View Relations** | Need to expand to view | See at a glance |
+| **Impact Analysis** | Click one by one to view | Overall global view |
+| **Jump to Code** | Single click jump | Double-click jump |
+| **Use Case** | Browse all entities | Understand dependencies |
+| **Visual Intuitiveness** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+
+**Best Practice**:
+- 📁 **Daily Browse**: Use tree view
+- 🔍 **Impact Analysis**: Use visualization graph
+- 🔄 **Combine Both**: Achieve best results
+
+---
+
+##### 1.6.7 Summary
+
+**What You've Learned**:
+- ✅ Open visualization graph
+- ✅ Understand meaning of node colors and shapes
+- ✅ Use interactive features (hover, double-click, drag, zoom)
+- ✅ Refresh graph to see latest data
+- ✅ Use graph for impact analysis
+- ✅ Discover potential architecture issues
+
+**Key Takeaways**:
+
+🎯 **A Picture is Worth a Thousand Words**: Graphical display is more intuitive than text  
+⚡ **Quick Navigation**: Double-click node to jump directly to code  
+🔍 **Global View**: See entire project's dependency relationships at a glance  
+🐛 **Find Problems**: Visualization helps discover circular dependencies and other architecture issues  
+
+---
+
+### Part 2: RAG Persistent Knowledge Base (5 minutes) 🆕
+
+#### 2.1 Configure Gemini API Key (1 minute)
+
+**Operations**:
+```
+1. Command Palette (Ctrl+Shift+P)
+2. Type "Preferences: Open Settings (UI)"
+3. Search "Gemini API Key"
+4. Find "Knowledge Graph > Gemini: Api Key"
+5. Enter your Gemini API Key
+6. Save settings
+```
+
+**Expected Result**:
+- ✅ Popup message: "✅ Knowledge Graph RAG enabled! New documents will be automatically indexed to cloud."
+- ✅ "Documents (RAG)" view appears in sidebar
+
+**Get API Key**:
+- Visit https://aistudio.google.com/apikey
+- Login with Google account
+- Create or copy API Key
+
+---
+
+#### 2.2 Add Documents to Knowledge Folder (1 minute)
+
+**Operations**:
+```
+1. Create Knowledge/ folder in project root
+2. Add some documents:
+   - architecture.md (architecture docs)
+   - database-design.pdf (database design)
+   - api-guide.txt (API guide)
+3. Save files
+```
+
+**Expected Result**:
+- ✅ Files automatically detected
+- ✅ Background auto-uploads to Gemini File Search Store
+- ✅ Sidebar "Documents (RAG)" shows document list
+- ✅ Console outputs: `Indexing file: Knowledge/architecture.md`
+
+💡 **Supported Formats**: PDF, TXT, MD, DOCX, JSON, TS, JS, etc. (100+ formats)
+
+---
+
+#### 2.3 Use Ask Question for Intelligent Q&A (2 minutes)
+
+**Operations**:
+```
+1. Click question mark icon (?) in sidebar "Documents (RAG)"
+   Or Command Palette → "Knowledge: Ask Question"
+2. Enter question, e.g.:
+   "What databases does the project use?"
+   "How is user authentication implemented?"
+   "What APIs does the article module have?"
+3. Wait for Gemini analysis (about 3-5 seconds)
+```
+
+**Expected Result**:
+
+Opens a new Markdown document showing:
+
+```markdown
+# 💬 Question & Answer Result
+
+**Question**: What databases does the project use?
+
+**Answer Time**: 11/15/2025, 6:30:45 PM
+
+---
+
+## 🤖 Answer
+
+The project uses **MySQL** as the main database, accessed through **TypeORM**.
+The configuration also mentions using a connection pool with size set to 20.
+
+---
+
+## 📚 References (Grounding)
+
+1. **architecture.md**
+   - Mentions TypeORM + MySQL tech stack
+
+2. **database-design.pdf**
+   - Contains complete database table structure design
+
+---
+
+_💡 Click filename to jump directly to original document_
+```
+
+✅ **Key Features**:
+- AI answers based on document content
+- Shows source citations (Grounding Metadata)
+- Markdown format, can copy content
+- Can save as file
+
+---
+
+#### 2.4 View RAG Store Info (1 minute)
+
+**Operations**:
+```
+1. Click info icon (ℹ️) in sidebar "Documents (RAG)"
+   Or Command Palette → "Knowledge: View RAG Store Info"
+```
+
+**Expected Result**:
+
+Opens a new Markdown document showing:
+
+```markdown
+# RAG Store Information
+
+**Project Name**: nestjs-realworld-example-app
+**Store Name**: `fileSearchStores/vibecodingnestjsrealworldex-xxx`
+**Workspace Path**: `d:\workspace\nestjs-realworld-example-app`
+
+## 📊 Document Statistics (Cloud Real-time Data)
+- **Active Documents**: 3
+- **Processing Documents**: 0
+- **Failed Documents**: 0
+- **Total**: 3
+
+## 📝 Local Metadata
+- **Local Recorded Files**: 3
+- **Created**: 11/15/2025, 6:25:30 PM
+- **Last Sync**: 11/15/2025, 6:30:45 PM
+
+---
+
+## 🔐 Project Isolation
+Each project has a unique **File Search Store** to ensure documents are not confused with other projects.
+```
+
+💡 **Project Isolation Mechanism**:
+- Each project auto-generates unique Store ID (based on project path hash)
+- Multiple projects using same API Key are completely isolated
+- Document indexes not confused
+
+---
+
+#### 2.5 Incremental Indexing and Index Rebuild (Further Reading)
+
+**Incremental Indexing**:
+- ✅ Already indexed documents won't be re-uploaded
+- ✅ Only new or modified documents uploaded
+- ✅ Auto-checks every time extension starts
+
+**Index Rebuild**:
+
+If local and cloud are out of sync (e.g., deleted local file), can:
+
+```
+1. Click refresh icon (🔄) in sidebar "Documents (RAG)"
+   Or Command Palette → "Knowledge: Rebuild RAG Index"
+2. Confirm operation
+3. Wait for completion (will delete cloud Store and re-upload all documents)
+```
+
+⚠️ **Note**: Rebuild deletes all cloud documents and re-uploads, ensuring local and cloud are fully consistent.
+
+---
+
+## 🎉 Demo Complete
+
+**Congratulations! You've mastered VibeCoding's core features:**
+
+### ✅ Skills Learned
+1. Create Entity
+2. Add Observation
+3. Link to Entity
+4. Tree View
+5. **Visualize Graph** 🌟
+6. **RAG Intelligent Q&A** 🆕
+
+### 🌟 Core Feature Value
+
+**Visualization Graph**:
+- 🕸️ Graphically display project architecture
+- ⚡ Double-click node to jump to code
+- 🔍 Quick impact analysis
+- 🐛 Auto-detect circular dependencies
+
+**RAG Intelligent Q&A**:
+- ☁️ Cloud-hosted semantic search
+- 🤖 Document-based intelligent Q&A
+- 📚 Traceable sources (Grounding)
+- 🔐 Complete multi-project isolation
+- ⚡ Incremental indexing, efficient and fast
+
+### 📖 Further Learning
+
+For complete features see:
+- 📄 README_EN.md - Complete feature documentation
+- 📚 docs/ - Detailed documentation
+
+---
+
+## 💡 Best Practices
+
+### Daily Development Workflow
+
+1. **When Reading Code**
+   ```
+   Important class → Create entity → Add description
+   Find call relation → Link to Entity
+   Experience/lesson → Add Observation
+   ```
+
+2. **Before Refactoring**
+   ```
+   Open visualization graph → View dependencies → Assess impact scope
+   ```
+
+3. **During Code Review**
+   ```
+   Find important module → Mark entity
+   Find architecture issue → Add observation
+   View graph → Check circular dependencies
+   ```
+
+4. **Manage Project Documentation** 🆕
+   ```
+   Write architecture docs → Put in Knowledge/ folder → Auto-indexes
+   Need to find info → Ask Question → AI answers based on docs
+   ```
+
+5. **Use AI Programming Tools** 🆕
+   ```
+   Configure Gemini API Key → Docs auto-upload to cloud
+   Use Cursor/Copilot → AI can access project docs
+   ```
+
+### Team Collaboration
+
+1. **Commit Knowledge Graph with Code**
+   ```bash
+   git add .vscode/.knowledge/
+   git commit -m "Add knowledge graph for user module"
+   ```
+
+2. **Share Project Documentation** 🆕
+   ```bash
+   git add Knowledge/
+   git commit -m "Add architecture documentation"
+   # After team members clone, docs auto-index to their own cloud Stores
+   ```
+
+3. **New Developer Onboarding**
+   ```
+   Open project → View graph → Quickly understand architecture
+   Configure API Key → Docs auto-index → Ask Question to quickly get started
+   ```
+
+4. **Multi-project Development** 🆕
+   ```
+   Use same API Key in multiple projects
+   → Each project auto-isolated to independent Store
+   → Documents won't get confused
+```
+
+---
+
+## 🚀 Get Started
+
+Now you can:
+1. Use VibeCoding in your projects
+2. Mark core entities and relations
+3. Use visualization graph to understand project architecture
+4. Configure Gemini API Key to enable RAG features
+5. Add project documents to Knowledge/ folder
+6. Use Ask Question for intelligent Q&A
+7. Let knowledge evolve with code
+
+**Happy Coding!** 🎉
+
+---
+
+## 📚 Appendix
+
+### Common Commands
+
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| Create Entity | Right-click menu | Create entity |
+| Add Observation | Hover → Click | Add observation |
+| Link to Entity | Right-click menu | Create relation |
+| Visualize Graph | Ctrl+Shift+P | Visualize graph |
+| View Entity Details | Right-click menu | View entity details |
+| **Switch Language** 🌐 | Sidebar (🌐) / Ctrl+Shift+P | Switch Chinese/English interface |
+| **Ask Question** 🆕 | Sidebar (?) | RAG intelligent Q&A |
+| **View Store Info** 🆕 | Sidebar (ℹ️) | View RAG Store info |
+| **Rebuild RAG Index** 🆕 | Sidebar (🔄) | Rebuild cloud index |
+| **Test Gemini API** 🆕 | Ctrl+Shift+P | Test API connection |
+
+### Entity Types
+
+| Type | Icon | Color | Description |
+|------|------|-------|-------------|
+| class | Ellipse | Red | Class |
+| function | Rectangle | Blue | Function |
+| service | Rectangle | Cyan | Service |
+| component | Diamond | Green | Component |
+| entity | Hexagon | Orange | Data entity |
+
+### Relation Types
+
+- `uses` - Usage relationship
+- `calls` - Call relationship
+- `depends_on` - Dependency relationship
+- `implements` - Implementation relationship
+- `extends` - Inheritance relationship
+- `references` - Reference relationship
+
+---
+
+**More Questions?** Check README_EN.md or submit an Issue!
+
+---
+
+## 🔚 End of Demo
+
+**Thank you for using VibeCoding!**
+
