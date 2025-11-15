@@ -9,6 +9,7 @@
 - [项目介绍](#项目介绍)
 - [为什么选择这个项目](#为什么选择这个项目)
 - [准备工作](#准备工作)
+  - [设置语言](#步骤-4设置语言可选) 🌐
 - [演示场景](#演示场景)
 - [完整演示脚本](#完整演示脚本)
   - [第一部分：基础功能演示](#第一部分基础功能演示19-分钟)
@@ -133,6 +134,30 @@ code .
 
 1. 在你的 `vibecoding` 项目中按 `F5` 启动插件调试
 2. 在新打开的 Extension Development Host 窗口中打开 `nestjs-realworld-example-app` 项目
+
+### 步骤 4：设置语言（可选）🌐
+
+VibeCoding 支持中英文双语界面：
+
+**方式 1：通过设置**
+```
+1. 设置 → 搜索 "Knowledge Graph Language"
+2. 选择 "zh"（中文）或 "en"（英文）
+```
+
+**方式 2：通过命令**
+```
+1. 命令面板（Ctrl+Shift+P）
+2. 输入 "Knowledge: Switch Language"
+3. 选择语言
+```
+
+**方式 3：快捷按钮**
+```
+点击知识图谱视图标题栏的 🌐 图标
+```
+
+💡 **提示**：语言切换立即生效，无需重启！
 
 ---
 
@@ -1148,6 +1173,7 @@ _💡 点击文件名可以直接跳转查看原文档_
 | Link to Entity | 右键菜单 | 建立关系 |
 | Visualize Graph | Ctrl+Shift+P | 可视化图谱 |
 | View Entity Details | 右键菜单 | 查看实体详情 |
+| **Switch Language** 🌐 | 侧边栏 (🌐) / Ctrl+Shift+P | 切换中英文界面 |
 | **Ask Question** 🆕 | 侧边栏 (?) | RAG 智能问答 |
 | **View Store Info** 🆕 | 侧边栏 (ℹ️) | 查看 RAG Store 信息 |
 | **Rebuild RAG Index** 🆕 | 侧边栏 (🔄) | 重建云端索引 |

@@ -21,7 +21,8 @@ class RAGTreeItem extends vscode.TreeItem {
       fileName: string;
       fileSize: number;
       indexedAt: number;
-    }
+    },
+    public readonly folderName?: string  // 添加文件夹名称属性
   ) {
     super(label, collapsibleState);
 
@@ -88,8 +89,8 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
     }
 
     // 文件夹节点
-    if (element.type === 'folder') {
-      return this.getFilesByFolder(element.label);
+    if (element.type === 'folder' && element.folderName) {
+      return this.getFilesByFolder(element.folderName);
     }
 
     return [];
@@ -131,7 +132,9 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
         new RAGTreeItem(
           `${folder || 'Knowledge'} (${fileCount})`,
           vscode.TreeItemCollapsibleState.Collapsed,
-          'folder'
+          'folder',
+          undefined,  // fileInfo
+          folder      // folderName
         )
       );
     }

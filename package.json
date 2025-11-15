@@ -42,12 +42,13 @@
       },
       {
         "command": "knowledge.visualizeGraph",
-        "title": "Knowledge: Visualize Graph"
+        "title": "Knowledge: Visualize Graph",
+        "icon": "$(graph)"
       },
       {
         "command": "knowledge.exportGraph",
         "title": "Knowledge: Export Graph",
-        "icon": "$(export)"
+        "icon": "$(save-as)"
       },
       {
         "command": "knowledge.importGraph",
