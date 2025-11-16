@@ -164,8 +164,7 @@ vibecoding/
 ├── package.json                      # 插件配置
 ├── tsconfig.json                     # TypeScript 配置
 ├── README.md                         # 项目说明（本文件）
-├── Demo.md                           # 演示指南
-└── STAGE1_COMPLETE.md                # 阶段一完成总结
+└── Demo.md                           # 演示指南
 
 图例：
   ✅ 已实现
@@ -287,9 +286,8 @@ vibecoding/
 | **数据库** | sql.js | WebAssembly SQLite，跨平台兼容 |
 | **搜索** | LIKE 模糊查询 | 简单高效，适合中小型项目 |
 | **可视化** | vis-network | 交互式图谱可视化 |
-| **文档转换** | MarkItDown (Python CLI) | 阶段二，支持多种格式 |
-| **RAG 系统** | Google Gemini File Search API | 阶段二，托管式 RAG |
-| **代码解析** | TypeScript Compiler API | 阶段三使用 |
+| **RAG 系统** | Google Gemini File Search API | 托管式向量搜索和智能问答 |
+| **代码解析** | 正则表达式 + XML 解析 | 支持多种项目配置文件 |
 
 ### 核心数据流
 
