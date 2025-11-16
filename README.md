@@ -236,6 +236,7 @@ vibecoding/
 - ✅ **技术栈检测**：自动提取依赖信息
   - JavaScript/TypeScript 项目（`package.json`）
   - Java Maven 项目（`pom.xml`）
+  - Python 项目（`requirements.txt`、`pyproject.toml`、`setup.py`）
 - ✅ **一键生成**：同时生成所有 AI 配置文件
 - ✅ **智能分类**：自动分类警告、TODO、已知问题
 

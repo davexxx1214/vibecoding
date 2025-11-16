@@ -18,6 +18,7 @@ interface TechStack {
   database?: string;
   keyLibraries: Array<{ name: string; version: string }>;
   testing?: string;
+  otherDependencies?: Array<{ name: string; version: string }>;
 }
 
 /**
@@ -528,7 +529,7 @@ export class AIIntegrationService {
   }
 
   /**
-   * 提取技术栈信息（支持 JavaScript/TypeScript 和 Java Maven 项目）
+   * 提取技术栈信息（支持 JavaScript/TypeScript、Java Maven 和 Python 项目）
    */
   private extractTechStack(): TechStack | null {
     try {
@@ -547,6 +548,15 @@ export class AIIntegrationService {
       const pomXmlPath = path.join(workspaceRoot, 'pom.xml');
       if (fs.existsSync(pomXmlPath)) {
         return this.extractJavaMavenTechStack(pomXmlPath);
+      }
+
+      // 尝试检测 Python 项目
+      const requirementsPath = path.join(workspaceRoot, 'requirements.txt');
+      const pyprojectPath = path.join(workspaceRoot, 'pyproject.toml');
+      const setupPyPath = path.join(workspaceRoot, 'setup.py');
+      
+      if (fs.existsSync(requirementsPath) || fs.existsSync(pyprojectPath) || fs.existsSync(setupPyPath)) {
+        return this.extractPythonTechStack(workspaceRoot);
       }
 
       return null;
@@ -949,6 +959,335 @@ export class AIIntegrationService {
   }
 
   /**
+   * 提取 Python 项目的技术栈信息
+   */
+  private extractPythonTechStack(workspaceRoot: string): TechStack | null {
+    try {
+      const techStack: TechStack = {
+        frameworks: [],
+        keyLibraries: [],
+      };
+
+      // 读取依赖信息
+      const dependencies: Map<string, string> = new Map();
+
+      // 1. 尝试从 requirements.txt 读取
+      const requirementsPath = path.join(workspaceRoot, 'requirements.txt');
+      if (fs.existsSync(requirementsPath)) {
+        const content = fs.readFileSync(requirementsPath, 'utf-8');
+        const lines = content.split('\n');
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // 跳过注释和空行
+          if (!trimmed || trimmed.startsWith('#')) {
+            continue;
+          }
+          
+          // 解析包名和版本 (支持 package==1.0.0, package>=1.0.0 等格式)
+          const match = trimmed.match(/^([a-zA-Z0-9_-]+)([><=!]+)?([0-9.]+)?/);
+          if (match) {
+            const packageName = match[1].toLowerCase();
+            const version = match[3] || '';
+            dependencies.set(packageName, version);
+          }
+        }
+      }
+
+      // 2. 尝试从 pyproject.toml 读取（Poetry 或 PEP 518）
+      const pyprojectPath = path.join(workspaceRoot, 'pyproject.toml');
+      if (fs.existsSync(pyprojectPath)) {
+        const content = fs.readFileSync(pyprojectPath, 'utf-8');
+        
+        // 简单解析 [tool.poetry.dependencies] 部分
+        const depsMatch = content.match(/\[tool\.poetry\.dependencies\]([\s\S]*?)(\[|$)/);
+        if (depsMatch) {
+          const depsSection = depsMatch[1];
+          const lines = depsSection.split('\n');
+          
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) {
+              continue;
+            }
+            
+            const match = trimmed.match(/^([a-zA-Z0-9_-]+)\s*=\s*["']([^"']+)["']/);
+            if (match) {
+              const packageName = match[1].toLowerCase();
+              const versionSpec = match[2];
+              // 提取版本号
+              const versionMatch = versionSpec.match(/[0-9.]+/);
+              const version = versionMatch ? versionMatch[0] : '';
+              dependencies.set(packageName, version);
+            }
+          }
+        }
+        
+        // 检查 Python 版本要求
+        const pythonMatch = content.match(/python\s*=\s*["'][\^~>=<]*([0-9.]+)/);
+        if (pythonMatch) {
+          techStack.language = `Python ${pythonMatch[1]}`;
+        }
+      }
+
+      // 3. 尝试从 setup.py 读取
+      const setupPyPath = path.join(workspaceRoot, 'setup.py');
+      if (fs.existsSync(setupPyPath)) {
+        const content = fs.readFileSync(setupPyPath, 'utf-8');
+        
+        // 查找 install_requires
+        const installReqMatch = content.match(/install_requires\s*=\s*\[([\s\S]*?)\]/);
+        if (installReqMatch) {
+          const reqsSection = installReqMatch[1];
+          const matches = reqsSection.matchAll(/["']([a-zA-Z0-9_-]+)([><=!]+)?([0-9.]+)?["']/g);
+          
+          for (const match of matches) {
+            const packageName = match[1].toLowerCase();
+            const version = match[3] || '';
+            dependencies.set(packageName, version);
+          }
+        }
+      }
+
+      // 如果没有读取到依赖，至少标记为 Python 项目
+      if (dependencies.size === 0) {
+        techStack.language = 'Python';
+        return techStack;
+      }
+
+      // 检测 Python 版本（从 .python-version 或 runtime.txt）
+      if (!techStack.language) {
+        const pythonVersionPath = path.join(workspaceRoot, '.python-version');
+        if (fs.existsSync(pythonVersionPath)) {
+          const version = fs.readFileSync(pythonVersionPath, 'utf-8').trim();
+          techStack.language = `Python ${version}`;
+        } else {
+          techStack.language = 'Python';
+        }
+      }
+
+      // 检测 Web 框架
+      if (dependencies.has('django')) {
+        techStack.frameworks.push({
+          name: 'Django',
+          version: this.extractPythonVersion(dependencies.get('django') || '')
+        });
+      }
+      if (dependencies.has('flask')) {
+        techStack.frameworks.push({
+          name: 'Flask',
+          version: this.extractPythonVersion(dependencies.get('flask') || '')
+        });
+      }
+      if (dependencies.has('fastapi')) {
+        techStack.frameworks.push({
+          name: 'FastAPI',
+          version: this.extractPythonVersion(dependencies.get('fastapi') || '')
+        });
+      }
+      if (dependencies.has('tornado')) {
+        techStack.frameworks.push({
+          name: 'Tornado',
+          version: this.extractPythonVersion(dependencies.get('tornado') || '')
+        });
+      }
+      if (dependencies.has('pyramid')) {
+        techStack.frameworks.push({
+          name: 'Pyramid',
+          version: this.extractPythonVersion(dependencies.get('pyramid') || '')
+        });
+      }
+      if (dependencies.has('sanic')) {
+        techStack.frameworks.push({
+          name: 'Sanic',
+          version: this.extractPythonVersion(dependencies.get('sanic') || '')
+        });
+      }
+
+      // 检测数据库和 ORM
+      const databases: string[] = [];
+      
+      if (dependencies.has('sqlalchemy')) {
+        databases.push('SQLAlchemy');
+      }
+      if (dependencies.has('django')) {
+        databases.push('Django ORM');
+      }
+      if (dependencies.has('pymongo') || dependencies.has('motor')) {
+        databases.push('MongoDB');
+      }
+      if (dependencies.has('psycopg2') || dependencies.has('psycopg2-binary')) {
+        databases.push('PostgreSQL');
+      }
+      if (dependencies.has('mysqlclient') || dependencies.has('pymysql')) {
+        databases.push('MySQL');
+      }
+      if (dependencies.has('redis')) {
+        databases.push('Redis');
+      }
+      if (dependencies.has('elasticsearch')) {
+        databases.push('Elasticsearch');
+      }
+      if (dependencies.has('tortoise-orm')) {
+        databases.push('Tortoise ORM');
+      }
+      if (dependencies.has('peewee')) {
+        databases.push('Peewee');
+      }
+
+      if (databases.length > 0) {
+        techStack.database = databases.join(', ');
+      }
+
+      // 检测测试框架
+      const testFrameworks: string[] = [];
+      
+      if (dependencies.has('pytest')) {
+        testFrameworks.push(`pytest ${this.extractPythonVersion(dependencies.get('pytest') || '')}`);
+      }
+      if (dependencies.has('unittest2')) {
+        testFrameworks.push('unittest');
+      }
+      if (dependencies.has('nose') || dependencies.has('nose2')) {
+        testFrameworks.push('nose');
+      }
+      if (dependencies.has('pytest-cov')) {
+        testFrameworks.push('Coverage');
+      }
+
+      if (testFrameworks.length > 0) {
+        techStack.testing = testFrameworks.join(', ');
+      }
+
+      // 关键库检测（扩充了更多常见库）
+      const keyLibMappings = [
+        // HTTP 客户端
+        { packages: ['requests', 'httpx', 'aiohttp'], name: 'HTTP Client' },
+        
+        // 数据科学
+        { packages: ['numpy'], name: 'NumPy' },
+        { packages: ['pandas'], name: 'Pandas' },
+        { packages: ['scipy'], name: 'SciPy' },
+        
+        // 机器学习 / AI
+        { packages: ['tensorflow', 'tf'], name: 'TensorFlow' },
+        { packages: ['torch', 'pytorch'], name: 'PyTorch' },
+        { packages: ['scikit-learn', 'sklearn'], name: 'scikit-learn' },
+        { packages: ['keras'], name: 'Keras' },
+        { packages: ['transformers'], name: 'Transformers' },
+        
+        // LLM / AI 框架
+        { packages: ['langchain', 'langchain-core'], name: 'LangChain' },
+        { packages: ['langchain-openai'], name: 'LangChain OpenAI' },
+        { packages: ['openai'], name: 'OpenAI' },
+        { packages: ['anthropic'], name: 'Anthropic' },
+        { packages: ['llama-index', 'llama_index'], name: 'LlamaIndex' },
+        
+        // 异步 / 任务队列
+        { packages: ['celery'], name: 'Celery' },
+        { packages: ['asyncio'], name: 'AsyncIO' },
+        { packages: ['aiofiles'], name: 'Async Files' },
+        
+        // 数据验证
+        { packages: ['pydantic'], name: 'Pydantic' },
+        { packages: ['marshmallow'], name: 'Marshmallow' },
+        
+        // 图像处理
+        { packages: ['pillow', 'pil'], name: 'Pillow' },
+        { packages: ['opencv-python', 'cv2'], name: 'OpenCV' },
+        
+        // 网络爬虫
+        { packages: ['beautifulsoup4', 'bs4'], name: 'BeautifulSoup' },
+        { packages: ['scrapy'], name: 'Scrapy' },
+        { packages: ['selenium'], name: 'Selenium' },
+        
+        // 可视化
+        { packages: ['matplotlib'], name: 'Matplotlib' },
+        { packages: ['seaborn'], name: 'Seaborn' },
+        { packages: ['plotly'], name: 'Plotly' },
+        
+        // 配置 / 环境
+        { packages: ['python-dotenv'], name: 'Dotenv' },
+        { packages: ['pydantic-settings'], name: 'Pydantic Settings' },
+        
+        // 日志
+        { packages: ['loguru'], name: 'Loguru' },
+        
+        // API 文档
+        { packages: ['fastapi'], name: 'FastAPI (detected as framework)' },
+      ];
+
+      // 收集已识别的库
+      const recognizedPackages = new Set<string>();
+      
+      for (const mapping of keyLibMappings) {
+        for (const pkg of mapping.packages) {
+          if (dependencies.has(pkg)) {
+            if (!techStack.keyLibraries.some(l => l.name === mapping.name)) {
+              techStack.keyLibraries.push({
+                name: mapping.name,
+                version: this.extractPythonVersion(dependencies.get(pkg) || '')
+              });
+              recognizedPackages.add(pkg);
+            }
+            break;
+          }
+        }
+      }
+
+      // 收集未识别的依赖（其他主要依赖）
+      // 排除一些太基础或内部使用的包
+      const excludePackages = new Set([
+        'pip', 'setuptools', 'wheel', 'certifi', 'charset-normalizer',
+        'idna', 'urllib3', 'six', 'python-dateutil', 'pytz',
+        'typing-extensions', 'packaging', 'pyparsing', 'attrs'
+      ]);
+
+      const otherDependencies: Array<{ name: string; version: string }> = [];
+      
+      for (const [pkg, version] of dependencies.entries()) {
+        // 跳过已识别的、框架包、数据库包和排除列表中的包
+        if (recognizedPackages.has(pkg) || excludePackages.has(pkg)) {
+          continue;
+        }
+        
+        // 跳过已经在框架中识别的包
+        const frameworkPackages = techStack.frameworks.map(f => f.name.toLowerCase());
+        if (frameworkPackages.some(fw => pkg.includes(fw.toLowerCase()))) {
+          continue;
+        }
+
+        otherDependencies.push({
+          name: pkg,
+          version: this.extractPythonVersion(version)
+        });
+      }
+
+      // 存储其他依赖
+      if (otherDependencies.length > 0) {
+        techStack.otherDependencies = otherDependencies;
+      }
+
+      return techStack;
+    } catch (error) {
+      console.error('Failed to extract Python tech stack:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 从 Python 版本字符串中提取版本号
+   */
+  private extractPythonVersion(versionString: string): string {
+    if (!versionString) {
+      return '';
+    }
+    // 提取第一个出现的版本号
+    const match = versionString.match(/[0-9]+\.[0-9]+/);
+    return match ? match[0] : '';
+  }
+
+  /**
    * 格式化技术栈为 Markdown（中文）
    */
   private formatTechStackCN(techStack: TechStack | null): string {
@@ -997,7 +1336,19 @@ export class AIIntegrationService {
       content += `\n`;
     }
 
-    content += `_完整依赖列表请参考项目配置文件（\`package.json\` 或 \`pom.xml\`）_\n\n`;
+    if (techStack.otherDependencies && techStack.otherDependencies.length > 0) {
+      content += `**其他主要依赖：**\n`;
+      for (const dep of techStack.otherDependencies) {
+        content += `- ${dep.name}`;
+        if (dep.version) {
+          content += ` (${dep.version})`;
+        }
+        content += `\n`;
+      }
+      content += `\n`;
+    }
+
+    content += `_完整依赖列表请参考项目配置文件（\`package.json\`、\`pom.xml\` 或 \`requirements.txt\`）_\n\n`;
     content += `---\n\n`;
 
     return content;
@@ -1052,7 +1403,19 @@ export class AIIntegrationService {
       content += `\n`;
     }
 
-    content += `_For complete dependencies, see project configuration file (\`package.json\` or \`pom.xml\`)_\n\n`;
+    if (techStack.otherDependencies && techStack.otherDependencies.length > 0) {
+      content += `**Other Dependencies:**\n`;
+      for (const dep of techStack.otherDependencies) {
+        content += `- ${dep.name}`;
+        if (dep.version) {
+          content += ` (${dep.version})`;
+        }
+        content += `\n`;
+      }
+      content += `\n`;
+    }
+
+    content += `_For complete dependencies, see project configuration file (\`package.json\`, \`pom.xml\`, or \`requirements.txt\`)_\n\n`;
     content += `---\n\n`;
 
     return content;
