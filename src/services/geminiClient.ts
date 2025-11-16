@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import * as vscode from 'vscode';
+import { getLocale } from '../i18n/i18nService';
 
 /**
  * Gemini API 客户端封装
@@ -91,6 +92,22 @@ export class GeminiClient {
     }
 
     try {
+      // 检查 API Key 配置来源
+      const config = vscode.workspace.getConfiguration('knowledgeGraph');
+      const inspectResult = config.inspect<string>('gemini.apiKey');
+      const locale = getLocale();
+      
+      let source: string;
+      if (inspectResult?.workspaceFolderValue) {
+        source = locale === 'zh' ? '工作区文件夹设置 (settings.json)' : 'Workspace Folder Settings (settings.json)';
+      } else if (inspectResult?.workspaceValue) {
+        source = locale === 'zh' ? '工作区设置' : 'Workspace Settings';
+      } else if (inspectResult?.globalValue) {
+        source = locale === 'zh' ? '用户全局设置' : 'User Global Settings';
+      } else {
+        source = locale === 'zh' ? '未知来源' : 'Unknown Source';
+      }
+
       // 使用新 SDK 的 generateContent 方法
       const result = await this.client.models.generateContent({
         model: this.getConfiguredModel(),
@@ -98,14 +115,23 @@ export class GeminiClient {
       });
 
       if (result.text) {
-        vscode.window.showInformationMessage('✅ Gemini API 连接测试成功');
+        const apiKeyPrefix = this.apiKey ? this.apiKey.substring(0, 10) : '';
+        const successMsg = locale === 'zh'
+          ? `✅ Gemini API 连接测试成功\nAPI Key: ${apiKeyPrefix}... (来源: ${source})`
+          : `✅ Gemini API Connection Test Successful\nAPI Key: ${apiKeyPrefix}... (Source: ${source})`;
+        
+        vscode.window.showInformationMessage(successMsg);
         return true;
       }
       
       return false;
     } catch (error) {
       console.error('Connection test failed:', error);
-      vscode.window.showErrorMessage(`API 连接测试失败: ${error}`);
+      const locale = getLocale();
+      const errorMsg = locale === 'zh'
+        ? `❌ API 连接测试失败: ${error}`
+        : `❌ API Connection Test Failed: ${error}`;
+      vscode.window.showErrorMessage(errorMsg);
       return false;
     }
   }
