@@ -233,7 +233,9 @@ vibecoding/
 #### AI 工具集成
 - ✅ **Cursor 集成**：自动生成 `.cursorrules` 配置文件
 - ✅ **GitHub Copilot 集成**：自动生成 `.github/copilot-instructions.md`
-- ✅ **技术栈检测**：自动从 `package.json` 提取依赖信息（支持 JS/TS 项目）
+- ✅ **技术栈检测**：自动提取依赖信息
+  - JavaScript/TypeScript 项目（`package.json`）
+  - Java Maven 项目（`pom.xml`）
 - ✅ **一键生成**：同时生成所有 AI 配置文件
 - ✅ **智能分类**：自动分类警告、TODO、已知问题
 

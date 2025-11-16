@@ -439,9 +439,21 @@ export class RAGService {
         return;
       }
 
+      // 检查文件是否存在
+      if (!fs.existsSync(filePath)) {
+        console.log(`File does not exist: ${filePath}`);
+        return;
+      }
+
+      // 检查是否是文件（而不是文件夹）
+      const stats = fs.statSync(filePath);
+      if (!stats.isFile()) {
+        console.log(`Skipping directory: ${filePath}`);
+        return;
+      }
+
       const relativePath = this.getRelativePath(filePath, workspaceRoot);
       const fileName = path.basename(filePath);
-      const stats = fs.statSync(filePath);
       
       console.log(`Indexing file: ${relativePath}`);
 

@@ -78,6 +78,14 @@ export class AIIntegrationService {
    * 构建 Cursor Rules 内容
    */
   private buildCursorRulesContent(): string {
+    const locale = getLocale();
+    return locale === 'zh' ? this.buildCursorRulesContentCN() : this.buildCursorRulesContentEN();
+  }
+
+  /**
+   * 构建 Cursor Rules 内容（中文）
+   */
+  private buildCursorRulesContentCN(): string {
     const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'Project';
     const entities = this.entityService.listEntities({});
     const relations = this.relationService.getAllRelations();
@@ -85,7 +93,7 @@ export class AIIntegrationService {
     const techStack = this.extractTechStack();
 
     let content = `# ${workspaceName} - Cursor AI Rules\n\n`;
-    content += `> 自动生成时间：${new Date().toLocaleString(getLocale())}\n`;
+    content += `> 自动生成时间：${new Date().toLocaleString('zh-CN')}\n`;
     content += `> 来源：Knowledge Graph Extension\n\n`;
     content += `---\n\n`;
 
@@ -203,6 +211,139 @@ export class AIIntegrationService {
     content += `---\n\n`;
     content += `_此文件由 Knowledge Graph Extension 自动生成。_\n`;
     content += `_建议定期运行 \`Knowledge: Generate Cursor Rules\` 更新此文件。_\n`;
+
+    return content;
+  }
+
+  /**
+   * 构建 Cursor Rules 内容（英文）
+   */
+  private buildCursorRulesContentEN(): string {
+    const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'Project';
+    const entities = this.entityService.listEntities({});
+    const relations = this.relationService.getAllRelations();
+    const stats = this.dependencyAnalyzer.getGlobalDependencyStats();
+    const techStack = this.extractTechStack();
+
+    let content = `# ${workspaceName} - Cursor AI Rules\n\n`;
+    content += `> Generated: ${new Date().toLocaleString('en-US')}\n`;
+    content += `> Source: Knowledge Graph Extension\n\n`;
+    content += `---\n\n`;
+
+    // Tech Stack
+    content += this.formatTechStackEN(techStack);
+
+    // Project Overview
+    content += `## 📊 Project Overview\n\n`;
+    content += `- **Project Name**: ${workspaceName}\n`;
+    content += `- **Total Entities**: ${entities.length}\n`;
+    content += `- **Total Relations**: ${relations.length}\n`;
+    content += `- **Entities with Dependencies**: ${stats.entitiesWithDependencies}\n`;
+    content += `- **Average Dependencies**: ${stats.averageDependencies}\n`;
+    content += `- **Max Dependency Depth**: ${stats.maxDependencyDepth}\n`;
+    if (stats.circularDependencyCount > 0) {
+      content += `- **⚠️ Circular Dependencies**: ${stats.circularDependencyCount}\n`;
+    }
+    content += `\n`;
+
+    // Entity Type Distribution
+    const typeCount = this.getEntityTypeDistribution(entities);
+    if (Object.keys(typeCount).length > 0) {
+      content += `### Entity Type Distribution\n\n`;
+      for (const [type, count] of Object.entries(typeCount)) {
+        content += `- **${type}**: ${count}\n`;
+      }
+      content += `\n`;
+    }
+
+    // Key Components (Most Dependencies)
+    if (stats.topDependencies.length > 0) {
+      content += `## 🏗️ Key Components (Top ${Math.min(10, stats.topDependencies.length)})\n\n`;
+      content += `These are the core components with the most complex dependency relationships:\n\n`;
+      for (let i = 0; i < Math.min(10, stats.topDependencies.length); i++) {
+        const item = stats.topDependencies[i];
+        content += `${i + 1}. **${item.entity.name}** (\`${item.entity.type}\`)\n`;
+        content += `   - Location: \`${item.entity.filePath}:${item.entity.startLine}\`\n`;
+        content += `   - Dependencies: ${item.dependencyCount}\n`;
+        if (item.entity.description) {
+          content += `   - Description: ${item.entity.description}\n`;
+        }
+        content += `\n`;
+      }
+    }
+
+    // Categorized Observations
+    const observations = this.categorizeObservations();
+    
+    if (observations.warnings.length > 0) {
+      content += `## ⚠️ Important Warnings (${observations.warnings.length})\n\n`;
+      content += `Please pay special attention to the following issues when coding:\n\n`;
+      for (const obs of observations.warnings.slice(0, 10)) {
+        content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+      }
+      if (observations.warnings.length > 10) {
+        content += `\n_... and ${observations.warnings.length - 10} more warnings_\n`;
+      }
+      content += `\n`;
+    }
+
+    if (observations.todos.length > 0) {
+      content += `## 📝 TODO Items (${observations.todos.length})\n\n`;
+      for (const obs of observations.todos.slice(0, 10)) {
+        content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+      }
+      if (observations.todos.length > 10) {
+        content += `\n_... and ${observations.todos.length - 10} more todos_\n`;
+      }
+      content += `\n`;
+    }
+
+    if (observations.bugs.length > 0) {
+      content += `## 🐛 Known Issues (${observations.bugs.length})\n\n`;
+      for (const obs of observations.bugs.slice(0, 10)) {
+        content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+      }
+      if (observations.bugs.length > 10) {
+        content += `\n_... and ${observations.bugs.length - 10} more issues_\n`;
+      }
+      content += `\n`;
+    }
+
+    // Circular Dependency Warning
+    if (stats.circularDependencyCount > 0) {
+      content += `## 🔄 Circular Dependency Warning\n\n`;
+      content += `⚠️ Detected ${stats.circularDependencyCount} circular dependencies. This may cause:\n`;
+      content += `- Code that's difficult to understand and maintain\n`;
+      content += `- Potential memory leaks\n`;
+      content += `- Module loading issues\n\n`;
+      content += `Suggestion: Prioritize resolving these circular dependencies when refactoring or adding new features.\n\n`;
+    }
+
+    // Coding Guidelines
+    content += `## 💡 AI Coding Guidelines\n\n`;
+    content += `### Code Suggestion Principles\n\n`;
+    content += `1. **Understand Context**: Reference entity relationships in the knowledge graph before providing suggestions\n`;
+    content += `2. **Follow Patterns**: Maintain consistency with existing code\n`;
+    content += `3. **Note Warnings**: Pay special attention to the warnings and known issues mentioned above\n`;
+    content += `4. **Manage Dependencies**: Avoid introducing new circular dependencies\n`;
+    content += `5. **Update Documentation**: Remind to update relevant observation records when modifying code\n\n`;
+
+    content += `### Common Tasks\n\n`;
+    content += `- **Adding New Features**: Check if it affects core components, avoid adding too many dependencies\n`;
+    content += `- **Refactoring Code**: Reference dependency analysis to identify impact scope\n`;
+    content += `- **Fixing Bugs**: Review known issues in observation records\n`;
+    content += `- **Performance Optimization**: Focus on components with high dependency depth\n\n`;
+
+    // Using Knowledge Graph
+    content += `## 📚 Using the Knowledge Graph\n\n`;
+    content += `This project uses the Knowledge Graph extension to manage code knowledge. You can:\n\n`;
+    content += `- Use command \`Knowledge: Export Graph\` to export the complete knowledge graph\n`;
+    content += `- Check \`.vscode/.knowledge/graph.sqlite\` for entities and relations\n`;
+    content += `- Reference entity observation records and dependency relationships when providing suggestions\n\n`;
+
+    content += `---\n\n`;
+    content += `_This file is automatically generated by Knowledge Graph Extension._\n`;
+    content += `_It's recommended to run \`Knowledge: Generate Cursor Rules\` periodically to update this file._\n`;
 
     return content;
   }
@@ -387,7 +528,7 @@ export class AIIntegrationService {
   }
 
   /**
-   * 提取技术栈信息（仅支持 JavaScript/TypeScript 项目）
+   * 提取技术栈信息（支持 JavaScript/TypeScript 和 Java Maven 项目）
    */
   private extractTechStack(): TechStack | null {
     try {
@@ -396,11 +537,30 @@ export class AIIntegrationService {
         return null;
       }
 
+      // 尝试检测 JavaScript/TypeScript 项目
       const packageJsonPath = path.join(workspaceRoot, 'package.json');
-      if (!fs.existsSync(packageJsonPath)) {
-        return null;
+      if (fs.existsSync(packageJsonPath)) {
+        return this.extractJavaScriptTechStack(packageJsonPath);
       }
 
+      // 尝试检测 Java Maven 项目
+      const pomXmlPath = path.join(workspaceRoot, 'pom.xml');
+      if (fs.existsSync(pomXmlPath)) {
+        return this.extractJavaMavenTechStack(pomXmlPath);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to extract tech stack:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 提取 JavaScript/TypeScript 项目的技术栈信息
+   */
+  private extractJavaScriptTechStack(packageJsonPath: string): TechStack | null {
+    try {
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       const allDeps = {
         ...(packageJson.dependencies || {}),
@@ -570,7 +730,199 @@ export class AIIntegrationService {
 
       return techStack;
     } catch (error) {
-      console.error('Failed to extract tech stack:', error);
+      console.error('Failed to extract JavaScript tech stack:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 提取 Java Maven 项目的技术栈信息
+   */
+  private extractJavaMavenTechStack(pomXmlPath: string): TechStack | null {
+    try {
+      const pomContent = fs.readFileSync(pomXmlPath, 'utf-8');
+      
+      const techStack: TechStack = {
+        frameworks: [],
+        keyLibraries: [],
+      };
+
+      // 检测 Java 版本
+      const javaVersionMatch = pomContent.match(/<maven\.compiler\.(source|target|release)>(\d+(?:\.\d+)?)</i) ||
+                              pomContent.match(/<java\.version>(\d+(?:\.\d+)?)</i);
+      if (javaVersionMatch) {
+        const version = javaVersionMatch[javaVersionMatch.length - 1];
+        techStack.language = `Java ${version}`;
+      } else {
+        techStack.language = 'Java';
+      }
+
+      // 检测 Maven 版本（从 wrapper 或项目信息）
+      techStack.runtime = 'Maven';
+
+      // 提取所有依赖
+      const dependenciesMatch = pomContent.match(/<dependencies>([\s\S]*?)<\/dependencies>/i);
+      if (!dependenciesMatch) {
+        return techStack;
+      }
+
+      const dependenciesBlock = dependenciesMatch[1];
+      const dependencyPattern = /<dependency>[\s\S]*?<groupId>(.*?)<\/groupId>[\s\S]*?<artifactId>(.*?)<\/artifactId>[\s\S]*?(?:<version>(.*?)<\/version>)?[\s\S]*?<\/dependency>/gi;
+      
+      const dependencies: Array<{ groupId: string; artifactId: string; version?: string }> = [];
+      let match;
+      while ((match = dependencyPattern.exec(dependenciesBlock)) !== null) {
+        dependencies.push({
+          groupId: match[1].trim(),
+          artifactId: match[2].trim(),
+          version: match[3]?.trim()
+        });
+      }
+
+      // 检测 Spring 框架
+      const springBootDep = dependencies.find(d => 
+        d.groupId === 'org.springframework.boot' && d.artifactId.includes('spring-boot-starter')
+      );
+      if (springBootDep) {
+        const version = springBootDep.version ? this.extractMavenVersion(springBootDep.version) : '';
+        techStack.frameworks.push({
+          name: 'Spring Boot',
+          version: version
+        });
+      } else {
+        const springDep = dependencies.find(d => d.groupId.includes('springframework'));
+        if (springDep) {
+          const version = springDep.version ? this.extractMavenVersion(springDep.version) : '';
+          techStack.frameworks.push({
+            name: 'Spring Framework',
+            version: version
+          });
+        }
+      }
+
+      // 检测其他常见框架
+      const frameworkMappings = [
+        { groupIds: ['io.micronaut'], name: 'Micronaut' },
+        { groupIds: ['io.quarkus'], name: 'Quarkus' },
+        { groupIds: ['com.vaadin'], name: 'Vaadin' },
+        { groupIds: ['io.vertx'], name: 'Vert.x' },
+        { groupIds: ['com.google.gwt'], name: 'GWT' },
+        { groupIds: ['org.apache.struts'], name: 'Struts' },
+        { groupIds: ['javax.servlet', 'jakarta.servlet'], name: 'Servlet' }
+      ];
+
+      for (const mapping of frameworkMappings) {
+        const dep = dependencies.find(d => mapping.groupIds.some(gid => d.groupId.includes(gid)));
+        if (dep && !techStack.frameworks.some(f => f.name === mapping.name)) {
+          const version = dep.version ? this.extractMavenVersion(dep.version) : '';
+          techStack.frameworks.push({
+            name: mapping.name,
+            version: version
+          });
+        }
+      }
+
+      // 检测数据库驱动和 ORM
+      const databases: string[] = [];
+      
+      if (dependencies.some(d => d.artifactId.includes('mysql') || d.groupId.includes('mysql'))) {
+        databases.push('MySQL');
+      }
+      if (dependencies.some(d => d.artifactId.includes('postgresql') || d.groupId.includes('postgresql'))) {
+        databases.push('PostgreSQL');
+      }
+      if (dependencies.some(d => d.artifactId.includes('h2database') || d.artifactId === 'h2')) {
+        databases.push('H2');
+      }
+      if (dependencies.some(d => d.artifactId.includes('mongodb'))) {
+        databases.push('MongoDB');
+      }
+      if (dependencies.some(d => d.artifactId.includes('redis') || d.groupId.includes('redis'))) {
+        databases.push('Redis');
+      }
+      if (dependencies.some(d => d.artifactId.includes('sqlite'))) {
+        databases.push('SQLite');
+      }
+      if (dependencies.some(d => d.artifactId.includes('oracle'))) {
+        databases.push('Oracle');
+      }
+      if (dependencies.some(d => d.artifactId.includes('mssql') || d.groupId.includes('sqlserver'))) {
+        databases.push('SQL Server');
+      }
+
+      // ORM 和持久化框架
+      if (dependencies.some(d => d.artifactId.includes('hibernate') || d.groupId.includes('hibernate'))) {
+        databases.push('Hibernate');
+      }
+      if (dependencies.some(d => d.artifactId.includes('mybatis') || d.groupId.includes('mybatis'))) {
+        databases.push('MyBatis');
+      }
+      if (dependencies.some(d => d.artifactId === 'spring-data-jpa')) {
+        databases.push('Spring Data JPA');
+      }
+      if (dependencies.some(d => d.artifactId.includes('jooq'))) {
+        databases.push('jOOQ');
+      }
+
+      if (databases.length > 0) {
+        techStack.database = databases.join(', ');
+      }
+
+      // 检测测试框架
+      const testFrameworks: string[] = [];
+      const junitDep = dependencies.find(d => d.groupId === 'junit' || d.groupId === 'org.junit.jupiter');
+      if (junitDep) {
+        const version = junitDep.version ? this.extractMavenVersion(junitDep.version) : '';
+        if (junitDep.groupId === 'org.junit.jupiter') {
+          testFrameworks.push(`JUnit 5 ${version}`);
+        } else {
+          testFrameworks.push(`JUnit ${version}`);
+        }
+      }
+      if (dependencies.some(d => d.artifactId.includes('testng'))) {
+        testFrameworks.push('TestNG');
+      }
+      if (dependencies.some(d => d.artifactId.includes('mockito'))) {
+        testFrameworks.push('Mockito');
+      }
+      if (dependencies.some(d => d.artifactId.includes('spring-boot-starter-test'))) {
+        testFrameworks.push('Spring Test');
+      }
+
+      if (testFrameworks.length > 0) {
+        techStack.testing = testFrameworks.join(', ');
+      }
+
+      // 关键库
+      const keyLibMappings = [
+        { artifactIds: ['httpclient', 'httpclient5', 'okhttp'], name: 'HTTP Client' },
+        { artifactIds: ['jackson-databind', 'gson', 'fastjson'], name: 'JSON' },
+        { artifactIds: ['lombok'], name: 'Lombok' },
+        { artifactIds: ['slf4j-api', 'logback-classic', 'log4j'], name: 'Logging' },
+        { artifactIds: ['guava'], name: 'Guava' },
+        { artifactIds: ['commons-lang3', 'commons-collections4'], name: 'Apache Commons' },
+        { artifactIds: ['spring-security'], name: 'Spring Security' },
+        { artifactIds: ['spring-cloud'], name: 'Spring Cloud' },
+        { artifactIds: ['kafka-clients'], name: 'Kafka' },
+        { artifactIds: ['rabbitmq'], name: 'RabbitMQ' }
+      ];
+
+      for (const mapping of keyLibMappings) {
+        const dep = dependencies.find(d => 
+          mapping.artifactIds.some(aid => d.artifactId.includes(aid))
+        );
+        if (dep && !techStack.keyLibraries.some(l => l.name === mapping.name)) {
+          const version = dep.version ? this.extractMavenVersion(dep.version) : '';
+          techStack.keyLibraries.push({
+            name: mapping.name,
+            version: version
+          });
+        }
+      }
+
+      return techStack;
+    } catch (error) {
+      console.error('Failed to extract Java Maven tech stack:', error);
       return null;
     }
   }
@@ -584,6 +936,19 @@ export class AIIntegrationService {
   }
 
   /**
+   * 从 Maven 版本字符串中提取版本号（处理属性占位符）
+   */
+  private extractMavenVersion(versionString: string): string {
+    // 如果是属性占位符（如 ${spring.version}），返回空字符串
+    if (versionString.startsWith('${')) {
+      return '';
+    }
+    // 提取主版本和次版本号
+    const parts = versionString.split('.');
+    return parts.slice(0, Math.min(2, parts.length)).join('.');
+  }
+
+  /**
    * 格式化技术栈为 Markdown（中文）
    */
   private formatTechStackCN(techStack: TechStack | null): string {
@@ -592,7 +957,6 @@ export class AIIntegrationService {
     }
 
     let content = `## 🛠️ 技术栈\n\n`;
-    content += `> 此项目使用 JavaScript/TypeScript 技术栈\n\n`;
 
     if (techStack.language) {
       content += `**语言与运行时：**\n`;
@@ -633,7 +997,7 @@ export class AIIntegrationService {
       content += `\n`;
     }
 
-    content += `_完整依赖列表请参考 \`package.json\`_\n\n`;
+    content += `_完整依赖列表请参考项目配置文件（\`package.json\` 或 \`pom.xml\`）_\n\n`;
     content += `---\n\n`;
 
     return content;
@@ -647,8 +1011,7 @@ export class AIIntegrationService {
       return '';
     }
 
-    let content = `## Tech Stack\n\n`;
-    content += `> This project uses JavaScript/TypeScript\n\n`;
+    let content = `## 🛠️ Tech Stack\n\n`;
 
     if (techStack.language) {
       content += `**Language & Runtime:**\n`;
@@ -689,7 +1052,7 @@ export class AIIntegrationService {
       content += `\n`;
     }
 
-    content += `_For complete dependencies, see \`package.json\`_\n\n`;
+    content += `_For complete dependencies, see project configuration file (\`package.json\` or \`pom.xml\`)_\n\n`;
     content += `---\n\n`;
 
     return content;
