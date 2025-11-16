@@ -85,29 +85,35 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
    */
   public async expandAll(): Promise<void> {
     if (!this.treeView) {
+      console.log('RAG TreeView not initialized');
       return;
     }
 
+    console.log('RAG: Starting expandAll');
     this.expandAllState = true;
     this.refresh();
 
     // 等待视图刷新完成后展开节点
     setTimeout(async () => {
       try {
+        console.log(`RAG: Cached folder nodes count: ${this.cachedFolderNodes.length}`);
+        
         // 使用缓存的文件夹节点引用
         for (const folderNode of this.cachedFolderNodes) {
+          console.log(`RAG: Attempting to expand folder: ${folderNode.label}`);
           await this.treeView?.reveal(folderNode, { 
             expand: 1,
             select: false, 
             focus: false 
           }).catch((err) => {
-            console.log(`Failed to expand folder node:`, err);
+            console.log(`RAG: Failed to expand folder node ${folderNode.label}:`, err.message);
           });
         }
+        console.log('RAG: Finished expanding all folders');
       } catch (error) {
-        console.error('Error expanding all in RAG:', error);
+        console.error('RAG: Error expanding all:', error);
       }
-    }, 200); // 增加延迟到 200ms
+    }, 300); // 增加延迟到 300ms，确保视图完全渲染
   }
 
   /**
@@ -194,8 +200,11 @@ export class RAGTreeDataProvider implements vscode.TreeDataProvider<RAGTreeItem>
       // 缓存文件夹节点
       this.cachedFolderNodes.push(folderNode);
       children.push(folderNode);
+      
+      console.log(`RAG: Created and cached folder node: ${folderNode.label}, folderName: ${folder}`);
     }
 
+    console.log(`RAG: Total cached folder nodes: ${this.cachedFolderNodes.length}`);
     return children;
   }
 
