@@ -202,6 +202,18 @@ export class AIIntegrationService {
     content += `- **修复 Bug**：查看观察记录中的已知问题\n`;
     content += `- **性能优化**：关注依赖深度高的组件\n\n`;
 
+    // 自定义 AI 模板（如果存在）
+    console.log('📋 Checking for custom AI template (CN)...');
+    const customTemplate = this.readCustomAITemplate();
+    if (customTemplate) {
+      console.log('✅ Adding custom template to Cursor Rules (CN)');
+      content += `## 🎯 项目自定义规范\n\n`;
+      content += customTemplate;
+      content += `\n\n`;
+    } else {
+      console.log('ℹ️ No custom template found, skipping (CN)');
+    }
+
     // 使用知识图谱
     content += `## 📚 使用知识图谱\n\n`;
     content += `本项目使用 Knowledge Graph 扩展来管理代码知识。你可以：\n\n`;
@@ -335,6 +347,18 @@ export class AIIntegrationService {
     content += `- **Fixing Bugs**: Review known issues in observation records\n`;
     content += `- **Performance Optimization**: Focus on components with high dependency depth\n\n`;
 
+    // Custom AI Template (if exists)
+    console.log('📋 Checking for custom AI template (EN)...');
+    const customTemplate = this.readCustomAITemplate();
+    if (customTemplate) {
+      console.log('✅ Adding custom template to Cursor Rules (EN)');
+      content += `## 🎯 Custom Project Instructions\n\n`;
+      content += customTemplate;
+      content += `\n\n`;
+    } else {
+      console.log('ℹ️ No custom template found, skipping (EN)');
+    }
+
     // Using Knowledge Graph
     content += `## 📚 Using the Knowledge Graph\n\n`;
     content += `This project uses the Knowledge Graph extension to manage code knowledge. You can:\n\n`;
@@ -464,6 +488,18 @@ export class AIIntegrationService {
     }
     content += `\n`;
 
+    // Custom AI Template (if exists)
+    console.log('📋 Checking for custom AI template (Copilot)...');
+    const customTemplate = this.readCustomAITemplate();
+    if (customTemplate) {
+      console.log('✅ Adding custom template to Copilot Instructions');
+      content += `## 🎯 Custom Project Instructions\n\n`;
+      content += customTemplate;
+      content += `\n\n`;
+    } else {
+      console.log('ℹ️ No custom template found, skipping (Copilot)');
+    }
+
     // Common Patterns
     content += `## Common Patterns\n\n`;
     content += `**Entity Types in this project:**\n\n`;
@@ -495,6 +531,38 @@ export class AIIntegrationService {
       distribution[entity.type] = (distribution[entity.type] || 0) + 1;
     }
     return distribution;
+  }
+
+  /**
+   * 读取自定义 AI 模板
+   */
+  private readCustomAITemplate(): string | null {
+    try {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceRoot) {
+        console.log('❌ Custom AI Template: No workspace root found');
+        return null;
+      }
+
+      const templatePath = path.join(workspaceRoot, '.vscode', '.knowledge', 'ai-template.md');
+      console.log(`🔍 Looking for custom AI template at: ${templatePath}`);
+      
+      if (fs.existsSync(templatePath)) {
+        const content = fs.readFileSync(templatePath, 'utf-8');
+        const trimmed = content.trim();
+        console.log(`✅ Custom AI Template found! Length: ${trimmed.length} characters`);
+        console.log(`📝 Template preview (first 100 chars): ${trimmed.substring(0, 100)}...`);
+        return trimmed;
+      } else {
+        console.log('ℹ️ Custom AI Template not found at the expected location');
+        console.log('   Create .vscode/.knowledge/ai-template.md to use this feature');
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Failed to read custom AI template:', error);
+      return null;
+    }
   }
 
   /**

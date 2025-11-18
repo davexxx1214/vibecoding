@@ -139,6 +139,14 @@ npm run compile
 5. **查看 Store 信息**：侧边栏 → Documents (RAG) → 点击信息图标
 6. **重建索引**：侧边栏 → Documents (RAG) → 点击刷新图标（删除云端索引并重新上传）
 
+#### AI 自定义模板功能 🆕
+1. **创建模板**：在 `.vscode/.knowledge/` 文件夹创建 `ai-template.md` 文件
+2. **编写规范**：使用 Markdown 格式编写项目特定的编码规范、命名约定等
+3. **自动应用**：运行 `Knowledge: Generate All AI Config Files` 时自动包含
+4. **参考示例**：查看项目根目录的 `ai-template.example.md` 获取灵感
+
+> 💡 **注意**：模板文件放在 `.vscode/.knowledge/`（和数据库一起），不会被 RAG 系统索引
+
 ---
 
 ## 📁 项目结构
@@ -237,6 +245,7 @@ vibecoding/
   - JavaScript/TypeScript 项目（`package.json`）
   - Java Maven 项目（`pom.xml`）
   - Python 项目（`requirements.txt`、`pyproject.toml`、`setup.py`）
+- ✅ **自定义模板**：支持项目特定的 AI 指导规范（`.vscode/.knowledge/ai-template.md`）
 - ✅ **一键生成**：同时生成所有 AI 配置文件
 - ✅ **智能分类**：自动分类警告、TODO、已知问题
 
