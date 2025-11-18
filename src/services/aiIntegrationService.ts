@@ -5,6 +5,7 @@ import { EntityService } from './entityService';
 import { RelationService } from './relationService';
 import { ObservationService } from './observationService';
 import { DependencyAnalyzer } from './dependencyAnalyzer';
+import { ScenarioManager } from './scenarioManager';
 import { Entity } from '../utils/types';
 import { getLocale } from '../i18n/i18nService';
 
@@ -187,27 +188,11 @@ export class AIIntegrationService {
       content += `建议：在重构或添加新功能时，优先解决这些循环依赖。\n\n`;
     }
 
-    // 编码指南
-    content += `## 💡 AI 编码指南\n\n`;
-    content += `### 代码建议原则\n\n`;
-    content += `1. **理解上下文**：在提供建议前，先参考知识图谱中的实体关系\n`;
-    content += `2. **遵循模式**：保持与现有代码的一致性\n`;
-    content += `3. **注意警告**：特别关注上述警告和已知问题\n`;
-    content += `4. **依赖管理**：避免引入新的循环依赖\n`;
-    content += `5. **文档更新**：修改代码时，提醒更新相关的观察记录\n\n`;
-
-    content += `### 常见任务\n\n`;
-    content += `- **添加新功能**：检查是否会影响核心组件，避免增加过多依赖\n`;
-    content += `- **重构代码**：参考依赖分析，识别影响范围\n`;
-    content += `- **修复 Bug**：查看观察记录中的已知问题\n`;
-    content += `- **性能优化**：关注依赖深度高的组件\n\n`;
-
     // 自定义 AI 模板（如果存在）
     console.log('📋 Checking for custom AI template (CN)...');
     const customTemplate = this.readCustomAITemplate();
     if (customTemplate) {
       console.log('✅ Adding custom template to Cursor Rules (CN)');
-      content += `## 🎯 项目自定义规范\n\n`;
       content += customTemplate;
       content += `\n\n`;
     } else {
@@ -332,27 +317,11 @@ export class AIIntegrationService {
       content += `Suggestion: Prioritize resolving these circular dependencies when refactoring or adding new features.\n\n`;
     }
 
-    // Coding Guidelines
-    content += `## 💡 AI Coding Guidelines\n\n`;
-    content += `### Code Suggestion Principles\n\n`;
-    content += `1. **Understand Context**: Reference entity relationships in the knowledge graph before providing suggestions\n`;
-    content += `2. **Follow Patterns**: Maintain consistency with existing code\n`;
-    content += `3. **Note Warnings**: Pay special attention to the warnings and known issues mentioned above\n`;
-    content += `4. **Manage Dependencies**: Avoid introducing new circular dependencies\n`;
-    content += `5. **Update Documentation**: Remind to update relevant observation records when modifying code\n\n`;
-
-    content += `### Common Tasks\n\n`;
-    content += `- **Adding New Features**: Check if it affects core components, avoid adding too many dependencies\n`;
-    content += `- **Refactoring Code**: Reference dependency analysis to identify impact scope\n`;
-    content += `- **Fixing Bugs**: Review known issues in observation records\n`;
-    content += `- **Performance Optimization**: Focus on components with high dependency depth\n\n`;
-
     // Custom AI Template (if exists)
     console.log('📋 Checking for custom AI template (EN)...');
     const customTemplate = this.readCustomAITemplate();
     if (customTemplate) {
       console.log('✅ Adding custom template to Cursor Rules (EN)');
-      content += `## 🎯 Custom Project Instructions\n\n`;
       content += customTemplate;
       content += `\n\n`;
     } else {
@@ -476,24 +445,11 @@ export class AIIntegrationService {
       }
     }
 
-    // Coding Guidelines
-    content += `## Coding Guidelines\n\n`;
-    content += `When providing code suggestions:\n\n`;
-    content += `1. **Context Awareness:** Reference the knowledge graph entities and their relationships\n`;
-    content += `2. **Consistency:** Follow existing patterns in the codebase\n`;
-    content += `3. **Warnings:** Pay attention to the warnings and known issues listed above\n`;
-    content += `4. **Dependencies:** Avoid introducing circular dependencies\n`;
-    if (stats.circularDependencyCount > 0) {
-      content += `5. **⚠️ Circular Dependencies:** Be extra careful - ${stats.circularDependencyCount} already exist\n`;
-    }
-    content += `\n`;
-
     // Custom AI Template (if exists)
     console.log('📋 Checking for custom AI template (Copilot)...');
     const customTemplate = this.readCustomAITemplate();
     if (customTemplate) {
       console.log('✅ Adding custom template to Copilot Instructions');
-      content += `## 🎯 Custom Project Instructions\n\n`;
       content += customTemplate;
       content += `\n\n`;
     } else {
@@ -534,33 +490,29 @@ export class AIIntegrationService {
   }
 
   /**
-   * 读取自定义 AI 模板
+   * 读取 AI 场景模板
+   * 使用 ScenarioManager 获取当前场景的模板内容
    */
   private readCustomAITemplate(): string | null {
     try {
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!workspaceRoot) {
-        console.log('❌ Custom AI Template: No workspace root found');
+      const scenarioManager = ScenarioManager.getInstance();
+      const currentScenario = scenarioManager.getCurrentScenario();
+      const scenarioDisplay = scenarioManager.getCurrentScenarioDisplayName();
+      
+      console.log(`📋 Reading AI template for scenario: ${scenarioDisplay}`);
+      
+      const template = scenarioManager.getScenarioTemplate(currentScenario);
+      
+      if (template) {
+        console.log(`✅ Scenario template loaded! Length: ${template.length} characters`);
+        console.log(`📝 Template preview (first 100 chars): ${template.substring(0, 100)}...`);
+        return template;
+      } else {
+        console.log(`⚠️ No template found for scenario: ${currentScenario}`);
         return null;
       }
-
-      const templatePath = path.join(workspaceRoot, '.vscode', '.knowledge', 'ai-template.md');
-      console.log(`🔍 Looking for custom AI template at: ${templatePath}`);
-      
-      if (fs.existsSync(templatePath)) {
-        const content = fs.readFileSync(templatePath, 'utf-8');
-        const trimmed = content.trim();
-        console.log(`✅ Custom AI Template found! Length: ${trimmed.length} characters`);
-        console.log(`📝 Template preview (first 100 chars): ${trimmed.substring(0, 100)}...`);
-        return trimmed;
-      } else {
-        console.log('ℹ️ Custom AI Template not found at the expected location');
-        console.log('   Create .vscode/.knowledge/ai-template.md to use this feature');
-      }
-
-      return null;
     } catch (error) {
-      console.error('❌ Failed to read custom AI template:', error);
+      console.error('❌ Failed to read scenario template:', error);
       return null;
     }
   }

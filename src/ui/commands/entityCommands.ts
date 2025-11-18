@@ -1092,7 +1092,7 @@ export class EntityCommands {
   public async generateAllAIConfigs(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage('请先打开一个工作区');
+      vscode.window.showErrorMessage(t().commands.generateAllAIConfigs.noWorkspace);
       return;
     }
 
@@ -1100,39 +1100,37 @@ export class EntityCommands {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: '正在生成 AI 配置文件...',
+          title: t().commands.generateAllAIConfigs.progress,
           cancellable: false,
         },
         async (progress) => {
-          progress.report({ increment: 0, message: '生成 Cursor Rules...' });
+          progress.report({ increment: 0, message: t().commands.generateCursorRules.title });
           await this.aiIntegrationService.generateCursorRules(workspaceFolder.uri.fsPath);
 
-          progress.report({ increment: 50, message: '生成 Copilot Instructions...' });
+          progress.report({ increment: 50, message: t().commands.generateCopilotInstructions.title });
           await this.aiIntegrationService.generateCopilotInstructions(workspaceFolder.uri.fsPath);
 
-          progress.report({ increment: 100, message: '完成！' });
+          progress.report({ increment: 100, message: '✅' });
         }
       );
 
       const action = await vscode.window.showInformationMessage(
-        `✅ 所有 AI 配置文件已生成：
-- .cursorrules
-- .github/copilot-instructions.md`,
-        '查看 .cursorrules',
-        '查看 Copilot Instructions'
+        t().commands.generateAllAIConfigs.success,
+        t().commands.generateAllAIConfigs.viewCursorRules,
+        t().commands.generateAllAIConfigs.viewCopilotInstructions
       );
 
-      if (action === '查看 .cursorrules') {
+      if (action === t().commands.generateAllAIConfigs.viewCursorRules) {
         const filePath = path.join(workspaceFolder.uri.fsPath, '.cursorrules');
         const doc = await vscode.workspace.openTextDocument(filePath);
         await vscode.window.showTextDocument(doc);
-      } else if (action === '查看 Copilot Instructions') {
+      } else if (action === t().commands.generateAllAIConfigs.viewCopilotInstructions) {
         const filePath = path.join(workspaceFolder.uri.fsPath, '.github', 'copilot-instructions.md');
         const doc = await vscode.workspace.openTextDocument(filePath);
         await vscode.window.showTextDocument(doc);
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`生成 AI 配置失败: ${error}`);
+      vscode.window.showErrorMessage(t().commands.generateAllAIConfigs.error(String(error)));
     }
   }
 

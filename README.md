@@ -139,13 +139,26 @@ npm run compile
 5. **查看 Store 信息**：侧边栏 → Documents (RAG) → 点击信息图标
 6. **重建索引**：侧边栏 → Documents (RAG) → 点击刷新图标（删除云端索引并重新上传）
 
-#### AI 自定义模板功能 🆕
-1. **创建模板**：在 `.vscode/.knowledge/` 文件夹创建 `ai-template.md` 文件
-2. **编写规范**：使用 Markdown 格式编写项目特定的编码规范、命名约定等
-3. **自动应用**：运行 `Knowledge: Generate All AI Config Files` 时自动包含
-4. **参考示例**：查看项目根目录的 `ai-template.example.md` 获取灵感
+#### AI 场景切换功能 🆕
+扩展内置 8 个不同的 AI 场景模板，可根据当前工作内容快速切换：
 
-> 💡 **注意**：模板文件放在 `.vscode/.knowledge/`（和数据库一起），不会被 RAG 系统索引
+| 场景 | 适用时机 | 包含内容 |
+|------|----------|----------|
+| 🔹 **基础规范** | 日常开发（默认） | 代码规范、命名约定、错误处理、安全性 |
+| 🎨 **前端开发** | 开发前端功能 | UI组件、样式、状态管理、性能优化 |
+| ⚙️ **后端开发** | 开发后端功能 | 数据库、中间件、服务集成、安全性 |
+| 🔌 **API 开发** | 专注API开发 | 路由设计、参数验证、错误处理、API文档 |
+| 🧪 **测试场景** | 编写测试 | 测试用例、TDD、覆盖率、Mock |
+| 🐛 **调试优化** | 修复问题/优化 | 错误诊断、性能优化、代码审查、重构 |
+| 📚 **文档编写** | 编写文档 | API文档、代码注释、README |
+| 🚀 **DevOps** | 环境/部署相关 | 环境配置、CI/CD、Docker、部署 |
+
+**使用方法**：
+1. **快速切换**：点击右下角状态栏的场景图标，或运行命令 `Knowledge: Switch AI Scenario`
+2. **查看当前场景**：运行命令 `Knowledge: Show Current AI Scenario`
+3. **自动应用**：切换场景后会提示是否重新生成 AI 配置文件
+4. **自定义**：基础场景支持自定义，在 `.vscode/.knowledge/ai-template.md` 添加项目特定规范
+5. **中英文支持**：扩展内置中英文双语模板，根据语言设置自动选择（8个场景 × 2种语言 = 16个模板）
 
 ---
 
@@ -245,7 +258,7 @@ vibecoding/
   - JavaScript/TypeScript 项目（`package.json`）
   - Java Maven 项目（`pom.xml`）
   - Python 项目（`requirements.txt`、`pyproject.toml`、`setup.py`）
-- ✅ **自定义模板**：支持项目特定的 AI 指导规范（`.vscode/.knowledge/ai-template.md`）
+- ✅ **场景切换**：8种内置场景模板，快速适应不同开发任务（前端/后端/测试/调试等）
 - ✅ **一键生成**：同时生成所有 AI 配置文件
 - ✅ **智能分类**：自动分类警告、TODO、已知问题
 

@@ -99,6 +99,16 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "knowledge.switchAIScenario",
+        "title": "Knowledge: Switch AI Scenario",
+        "icon": "$(notebook-template)"
+      },
+      {
+        "command": "knowledge.showCurrentScenario",
+        "title": "Knowledge: Show Current AI Scenario",
+        "icon": "$(info)"
+      },
+      {
         "command": "knowledge.copyEntityContext",
         "title": "Knowledge: Copy Entity Context to Clipboard",
         "icon": "$(clippy)"

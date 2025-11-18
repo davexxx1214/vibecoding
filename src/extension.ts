@@ -11,8 +11,10 @@ import { KnowledgeTreeDataProvider } from './providers/treeDataProvider';
 import { RAGTreeDataProvider } from './providers/ragTreeDataProvider';
 import { EntityCommands } from './ui/commands/entityCommands';
 import { RAGCommands } from './ui/commands/ragCommands';
+import { registerScenarioCommands } from './commands/scenarioCommands';
+import { ScenarioManager } from './services/scenarioManager';
 import { GraphView } from './ui/webview/graphView';
-import { I18nService } from './i18n/i18nService';
+import { I18nService, getLocale } from './i18n/i18nService';
 import { t } from './i18n/i18nService';
 
 /**
@@ -20,6 +22,10 @@ import { t } from './i18n/i18nService';
  */
 export async function activate(context: vscode.ExtensionContext) {
   console.log('Knowledge Graph extension is now active');
+
+  // 初始化 ScenarioManager 并设置扩展路径
+  const scenarioManager = ScenarioManager.getInstance();
+  scenarioManager.setExtensionPath(context.extensionPath);
 
   // 初始化国际化服务
   const i18nService = I18nService.getInstance();
@@ -601,6 +607,42 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 场景切换命令
+    registerScenarioCommands(context);
+
+    // 创建状态栏显示当前场景
+    const scenarioStatusBar = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      100
+    );
+    scenarioStatusBar.command = 'knowledge.switchAIScenario';
+    scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
+    scenarioStatusBar.tooltip = getLocale() === 'zh' 
+      ? '点击切换 AI 场景'
+      : 'Click to switch AI scenario';
+    scenarioStatusBar.show();
+    context.subscriptions.push(scenarioStatusBar);
+
+    // 监听语言切换，更新状态栏和重新加载场景模板
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(async (e) => {
+        if (e.affectsConfiguration('knowledgeGraph.language')) {
+          // 语言变化时更新状态栏文本
+          scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
+          scenarioStatusBar.tooltip = getLocale() === 'zh' 
+            ? '点击切换 AI 场景'
+            : 'Click to switch AI scenario';
+          
+          // 提示用户场景模板语言已切换
+          const locale = getLocale();
+          const message = locale === 'zh'
+            ? '语言已切换，场景模板将使用中文版本'
+            : 'Language switched, scenario templates will use English version';
+          vscode.window.showInformationMessage(message);
+        }
+      })
+    );
+
     // 切换语言命令
     context.subscriptions.push(
       vscode.commands.registerCommand('knowledge.switchLanguage', async () => {
@@ -696,6 +738,8 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.rag.viewStoreInfo',
     'knowledge.switchLanguage',
     'knowledge.expandAll',
+    'knowledge.switchAIScenario',
+    'knowledge.showCurrentScenario',
   ];
 
   placeholderCommands.forEach(commandId => {
