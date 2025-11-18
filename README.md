@@ -164,7 +164,8 @@ vibecoding/
 ├── package.json                      # 插件配置
 ├── tsconfig.json                     # TypeScript 配置
 ├── README.md                         # 项目说明（本文件）
-└── Demo.md                           # 演示指南
+├── Demo.md                           # 演示指南
+└── 项目结构.md                       # 项目结构详细说明
 
 图例：
   ✅ 已实现
