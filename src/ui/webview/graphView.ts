@@ -309,6 +309,26 @@ export class GraphView {
         .link-flow {
             animation: flow 1s linear infinite;
         }
+
+        .particle {
+            fill: #fff;
+            pointer-events: none;
+        }
+        
+        .node-dimmed {
+            opacity: 0.1;
+            transition: opacity 0.3s;
+        }
+        
+        .link-dimmed {
+            opacity: 0.05;
+            transition: opacity 0.3s;
+        }
+        
+        .text-dimmed {
+            opacity: 0.1;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -496,13 +516,52 @@ export class GraphView {
             const link = linkGroup.selectAll('path')
                 .data(links)
                 .join('path')
+                .attr('id', d => 'link-' + d.id) // Add ID for textPath
                 .attr('fill', 'none')
-                .attr('stroke', '#999')
-                .attr('stroke-opacity', 0.6)
-                .attr('stroke-width', 2)
-                .attr('stroke-dasharray', '5, 5') // Dashed line
-                .attr('class', 'link-flow')       // Animation class
+                .attr('stroke', d => {
+                    // Link color same as source node, but darker/transparent
+                    const color = typeColors[entities.find(e => e.id === d.sourceId)?.type] || typeColors['other'];
+                    return color;
+                })
+                .attr('stroke-opacity', 0.4)
+                .attr('stroke-width', 1.5)
+                .attr('stroke-dasharray', '4, 4') 
+                .attr('class', 'link-flow')       
                 .attr('marker-end', 'url(#arrow)');
+
+            // Particles
+            const particleGroup = g.append('g')
+                .attr('class', 'particles');
+            
+            // Create particles for each link
+            const particles = particleGroup.selectAll('circle')
+                .data(links)
+                .join('circle')
+                .attr('r', 2)
+                .attr('class', 'particle');
+
+            // Animation loop for particles
+            function animateParticles() {
+                particles.each(function(d) {
+                    const path = document.getElementById('link-' + d.id);
+                    if (!path) return;
+                    
+                    // Get path length
+                    const len = path.getTotalLength();
+                    if (!len) return;
+                    
+                    // Calculate position based on time
+                    const t = (Date.now() % 2000) / 2000; // 2s cycle
+                    const p = path.getPointAtLength(t * len);
+                    
+                    d3.select(this)
+                        .attr('cx', p.x)
+                        .attr('cy', p.y)
+                        .attr('fill', typeColors[entities.find(e => e.id === d.sourceId)?.type] || '#fff');
+                });
+                requestAnimationFrame(animateParticles);
+            }
+            animateParticles();
 
             // Link Labels
             const linkLabelGroup = g.append('g')
@@ -550,10 +609,32 @@ export class GraphView {
                 .on('mouseover', function(event, d) {
                     d3.select(this).transition().duration(200).attr('r', 25);
                     showTooltip(event, d);
+                    
+                    // Highlight connected nodes
+                    const connectedNodeIds = new Set();
+                    connectedNodeIds.add(d.id);
+                    
+                    links.forEach(l => {
+                        if (l.sourceId === d.id || l.targetId === d.id) {
+                            connectedNodeIds.add(l.sourceId);
+                            connectedNodeIds.add(l.targetId);
+                        }
+                    });
+                    
+                    node.classed('node-dimmed', n => !connectedNodeIds.has(n.id));
+                    link.classed('link-dimmed', l => l.sourceId !== d.id && l.targetId !== d.id);
+                    particles.style('opacity', l => (l.sourceId === d.id || l.targetId === d.id) ? 1 : 0);
+                    linkLabel.classed('text-dimmed', l => l.sourceId !== d.id && l.targetId !== d.id);
                 })
                 .on('mouseout', function(event, d) {
                     d3.select(this).transition().duration(200).attr('r', 20);
                     hideTooltip();
+                    
+                    // Reset highlight
+                    node.classed('node-dimmed', false);
+                    link.classed('link-dimmed', false);
+                    particles.style('opacity', 1);
+                    linkLabel.classed('text-dimmed', false);
                 })
                 .on('dblclick', (event, d) => {
                     vscode.postMessage({
