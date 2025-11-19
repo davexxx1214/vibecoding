@@ -184,7 +184,7 @@ export class GraphView {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${translations.title}</title>
-    <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -193,6 +193,8 @@ export class GraphView {
             color: var(--vscode-foreground);
             background-color: var(--vscode-editor-background);
             overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
         
         #toolbar {
@@ -222,15 +224,17 @@ export class GraphView {
         button:hover {
             background-color: rgba(50, 50, 50, 0.9);
             transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
         
-        button:active {
-            transform: scale(0.95);
-        }
-        
-        #mynetwork {
+        #graph-container {
             width: 100%;
-            height: 100vh;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #graph-container:active {
+            cursor: grabbing;
         }
         
         #loading {
@@ -240,6 +244,7 @@ export class GraphView {
             transform: translate(-50%, -50%);
             text-align: center;
             z-index: 999;
+            pointer-events: none;
         }
         
         #loading.hidden {
@@ -268,20 +273,28 @@ export class GraphView {
             transform: translate(-50%, -50%);
             text-align: center;
             z-index: 999;
+            pointer-events: none;
         }
         
         #empty-state.hidden {
             display: none;
         }
         
-        #empty-state h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        
-        #empty-state p {
-            color: var(--vscode-descriptionForeground);
-            font-size: 14px;
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -302,13 +315,14 @@ export class GraphView {
         <p style="margin-top: 10px;">${translations.emptyState.hint}</p>
     </div>
     
-    <div id="mynetwork"></div>
+    <div id="graph-container"></div>
+    <div id="tooltip" class="tooltip"></div>
 
     <script>
         const vscode = acquireVsCodeApi();
-        let network = null;
+        let simulation, svg, g, zoom;
+        let width, height;
         
-        // 翻译文本
         const i18n = {
             tooltip: {
                 type: '${translations.tooltip.type}',
@@ -318,7 +332,6 @@ export class GraphView {
             cyclicDependency: '${translations.cyclicDependency}'
         };
         
-        // 实体类型颜色映射
         const typeColors = {
             'function': '#61AFEF',
             'class': '#E06C75',
@@ -330,301 +343,414 @@ export class GraphView {
             'config': '#ABB2BF',
             'other': '#5C6370'
         };
-        
-        // 页面加载完成
+
         window.addEventListener('load', () => {
-            // 通知扩展 webview 已准备好
             vscode.postMessage({ type: 'ready' });
+            initGraph();
+        });
+
+        window.addEventListener('resize', () => {
+            if (svg) {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                svg.attr('width', width).attr('height', height)
+                   .attr('viewBox', [0, 0, width, height]);
+                
+                if (simulation) {
+                    simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                    simulation.alpha(0.3).restart();
+                }
+            }
         });
         
-        // 接收来自扩展的消息
         window.addEventListener('message', event => {
             const message = event.data;
-            
             switch (message.type) {
                 case 'graphData':
                     renderGraph(message.data);
                     break;
             }
         });
-        
-        // 检测循环依赖
-        function detectCycles(relations) {
-            const cycles = new Set();
+
+        function initGraph() {
+            width = window.innerWidth;
+            height = window.innerHeight;
             
-            // 为每对节点检查是否存在双向关系
-            for (let i = 0; i < relations.length; i++) {
-                const rel1 = relations[i];
-                for (let j = i + 1; j < relations.length; j++) {
-                    const rel2 = relations[j];
-                    // 检查是否为循环：A -> B 且 B -> A
-                    if (rel1.sourceId === rel2.targetId && rel1.targetId === rel2.sourceId) {
-                        cycles.add(rel1.id);
-                        cycles.add(rel2.id);
-                    }
-                }
-            }
+            const container = d3.select('#graph-container');
+            container.selectAll('*').remove();
             
-            return cycles;
+            svg = container.append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('viewBox', [0, 0, width, height])
+                .style('width', '100%')
+                .style('height', '100%');
+                
+            // Glow filter
+            const defs = svg.append('defs');
+            const filter = defs.append('filter')
+                .attr('id', 'glow');
+            filter.append('feGaussianBlur')
+                .attr('stdDeviation', '2.5')
+                .attr('result', 'coloredBlur');
+            const feMerge = filter.append('feMerge');
+            feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+            feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+            // Arrow markers
+            defs.append('marker')
+                .attr('id', 'arrow')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 28) // Adjust based on node size (20 radius + padding)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#999');
+
+            g = svg.append('g');
+            
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+                
+            svg.call(zoom).on('dblclick.zoom', null);
         }
-        
-        // 检测同方向的多条边（相同的 from 和 to）
-        function detectMultipleEdges(relations) {
-            const edgeMap = new Map(); // key: "fromId->toId", value: [relationIds]
-            const multiEdgeInfo = new Map(); // key: relationId, value: { index: number, total: number }
-            
-            // 第一遍：按方向分组
-            relations.forEach(rel => {
-                const key = rel.sourceId + '->' + rel.targetId;
-                if (!edgeMap.has(key)) {
-                    edgeMap.set(key, []);
-                }
-                edgeMap.get(key).push(rel.id);
-            });
-            
-            // 第二遍：标记多边
-            edgeMap.forEach((ids, key) => {
-                if (ids.length > 1) {
-                    // 有多条边指向同一方向
-                    ids.forEach((id, index) => {
-                        multiEdgeInfo.set(id, {
-                            index: index,
-                            total: ids.length
-                        });
-                    });
-                }
-            });
-            
-            return multiEdgeInfo;
-        }
-        
+
         function renderGraph(data) {
-            const { entities, relations } = data;
-            
-            // 隐藏加载提示
             document.getElementById('loading').classList.add('hidden');
             
-            // 检查是否为空
-            if (entities.length === 0) {
+            const { entities, relations } = data;
+            
+            if (!entities || entities.length === 0) {
                 document.getElementById('empty-state').classList.remove('hidden');
                 return;
             } else {
                 document.getElementById('empty-state').classList.add('hidden');
             }
-            
-            // 检测循环依赖
-            const cycleEdges = detectCycles(relations);
-            const hasCycles = cycleEdges.size > 0;
-            
-            // 检测同方向的多条边
-            const multiEdgeInfo = detectMultipleEdges(relations);
-            
-            // 如果有循环依赖，显示警告
-            if (hasCycles) {
-                console.warn(\`⚠️ 检测到 \${cycleEdges.size / 2} 个循环依赖！\`);
-            }
-            
-            // 如果有多重边，显示提示
-            if (multiEdgeInfo.size > 0) {
-                console.log(\`ℹ️ 检测到 \${multiEdgeInfo.size} 条多重边，已自动分离显示\`);
-            }
-            
-            // 构建节点
-            const nodes = entities.map(entity => ({
-                id: entity.id,
-                label: entity.name,
-                title: \`<strong>\${entity.name}</strong><br>
-                        \${i18n.tooltip.type}: \${entity.type}<br>
-                        \${i18n.tooltip.file}: \${entity.filePath}:\${entity.startLine}<br>
-                        \${entity.description ? i18n.tooltip.description + ': ' + entity.description : ''}\`,
-                color: {
-                    background: typeColors[entity.type] || typeColors['other'],
-                    border: '#2B2B2B',
-                    highlight: {
-                        background: typeColors[entity.type] || typeColors['other'],
-                        border: '#FFFFFF'
-                    }
-                },
-                font: {
-                    color: '#FFFFFF',
-                    size: 14,
-                    face: 'Arial'
-                },
-                shape: getNodeShape(entity.type),
-                size: 25,
-                entityData: entity
+
+            // Prepare links (D3 requires object references or IDs)
+            const links = relations.map(r => ({
+                source: r.sourceId,
+                target: r.targetId,
+                ...r
             }));
             
-            // 构建边
-            const edges = relations.map(relation => {
-                const isCycle = cycleEdges.has(relation.id);
-                const multiEdge = multiEdgeInfo.get(relation.id);
-                
-                // 确定 smooth 类型
-                let smoothConfig;
-                if (isCycle) {
-                    // 循环依赖使用弧形
-                    smoothConfig = {
-                        type: 'curvedCW',
-                        roundness: 0.2
-                    };
-                } else if (multiEdge) {
-                    // 多重边：第一条向右弯，第二条向左弯
-                    smoothConfig = {
-                        type: multiEdge.index === 0 ? 'curvedCW' : 'curvedCCW',
-                        roundness: 0.2
-                    };
-                } else {
-                    // 普通边
-                    smoothConfig = {
-                        type: 'cubicBezier',
-                        roundness: 0.4
-                    };
+            // Detect multiple links between same nodes
+            const linkGroups = {};
+            links.forEach(link => {
+                const key = [link.source, link.target].sort().join('-');
+                if (!linkGroups[key]) {
+                    linkGroups[key] = [];
                 }
-                
-                return {
-                    id: relation.id,
-                    from: relation.sourceId,
-                    to: relation.targetId,
-                    label: isCycle ? \`⚠️ \${relation.verb}\` : relation.verb,
-                    title: isCycle ? i18n.cyclicDependency : undefined,  // 鼠标悬停提示
-                    arrows: {
-                        to: {
-                            enabled: true,
-                            scaleFactor: 1.2,
-                            type: 'arrow'
-                        }
-                    },
-                    color: {
-                        color: '#A0A0A0',        // 统一使用灰色
-                        highlight: '#FFFFFF',
-                        hover: '#FFFFFF'
-                    },
-                    font: {
-                        color: '#FFFFFF',
-                        size: 16,
-                        face: 'Arial',
-                        align: 'middle',
-                        strokeWidth: 2,
-                        strokeColor: '#000000',
-                        background: 'rgba(0, 0, 0, 0.7)',  // 统一使用黑色背景
-                        vadjust: -10
-                    },
-                    width: 2,                    // 统一线条粗细
-                    dashes: false,               // 统一使用实线
-                    smooth: smoothConfig
-                };
+                linkGroups[key].push(link);
             });
             
-            // 创建数据集
-            const nodesDataSet = new vis.DataSet(nodes);
-            const edgesDataSet = new vis.DataSet(edges);
+            links.forEach(link => {
+                const key = [link.source, link.target].sort().join('-');
+                const group = linkGroups[key];
+                // Calculate index in the group
+                link.linkIndex = group.indexOf(link);
+                link.linkCount = group.length;
+                
+                // Determine direction relative to sorted key to handle A->B vs B->A
+                // If source < target, we use index as is
+                // If source > target, we need to be careful if we want symmetric curves
+                // For now, just using index/count is enough to separate them
+            });
             
-            // 图谱配置
-            const options = {
-                nodes: {
-                    borderWidth: 2,
-                    borderWidthSelected: 4,
-                    font: {
-                        size: 16,
-                        face: 'Arial',
-                        color: '#FFFFFF'
-                    }
-                },
-                edges: {
-                    width: 2,
-                    selectionWidth: 5,
-                    hoverWidth: 3,
-                    smooth: {
-                        enabled: true,
-                        type: 'cubicBezier',
-                        roundness: 0.4
-                    }
-                },
-                physics: {
-                    enabled: true,
-                    barnesHut: {
-                        gravitationalConstant: -10000,
-                        centralGravity: 0.3,
-                        springLength: 200,
-                        springConstant: 0.04,
-                        damping: 0.09,
-                        avoidOverlap: 0.6
-                    },
-                    stabilization: {
-                        iterations: 250,
-                        updateInterval: 25
-                    }
-                },
-                interaction: {
-                    hover: true,
-                    tooltipDelay: 200,
-                    hideEdgesOnDrag: false,
-                    hideEdgesOnZoom: false
-                },
-                layout: {
-                    improvedLayout: true,
-                    hierarchical: false
-                }
-            };
+            const nodes = entities.map(e => ({
+                ...e
+            }));
+
+            // Simulation
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(200)) // Increased distance
+                .force('charge', d3.forceManyBody().strength(-500))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collide', d3.forceCollide().radius(50));
+
+            g.selectAll('*').remove();
+
+            // Links (Paths instead of Lines)
+            const linkGroup = g.append('g')
+                .attr('class', 'links');
+                
+            const link = linkGroup.selectAll('path')
+                .data(links)
+                .join('path')
+                .attr('fill', 'none')
+                .attr('stroke', '#999')
+                .attr('stroke-opacity', 0.6)
+                .attr('stroke-width', 2)
+                .attr('marker-end', 'url(#arrow)');
+
+            // Link Labels
+            const linkLabelGroup = g.append('g')
+                .attr('class', 'link-labels');
+
+            const linkLabel = linkLabelGroup.selectAll('g')
+                .data(links)
+                .join('g');
             
-            // 创建网络
-            const container = document.getElementById('mynetwork');
-            const graphData = {
-                nodes: nodesDataSet,
-                edges: edgesDataSet
-            };
-            
-            network = new vis.Network(container, graphData, options);
-            
-            // 双击节点跳转到代码
-            network.on('doubleClick', function(params) {
-                if (params.nodes.length > 0) {
-                    const nodeId = params.nodes[0];
+            // Label background (halo) to make text readable over lines
+            linkLabel.append('text')
+                .text(d => d.verb)
+                .attr('font-size', 10)
+                .attr('text-anchor', 'middle')
+                .attr('dy', -5)
+                .attr('stroke', '#1e1e1e') // Dark theme background color
+                .attr('stroke-width', 3)
+                .attr('opacity', 0.8);
+
+            // Actual label text
+            linkLabel.append('text')
+                .text(d => d.verb)
+                .attr('font-size', 10)
+                .attr('fill', '#aaa')
+                .attr('text-anchor', 'middle')
+                .attr('dy', -5);
+
+            // Nodes
+            const nodeGroup = g.append('g')
+                .attr('class', 'nodes');
+
+            const node = nodeGroup.selectAll('g')
+                .data(nodes)
+                .join('g')
+                .call(drag(simulation));
+
+            // Node circles
+            node.append('circle')
+                .attr('r', 20)
+                .attr('fill', d => typeColors[d.type] || typeColors['other'])
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 1.5)
+                .style('filter', 'url(#glow)')
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event, d) {
+                    d3.select(this).transition().duration(200).attr('r', 25);
+                    showTooltip(event, d);
+                })
+                .on('mouseout', function(event, d) {
+                    d3.select(this).transition().duration(200).attr('r', 20);
+                    hideTooltip();
+                })
+                .on('dblclick', (event, d) => {
                     vscode.postMessage({
                         type: 'jumpToEntity',
-                        entityId: nodeId
+                        entityId: d.id
                     });
-                }
+                });
+
+            // Node labels
+            node.append('text')
+                .text(d => d.name)
+                .attr('x', 28)
+                .attr('y', 5)
+                .attr('fill', '#fff')
+                .attr('stroke', 'none')
+                .attr('font-size', 14)
+                .attr('font-weight', 'bold')
+                .style('pointer-events', 'none')
+                .style('text-shadow', '1px 1px 2px #000');
+
+            // Icon/Text inside node
+            node.append('text')
+                .text(d => getIconForType(d.type))
+                .attr('text-anchor', 'middle')
+                .attr('dy', 6)
+                .attr('fill', '#fff')
+                .attr('stroke', 'none')
+                .attr('font-size', 16)
+                .attr('font-weight', 'bold')
+                .style('pointer-events', 'none');
+
+            simulation.on('tick', () => {
+                link.attr('d', d => {
+                    const x1 = d.source.x;
+                    const y1 = d.source.y;
+                    const x2 = d.target.x;
+                    const y2 = d.target.y;
+                    
+                    if (d.linkCount > 1) {
+                        const dx = x2 - x1;
+                        const dy = y2 - y1;
+                        const dr = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Calculate curve amount based on index
+                        // We want to spread them out
+                        
+                        // Midpoint
+                        const mx = (x1 + x2) / 2;
+                        const my = (y1 + y2) / 2;
+                        
+                        // Normal vector
+                        const normX = -dy;
+                        const normY = dx;
+                        
+                        // Normalize
+                        const len = Math.sqrt(normX * normX + normY * normY);
+                        const nx = normX / len;
+                        const ny = normY / len;
+                        
+                        let curveFactor = 0;
+                        if (d.linkCount === 2) {
+                            curveFactor = d.linkIndex === 0 ? 30 : -30;
+                        } else {
+                            // General case
+                            const spread = 30;
+                            const center = (d.linkCount - 1) / 2;
+                            curveFactor = (d.linkIndex - center) * spread;
+                        }
+                        
+                        const cx = mx + nx * curveFactor;
+                        const cy = my + ny * curveFactor;
+                        
+                        return \`M\${x1},\${y1} Q\${cx},\${cy} \${x2},\${y2}\`;
+                    } else {
+                        // Single link - straight line
+                        return \`M\${x1},\${y1} L\${x2},\${y2}\`;
+                    }
+                });
+
+                linkLabel.attr('transform', d => {
+                    if (d.linkCount > 1) {
+                        const x1 = d.source.x;
+                        const y1 = d.source.y;
+                        const x2 = d.target.x;
+                        const y2 = d.target.y;
+                        
+                        const dx = x2 - x1;
+                        const dy = y2 - y1;
+                        
+                        const mx = (x1 + x2) / 2;
+                        const my = (y1 + y2) / 2;
+                        
+                        const normX = -dy;
+                        const normY = dx;
+                        const len = Math.sqrt(normX * normX + normY * normY);
+                        const nx = normX / len;
+                        const ny = normY / len;
+                        
+                        let curveFactor = 0;
+                        if (d.linkCount === 2) {
+                            curveFactor = d.linkIndex === 0 ? 30 : -30;
+                        } else {
+                            const spread = 30;
+                            const center = (d.linkCount - 1) / 2;
+                            curveFactor = (d.linkIndex - center) * spread;
+                        }
+                        
+                        const cx = mx + nx * curveFactor;
+                        const cy = my + ny * curveFactor;
+                        
+                        // Find point on quadratic bezier at t=0.5
+                        const tx = 0.25 * x1 + 0.5 * cx + 0.25 * x2;
+                        const ty = 0.25 * y1 + 0.5 * cy + 0.25 * y2;
+                        
+                        return \`translate(\${tx},\${ty})\`;
+                    } else {
+                        const x = (d.source.x + d.target.x) / 2;
+                        const y = (d.source.y + d.target.y) / 2;
+                        return \`translate(\${x},\${y})\`;
+                    }
+                });
+
+                node
+                    .attr('transform', d => \`translate(\${d.x},\${d.y})\`);
             });
             
-            // 稳定后适应窗口
-            network.once('stabilizationIterationsDone', function() {
-                network.fit({
-                    animation: {
-                        duration: 1000,
-                        easingFunction: 'easeInOutQuad'
-                    }
-                });
-            });
+            // Initial fit
+            setTimeout(fitGraph, 1000);
         }
-        
-        function getNodeShape(type) {
-            const shapes = {
-                'function': 'box',
-                'class': 'ellipse',
-                'interface': 'diamond',
-                'variable': 'dot',
-                'component': 'star',
-                'service': 'box',
-                'api': 'triangleDown',
-                'config': 'square',
-                'other': 'dot'
-            };
-            return shapes[type] || 'dot';
-        }
-        
-        function fitGraph() {
-            if (network) {
-                network.fit({
-                    animation: {
-                        duration: 500,
-                        easingFunction: 'easeInOutQuad'
-                    }
-                });
+
+        function drag(simulation) {
+            function dragstarted(event) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                event.subject.fx = event.subject.x;
+                event.subject.fy = event.subject.y;
             }
+            
+            function dragged(event) {
+                event.subject.fx = event.x;
+                event.subject.fy = event.y;
+            }
+            
+            function dragended(event) {
+                if (!event.active) simulation.alphaTarget(0);
+                event.subject.fx = null;
+                event.subject.fy = null;
+            }
+            
+            return d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended);
+        }
+
+        function getIconForType(type) {
+            const icons = {
+                'function': 'ƒ',
+                'class': 'C',
+                'interface': 'I',
+                'variable': 'v',
+                'component': '◆',
+                'service': 'S',
+                'api': 'A',
+                'config': '⚙',
+                'other': '?'
+            };
+            return icons[type] || '?';
+        }
+
+        const tooltip = document.getElementById('tooltip');
+        
+        function showTooltip(event, d) {
+            tooltip.style.opacity = 1;
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY + 10) + 'px';
+            tooltip.innerHTML = \`
+                <strong>\${d.name}</strong><br>
+                \${i18n.tooltip.type}: \${d.type}<br>
+                \${i18n.tooltip.file}: \${d.filePath}:\${d.startLine}<br>
+                \${d.description ? i18n.tooltip.description + ': ' + d.description : ''}
+            \`;
         }
         
+        function hideTooltip() {
+            tooltip.style.opacity = 0;
+        }
+
+        function fitGraph() {
+            if (!g) return;
+            
+            // Use D3 zoom to fit
+            const bounds = g.node().getBBox();
+            const parent = svg.node().parentElement;
+            const fullWidth = parent.clientWidth;
+            const fullHeight = parent.clientHeight;
+            
+            const width = bounds.width;
+            const height = bounds.height;
+            
+            if (width === 0 || height === 0) return;
+            
+            const midX = bounds.x + width / 2;
+            const midY = bounds.y + height / 2;
+            
+            const scale = 0.85 / Math.max(width / fullWidth, height / fullHeight);
+            const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+            
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+        }
+
         function refreshGraph() {
             document.getElementById('loading').classList.remove('hidden');
             vscode.postMessage({ type: 'refresh' });
