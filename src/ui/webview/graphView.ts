@@ -7,178 +7,178 @@ import { t } from '../../i18n/i18nService';
  * 图谱可视化 Webview
  */
 export class GraphView {
-  public static currentPanel: GraphView | undefined;
-  
-  private readonly _panel: vscode.WebviewPanel;
-  private readonly _extensionUri: vscode.Uri;
-  private readonly _entityService: EntityService;
-  private readonly _relationService: RelationService;
-  private _disposables: vscode.Disposable[] = [];
+    public static currentPanel: GraphView | undefined;
 
-  private constructor(
-    panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
-    entityService: EntityService,
-    relationService: RelationService
-  ) {
-    this._panel = panel;
-    this._extensionUri = extensionUri;
-    this._entityService = entityService;
-    this._relationService = relationService;
-    
-    // 设置初始内容
-    this._update();
-    
-    // 监听来自 webview 的消息
-    this._panel.webview.onDidReceiveMessage(
-      (message) => {
-        this._handleMessage(message);
-      },
-      null,
-      this._disposables
-    );
-    
-    // 监听面板关闭
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
-  }
+    private readonly _panel: vscode.WebviewPanel;
+    private readonly _extensionUri: vscode.Uri;
+    private readonly _entityService: EntityService;
+    private readonly _relationService: RelationService;
+    private _disposables: vscode.Disposable[] = [];
 
-  public static createOrShow(
-    extensionUri: vscode.Uri,
-    entityService: EntityService,
-    relationService: RelationService
-  ) {
-    // 如果已经存在，则更新数据并显示
-    if (GraphView.currentPanel) {
-      GraphView.currentPanel._panel.reveal(vscode.ViewColumn.One);
-      GraphView.currentPanel._update();
-      return;
+    private constructor(
+        panel: vscode.WebviewPanel,
+        extensionUri: vscode.Uri,
+        entityService: EntityService,
+        relationService: RelationService
+    ) {
+        this._panel = panel;
+        this._extensionUri = extensionUri;
+        this._entityService = entityService;
+        this._relationService = relationService;
+
+        // 设置初始内容
+        this._update();
+
+        // 监听来自 webview 的消息
+        this._panel.webview.onDidReceiveMessage(
+            (message) => {
+                this._handleMessage(message);
+            },
+            null,
+            this._disposables
+        );
+
+        // 监听面板关闭
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     }
 
-    // 创建新的面板
-    const panel = vscode.window.createWebviewPanel(
-      'knowledgeGraph',
-      'Knowledge Graph Visualization',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-      }
-    );
+    public static createOrShow(
+        extensionUri: vscode.Uri,
+        entityService: EntityService,
+        relationService: RelationService
+    ) {
+        // 如果已经存在，则更新数据并显示
+        if (GraphView.currentPanel) {
+            GraphView.currentPanel._panel.reveal(vscode.ViewColumn.One);
+            GraphView.currentPanel._update();
+            return;
+        }
 
-    GraphView.currentPanel = new GraphView(
-      panel,
-      extensionUri,
-      entityService,
-      relationService
-    );
-  }
+        // 创建新的面板
+        const panel = vscode.window.createWebviewPanel(
+            'knowledgeGraph',
+            'Knowledge Graph Visualization',
+            vscode.ViewColumn.One,
+            {
+                enableScripts: true,
+                retainContextWhenHidden: true,
+            }
+        );
 
-  public dispose() {
-    GraphView.currentPanel = undefined;
-
-    this._panel.dispose();
-
-    while (this._disposables.length) {
-      const disposable = this._disposables.pop();
-      if (disposable) {
-        disposable.dispose();
-      }
-    }
-  }
-
-  private _update() {
-    const webview = this._panel.webview;
-    this._panel.title = t().graphView.title;
-    this._panel.webview.html = this._getHtmlForWebview(webview);
-  }
-
-  private _handleMessage(message: any) {
-    switch (message.type) {
-      case 'ready':
-        // Webview 准备好了，发送图谱数据
-        this._sendGraphData();
-        break;
-      case 'jumpToEntity':
-        // 跳转到实体位置
-        this._jumpToEntity(message.entityId);
-        break;
-      case 'refresh':
-        // 刷新图谱数据
-        this._sendGraphData();
-        break;
-    }
-  }
-
-  private _sendGraphData() {
-    // 获取所有实体和关系
-    const entities = this._entityService.listEntities();
-    const allRelations: any[] = [];
-
-    // 收集所有关系
-    for (const entity of entities) {
-      const relations = this._relationService.getRelations(entity.id, 'outgoing');
-      allRelations.push(...relations);
+        GraphView.currentPanel = new GraphView(
+            panel,
+            extensionUri,
+            entityService,
+            relationService
+        );
     }
 
-    // 发送数据到 webview
-    this._panel.webview.postMessage({
-      type: 'graphData',
-      data: {
-        entities: entities.map(e => ({
-          id: e.id,
-          name: e.name,
-          type: e.type,
-          filePath: e.filePath,
-          startLine: e.startLine,
-          endLine: e.endLine,
-          description: e.description,
-        })),
-        relations: allRelations.map(r => ({
-          id: r.id,
-          sourceId: r.sourceEntityId,
-          targetId: r.targetEntityId,
-          verb: r.verb,
-        })),
-      },
-    });
-  }
+    public dispose() {
+        GraphView.currentPanel = undefined;
 
-  private async _jumpToEntity(entityId: string) {
-    const entity = this._entityService.getEntity(entityId);
-    if (!entity) {
-      return;
+        this._panel.dispose();
+
+        while (this._disposables.length) {
+            const disposable = this._disposables.pop();
+            if (disposable) {
+                disposable.dispose();
+            }
+        }
     }
 
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders) {
-      return;
+    private _update() {
+        const webview = this._panel.webview;
+        this._panel.title = t().graphView.title;
+        this._panel.webview.html = this._getHtmlForWebview(webview);
     }
 
-    const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, entity.filePath);
-    
-    try {
-      const document = await vscode.workspace.openTextDocument(uri);
-      const editor = await vscode.window.showTextDocument(document);
-
-      // 跳转到实体位置
-      const range = new vscode.Range(
-        entity.startLine - 1,
-        0,
-        entity.endLine - 1,
-        0
-      );
-
-      editor.selection = new vscode.Selection(range.start, range.end);
-      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+    private _handleMessage(message: any) {
+        switch (message.type) {
+            case 'ready':
+                // Webview 准备好了，发送图谱数据
+                this._sendGraphData();
+                break;
+            case 'jumpToEntity':
+                // 跳转到实体位置
+                this._jumpToEntity(message.entityId);
+                break;
+            case 'refresh':
+                // 刷新图谱数据
+                this._sendGraphData();
+                break;
+        }
     }
-  }
 
-  private _getHtmlForWebview(webview: vscode.Webview) {
-    const translations = t().graphView;
-    
-    return `<!DOCTYPE html>
+    private _sendGraphData() {
+        // 获取所有实体和关系
+        const entities = this._entityService.listEntities();
+        const allRelations: any[] = [];
+
+        // 收集所有关系
+        for (const entity of entities) {
+            const relations = this._relationService.getRelations(entity.id, 'outgoing');
+            allRelations.push(...relations);
+        }
+
+        // 发送数据到 webview
+        this._panel.webview.postMessage({
+            type: 'graphData',
+            data: {
+                entities: entities.map(e => ({
+                    id: e.id,
+                    name: e.name,
+                    type: e.type,
+                    filePath: e.filePath,
+                    startLine: e.startLine,
+                    endLine: e.endLine,
+                    description: e.description,
+                })),
+                relations: allRelations.map(r => ({
+                    id: r.id,
+                    sourceId: r.sourceEntityId,
+                    targetId: r.targetEntityId,
+                    verb: r.verb,
+                })),
+            },
+        });
+    }
+
+    private async _jumpToEntity(entityId: string) {
+        const entity = this._entityService.getEntity(entityId);
+        if (!entity) {
+            return;
+        }
+
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) {
+            return;
+        }
+
+        const uri = vscode.Uri.joinPath(workspaceFolders[0].uri, entity.filePath);
+
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            const editor = await vscode.window.showTextDocument(document);
+
+            // 跳转到实体位置
+            const range = new vscode.Range(
+                entity.startLine - 1,
+                0,
+                entity.endLine - 1,
+                0
+            );
+
+            editor.selection = new vscode.Selection(range.start, range.end);
+            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+        }
+    }
+
+    private _getHtmlForWebview(webview: vscode.Webview) {
+        const translations = t().graphView;
+
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -431,17 +431,33 @@ export class GraphView {
             feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
             // Arrow markers
+            // Create markers for each type color
+            Object.entries(typeColors).forEach(([type, color]) => {
+                defs.append('marker')
+                    .attr('id', 'arrow-' + type)
+                    .attr('viewBox', '0 -5 10 10')
+                    .attr('refX', 28) 
+                    .attr('refY', 0)
+                    .attr('markerWidth', 6)
+                    .attr('markerHeight', 6)
+                    .attr('orient', 'auto')
+                    .append('path')
+                    .attr('d', 'M0,-5L10,0L0,5')
+                    .attr('fill', color);
+            });
+
+            // Default marker
             defs.append('marker')
                 .attr('id', 'arrow')
                 .attr('viewBox', '0 -5 10 10')
-                .attr('refX', 28) // Adjust based on node size (20 radius + padding)
+                .attr('refX', 28) 
                 .attr('refY', 0)
                 .attr('markerWidth', 6)
                 .attr('markerHeight', 6)
                 .attr('orient', 'auto')
                 .append('path')
                 .attr('d', 'M0,-5L10,0L0,5')
-                .attr('fill', '#999');
+                .attr('fill', '#ccc'); // Brighter grey
 
             g = svg.append('g');
             
@@ -482,6 +498,21 @@ export class GraphView {
                 }
                 linkGroups[key].push(link);
             });
+
+            // Detect cyclic dependencies
+            const linkMap = new Set();
+            links.forEach(l => {
+                linkMap.add(l.source + '|' + l.target);
+            });
+
+            links.forEach(l => {
+                if (linkMap.has(l.target + '|' + l.source)) {
+                    // Only show warning on one of the links to avoid clutter
+                    if (l.source < l.target) {
+                        l.isCyclic = true;
+                    }
+                }
+            });
             
             links.forEach(link => {
                 const key = [link.source, link.target].sort().join('-');
@@ -501,6 +532,10 @@ export class GraphView {
             }));
 
             // Simulation
+            if (simulation) {
+                simulation.stop();
+            }
+            
             simulation = d3.forceSimulation(nodes)
                 .force('link', d3.forceLink(links).id(d => d.id).distance(200)) // Increased distance
                 .force('charge', d3.forceManyBody().strength(-500))
@@ -527,7 +562,10 @@ export class GraphView {
                 .attr('stroke-width', 1.5)
                 .attr('stroke-dasharray', '4, 4') 
                 .attr('class', 'link-flow')       
-                .attr('marker-end', 'url(#arrow)');
+                .attr('marker-end', d => {
+                    const type = entities.find(e => e.id === d.sourceId)?.type || 'other';
+                    return 'url(#arrow-' + type + ')';
+                });
 
             // Particles
             const particleGroup = g.append('g')
@@ -588,6 +626,19 @@ export class GraphView {
                 .attr('fill', '#aaa')
                 .attr('text-anchor', 'middle')
                 .attr('dy', -5);
+
+            // Warning Icon for Cyclic Dependencies
+            linkLabel.filter(d => d.isCyclic)
+                .append('text')
+                .text('⚠️')
+                .attr('font-size', 12)
+                .attr('x', 15)
+                .attr('y', 0)
+                .attr('dy', -2)
+                .attr('text-anchor', 'middle')
+                .style('cursor', 'help')
+                .append('title')
+                .text(i18n.cyclicDependency);
 
             // Nodes
             const nodeGroup = g.append('g')
@@ -854,5 +905,5 @@ export class GraphView {
     </script>
 </body>
 </html>`;
-  }
+    }
 }
