@@ -296,6 +296,19 @@ export class GraphView {
             transition: opacity 0.2s;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
+
+        @keyframes flow {
+            from {
+                stroke-dashoffset: 10;
+            }
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        .link-flow {
+            animation: flow 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -487,6 +500,8 @@ export class GraphView {
                 .attr('stroke', '#999')
                 .attr('stroke-opacity', 0.6)
                 .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '5, 5') // Dashed line
+                .attr('class', 'link-flow')       // Animation class
                 .attr('marker-end', 'url(#arrow)');
 
             // Link Labels
