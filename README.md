@@ -132,12 +132,18 @@ npm run compile
 4. **搜索**：命令面板 → "Knowledge: Search Graph"
 
 #### RAG 知识库功能 🆕
+**Cloud 模式 (Gemini)**：
 1. **配置 API Key**：设置 → 搜索 "Gemini API Key" → 填入你的密钥
-2. **添加文档**：在项目根目录创建 `Knowledge/` 文件夹，添加文档（支持 PDF、MD、TXT 等）
+2. **添加文档**：在项目根目录创建 `Knowledge/` 文件夹，添加文档
 3. **自动索引**：文档自动上传到 Gemini，无需手动操作
-4. **智能问答**：侧边栏 → Documents (RAG) → 点击问号图标 → 输入问题
-5. **查看 Store 信息**：侧边栏 → Documents (RAG) → 点击信息图标
-6. **重建索引**：侧边栏 → Documents (RAG) → 点击刷新图标（删除云端索引并重新上传）
+
+**Local 模式 (OpenAI Compatible) 🆕**：
+1. **切换模式**：设置 → 搜索 "RAG Mode" → 选择 `local`
+2. **配置接口**：设置 `Local: Api Base` (例如 `http://localhost:11434/v1` 或其他 OpenAI 兼容接口)
+3. **配置模型**：
+   - `Local: Embedding Model` (例如 `text-embedding-3-small` 或 `nomic-embed-text`)
+   - `Local: Inference Model` (例如 `gpt-3.5-turbo` 或 `llama3`)
+4. **重建索引**：切换配置后，建议执行 `Knowledge: Rebuild RAG Index`
 
 #### AI 场景切换功能 🆕
 扩展内置 8 个不同的 AI 场景模板，可根据当前工作内容快速切换：
@@ -271,12 +277,23 @@ vibecoding/
 
 ### ☁️ 持久知识库（RAG）
 
-#### 云端 RAG 系统
-- ✅ **Google Gemini File Search**：使用 Gemini 托管的向量搜索服务
-- ✅ **自动索引**：监听 `Knowledge/` 文件夹，新增文档自动上传到云端
-- ✅ **增量索引**：已索引文档不会重复上传，启动速度快
-- ✅ **多格式支持**：原生支持 PDF、TXT、MD、DOCX、JSON、代码等 100+ 种格式
-- ✅ **语义搜索**：Gemini 自动分块、嵌入和检索
+#### RAG 模式
+插件支持两种 RAG 模式，可根据隐私需求灵活切换：
+
+1. **Cloud RAG (Google Gemini)**
+   - ✅ **托管服务**：使用 Gemini File Search API，无需本地算力
+   - ✅ **多格式支持**：原生支持 PDF、Word、代码等 100+ 种格式
+   - ✅ **语义搜索**：Gemini 自动分块和检索
+
+3. **Local RAG (本地模式)** 🆕
+   - ✅ **数据隐私**：所有文档和向量数据仅存储在本地 SQLite，不上传云端
+   - ✅ **模型灵活**：支持 Ollama、LocalAI、vLLM 等任何 OpenAI 兼容接口
+   - ✅ **自定义配置**：可自定义 Embedding 模型和 Inference 推理模型
+   - ✅ **轻量级实现**：
+     - 采用 **SQLite (持久化) + 内存 (计算)** 架构
+     - 向量序列化存储在 `local_rag_vectors` 表中，实现跨平台零依赖
+     - 启动时加载至内存缓存，使用余弦相似度 (Cosine Similarity) 进行快速检索
+     - 无需安装 Docker 或复杂的向量数据库服务 (Chroma/Milvus 等)
 
 #### 智能问答
 - ✅ **Ask Question**：基于文档内容的智能问答

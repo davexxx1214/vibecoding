@@ -287,6 +287,44 @@
           "description": "Gemini 模型选择（推荐使用 gemini-2.5-flash）",
           "order": 2
         },
+        "knowledgeGraph.rag.mode": {
+          "type": "string",
+          "default": "cloud",
+          "enum": [
+            "cloud",
+            "local"
+          ],
+          "enumDescriptions": [
+            "Cloud RAG (Gemini File Search)",
+            "Local RAG (OpenAI Compatible)"
+          ],
+          "description": "RAG 模式：使用云端 Gemini 或本地 OpenAI 兼容服务",
+          "order": 3
+        },
+        "knowledgeGraph.rag.local.apiBase": {
+          "type": "string",
+          "default": "http://localhost:8000/v1",
+          "description": "Local RAG: OpenAI 兼容 API 地址 (e.g. http://localhost:11434/v1 for Ollama)",
+          "order": 3.1
+        },
+        "knowledgeGraph.rag.local.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Local RAG: API Key (如果需要)",
+          "order": 3.2
+        },
+        "knowledgeGraph.rag.local.embeddingModel": {
+          "type": "string",
+          "default": "text-embedding-3-small",
+          "description": "Local RAG: 嵌入模型名称",
+          "order": 3.3
+        },
+        "knowledgeGraph.rag.local.inferenceModel": {
+          "type": "string",
+          "default": "gpt-4.1",
+          "description": "Local RAG: 推理模型名称",
+          "order": 3.4
+        },
         "knowledgeGraph.rag.autoIndex": {
           "type": "boolean",
           "default": true,

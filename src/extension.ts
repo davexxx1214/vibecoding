@@ -61,10 +61,39 @@ export async function activate(context: vscode.ExtensionContext) {
     // 尝试初始化 Gemini 客户端和 RAG 服务（可选功能）
     let ragInitialized = false;
     try {
-      const geminiInitialized = await geminiClient.initialize(true); // 静默模式，不弹提示
+      // 先尝试初始化 Gemini，无论是否使用
+      const geminiInitialized = await geminiClient.initialize(true); 
       console.log(`Gemini client initialized: ${geminiInitialized}`);
+
+      // 获取 RAG 模式
+      const config = vscode.workspace.getConfiguration('knowledgeGraph.rag');
+      const mode = config.get<string>('mode', 'cloud');
+
+      // 决定是否初始化 RAG Service
+      let shouldInitRAG = false;
+      if (mode === 'local') {
+          shouldInitRAG = true;
+      } else {
+          // Cloud 模式需要 Gemini 初始化成功
+          if (geminiInitialized) {
+              shouldInitRAG = true;
+          } else {
+               console.log('⚠️ Cloud RAG Service not initialized (Gemini API Key not configured)');
+                vscode.window.showWarningMessage(
+                t().extension.rag.notEnabled.title,
+                t().extension.rag.notEnabled.configure,
+                t().extension.rag.notEnabled.viewTutorial
+                ).then(action => {
+                if (action === t().extension.rag.notEnabled.configure) {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+                } else if (action === t().extension.rag.notEnabled.viewTutorial) {
+                    vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
+                }
+                });
+          }
+      }
       
-      if (geminiInitialized) {
+      if (shouldInitRAG) {
         await ragService.initialize(workspaceRoot);
         console.log('✅ RAG Service initialized successfully');
         ragInitialized = true;
@@ -76,19 +105,6 @@ export async function activate(context: vscode.ExtensionContext) {
         ).then(action => {
           if (action === t().extension.rag.viewStoreInfo) {
             vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
-          }
-        });
-      } else {
-        console.log('⚠️ RAG Service not initialized (Gemini API Key not configured)');
-        vscode.window.showWarningMessage(
-          t().extension.rag.notEnabled.title,
-          t().extension.rag.notEnabled.configure,
-          t().extension.rag.notEnabled.viewTutorial
-        ).then(action => {
-          if (action === t().extension.rag.notEnabled.configure) {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
-          } else if (action === t().extension.rag.notEnabled.viewTutorial) {
-            vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
           }
         });
       }

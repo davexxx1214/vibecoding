@@ -17,21 +17,24 @@ export class RAGCommands {
    */
   public async askQuestion(): Promise<void> {
     const translations = t().rag.askQuestion;
+    const mode = this.ragService.getMode();
 
-    // 确保客户端已初始化
-    if (!this.geminiClient.isInitialized()) {
-      await this.geminiClient.initialize();
-      if (!this.geminiClient.isInitialized()) {
-        vscode.window.showWarningMessage(
-          translations.notInitialized.message,
-          translations.notInitialized.openSettings
-        ).then(action => {
-          if (action === translations.notInitialized.openSettings) {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
-          }
-        });
-        return;
-      }
+    // 确保客户端已初始化 (仅 Cloud 模式)
+    if (mode === 'cloud') {
+        if (!this.geminiClient.isInitialized()) {
+        await this.geminiClient.initialize();
+        if (!this.geminiClient.isInitialized()) {
+            vscode.window.showWarningMessage(
+            translations.notInitialized.message,
+            translations.notInitialized.openSettings
+            ).then(action => {
+            if (action === translations.notInitialized.openSettings) {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+            }
+            });
+            return;
+        }
+        }
     }
 
     // 检查是否有已索引的文档
@@ -101,9 +104,15 @@ export class RAGCommands {
 
     if (result.citations.length > 0) {
       markdown += translations.result.citationsLabel;
-      result.citations.forEach((citation, i) => {
-        markdown += `**${citation.fileName}**:\n`;
-        markdown += `> ${citation.snippet}\n\n`;
+      result.citations.forEach((citation) => {
+        if (typeof citation === 'string') {
+          markdown += `> ${citation}\n\n`;
+        } else if (citation) {
+          const fileName = citation.fileName || 'unknown';
+          const snippet = citation.snippet || '';
+          markdown += `**${fileName}**:\n`;
+          markdown += snippet ? `> ${snippet}\n\n` : '\n';
+        }
       });
     }
 
@@ -234,27 +243,46 @@ export class RAGCommands {
    */
   public async diagnoseRAGStatus(): Promise<void> {
     const translations = t().rag.diagnose;
+    const mode = this.ragService.getMode();
+    
     const diagnosticInfo: string[] = [
       translations.reportTitle,
       `**${translations.clientStatus.title.trim()}** ${new Date().toLocaleString(getLocale())}\n`,
+      `**RAG Mode**: ${mode.toUpperCase()}`,
       '---\n',
       translations.clientStatus.title
     ];
 
-    // 检查 Gemini Client
-    const clientInitialized = this.geminiClient.isInitialized();
-    diagnosticInfo.push(`- **初始化状态**: ${clientInitialized ? translations.clientStatus.initialized : translations.clientStatus.notInitialized}`);
-    
-    if (clientInitialized) {
-      diagnosticInfo.push(`- **${translations.clientStatus.configuredModel(this.geminiClient.getConfiguredModel())}`);
-      const apiKey = this.geminiClient.getApiKey();
-      if (apiKey) {
-        diagnosticInfo.push(`- **${translations.clientStatus.apiKeyConfigured(apiKey.substring(0, 10))}`);
-      }
+    if (mode === 'cloud') {
+        // 检查 Gemini Client
+        const clientInitialized = this.geminiClient.isInitialized();
+        diagnosticInfo.push(`- **初始化状态**: ${clientInitialized ? translations.clientStatus.initialized : translations.clientStatus.notInitialized}`);
+        
+        if (clientInitialized) {
+        diagnosticInfo.push(`- **${translations.clientStatus.configuredModel(this.geminiClient.getConfiguredModel())}`);
+        const apiKey = this.geminiClient.getApiKey();
+        if (apiKey) {
+            diagnosticInfo.push(`- **${translations.clientStatus.apiKeyConfigured(apiKey.substring(0, 10))}`);
+        }
+        } else {
+        diagnosticInfo.push(`\n${translations.clientStatus.issue}`);
+        diagnosticInfo.push(translations.clientStatus.solution);
+        diagnosticInfo.push(translations.clientStatus.settingsPath);
+        }
     } else {
-      diagnosticInfo.push(`\n${translations.clientStatus.issue}`);
-      diagnosticInfo.push(translations.clientStatus.solution);
-      diagnosticInfo.push(translations.clientStatus.settingsPath);
+        // Local Mode Diagnosis
+        const config = vscode.workspace.getConfiguration('knowledgeGraph.rag.local');
+        diagnosticInfo.push(`- **API Base**: ${config.get('apiBase')}`);
+        diagnosticInfo.push(`- **Embedding Model**: ${config.get('embeddingModel')}`);
+        diagnosticInfo.push(`- **Inference Model**: ${config.get('inferenceModel')}`);
+        
+        // Test Connection
+        try {
+            const connected = await this.ragService.testConnection();
+             diagnosticInfo.push(`- **Connection Test**: ${connected ? '✅ Success' : '❌ Failed'}`);
+        } catch (e) {
+             diagnosticInfo.push(`- **Connection Test**: ❌ Failed (${e})`);
+        }
     }
 
     diagnosticInfo.push(`\n${translations.storeStatus.title}`);
@@ -267,27 +295,31 @@ export class RAGCommands {
       diagnosticInfo.push(`- **${translations.storeStatus.localFiles(storeInfo.fileCount)}`);
       diagnosticInfo.push(`- **${translations.storeStatus.createdAt(new Date(storeInfo.createdAt).toLocaleString(getLocale()))}`);
       
-      // 尝试获取云端信息
-      diagnosticInfo.push(translations.storeStatus.checkingCloud);
-      
-      try {
-        const cloudInfo = await this.ragService.getStoreInfoFromCloud();
-        if (cloudInfo) {
-          diagnosticInfo.push(translations.storeStatus.cloudData);
-          diagnosticInfo.push(`- **${translations.storeStatus.activeDocuments(cloudInfo.activeDocumentsCount)}`);
-          diagnosticInfo.push(`- **${translations.storeStatus.pendingDocuments(cloudInfo.pendingDocumentsCount)}`);
-          diagnosticInfo.push(`- **${translations.storeStatus.failedDocuments(cloudInfo.failedDocumentsCount)}`);
-          
-          if (cloudInfo.activeDocumentsCount === 0) {
-            diagnosticInfo.push(`\n${translations.storeStatus.noActiveDocuments}`);
-          } else {
-            diagnosticInfo.push(`\n${translations.storeStatus.cloudOK}`);
-          }
-        } else {
-          diagnosticInfo.push(`\n${translations.storeStatus.cannotGetCloudInfo}`);
+      if (mode === 'cloud') {
+        // 尝试获取云端信息
+        diagnosticInfo.push(translations.storeStatus.checkingCloud);
+        
+        try {
+            const cloudInfo = await this.ragService.getStoreInfoFromCloud();
+            if (cloudInfo) {
+            diagnosticInfo.push(translations.storeStatus.cloudData);
+            diagnosticInfo.push(`- **${translations.storeStatus.activeDocuments(cloudInfo.activeDocumentsCount)}`);
+            diagnosticInfo.push(`- **${translations.storeStatus.pendingDocuments(cloudInfo.pendingDocumentsCount)}`);
+            diagnosticInfo.push(`- **${translations.storeStatus.failedDocuments(cloudInfo.failedDocumentsCount)}`);
+            
+            if (cloudInfo.activeDocumentsCount === 0) {
+                diagnosticInfo.push(`\n${translations.storeStatus.noActiveDocuments}`);
+            } else {
+                diagnosticInfo.push(`\n${translations.storeStatus.cloudOK}`);
+            }
+            } else {
+            diagnosticInfo.push(`\n${translations.storeStatus.cannotGetCloudInfo}`);
+            }
+        } catch (error) {
+            diagnosticInfo.push(`\n${translations.error(error instanceof Error ? error.message : String(error))}`);
         }
-      } catch (error) {
-        diagnosticInfo.push(`\n${translations.error(error instanceof Error ? error.message : String(error))}`);
+      } else {
+          diagnosticInfo.push('\n(Local Store uses local vector database)');
       }
     } else {
       diagnosticInfo.push(translations.storeStatus.storeInfoUnavailable);
@@ -339,23 +371,25 @@ export class RAGCommands {
    */
   public async testConnection(): Promise<void> {
     const translations = t().rag.testConnection;
+    const mode = this.ragService.getMode();
 
-    // 先尝试初始化（如果还没初始化的话）
-    if (!this.geminiClient.isInitialized()) {
-      await this.geminiClient.initialize();
-    }
-
-    // 再次检查是否初始化成功
-    if (!this.geminiClient.isInitialized()) {
-      vscode.window.showWarningMessage(
-        translations.notInitialized.message,
-        translations.notInitialized.openSettings
-      ).then(action => {
-        if (action === translations.notInitialized.openSettings) {
-          vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+    // Cloud mode checks
+    if (mode === 'cloud') {
+        if (!this.geminiClient.isInitialized()) {
+            await this.geminiClient.initialize();
         }
-      });
-      return;
+
+        if (!this.geminiClient.isInitialized()) {
+             vscode.window.showWarningMessage(
+                translations.notInitialized.message,
+                translations.notInitialized.openSettings
+              ).then(action => {
+                if (action === translations.notInitialized.openSettings) {
+                  vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+                }
+              });
+              return;
+        }
     }
 
     await vscode.window.withProgress(
@@ -365,7 +399,12 @@ export class RAGCommands {
         cancellable: false,
       },
       async () => {
-        await this.geminiClient.testConnection();
+        const success = await this.ragService.testConnection();
+        if (success) {
+            vscode.window.showInformationMessage(`Connection successful (${mode} mode)`);
+        } else {
+            vscode.window.showErrorMessage(`Connection failed (${mode} mode). Please check settings.`);
+        }
       }
     );
   }
