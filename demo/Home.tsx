@@ -70,7 +70,7 @@ const Slide1 = () => (
       className="mb-12 relative"
     >
       <div className="absolute -inset-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-3xl opacity-30 animate-pulse" />
-      <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 relative z-10">
+      <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 relative z-10 pb-2 pr-2">
         VibeCoding
       </h1>
     </motion.div>
@@ -157,36 +157,58 @@ const Slide2 = () => (
   </div>
 );
 
+import snapshot2 from "./snapshot2.png";
+
 const Slide3 = () => (
-  <div className="h-full flex flex-col justify-center px-20">
+  <div className="h-full flex flex-col justify-center px-12">
     <motion.h2
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="text-6xl font-bold text-white mb-20 text-center"
+      className="text-5xl font-bold text-white mb-12 text-center"
     >
       The Triad of Knowledge
     </motion.h2>
 
-    <div className="grid grid-cols-3 gap-8">
-      {[
-        { icon: "📦", title: "Entities", color: "blue", desc: "Code elements (Classes, Functions) & Business Concepts." },
-        { icon: "🔗", title: "Relations", color: "purple", desc: "Directed connections: uses, calls, depends_on." },
-        { icon: "💭", title: "Observations", color: "pink", desc: "Human-annotated, persistent notes & design decisions." },
-      ].map((item, index) => (
-        <motion.div
-          key={item.title}
-          custom={index}
-          variants={contentVariants}
-          initial="hidden"
-          animate="visible"
-          whileHover={{ scale: 1.05, y: -10 }}
-          className={`bg-${item.color}-500/10 border border-${item.color}-500/30 p-10 rounded-3xl backdrop-blur-sm flex flex-col items-center text-center`}
-        >
-          <div className="text-6xl mb-6">{item.icon}</div>
-          <h3 className={`text-3xl font-bold text-${item.color}-400 mb-4`}>{item.title}</h3>
-          <p className="text-slate-300 text-xl leading-relaxed">{item.desc}</p>
-        </motion.div>
-      ))}
+    <div className="flex gap-12 items-center">
+      <div className="w-1/2 space-y-6">
+        {[
+          { icon: "📦", title: "Entities", color: "blue", desc: "Code elements (Classes, Functions) & Business Concepts." },
+          { icon: "🔗", title: "Relations", color: "purple", desc: "Directed connections: uses, calls, depends_on." },
+          { icon: "💭", title: "Observations", color: "pink", desc: "Human-annotated, persistent notes & design decisions." },
+        ].map((item, index) => (
+          <motion.div
+            key={item.title}
+            custom={index}
+            variants={contentVariants}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ scale: 1.02, x: 10 }}
+            className={`bg-${item.color}-500/10 border border-${item.color}-500/30 p-6 rounded-2xl backdrop-blur-sm flex items-center gap-6`}
+          >
+            <div className="text-4xl bg-slate-900/50 p-3 rounded-xl">{item.icon}</div>
+            <div className="text-left">
+              <h3 className={`text-2xl font-bold text-${item.color}-400 mb-1`}>{item.title}</h3>
+              <p className="text-slate-300 text-lg leading-tight">{item.desc}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, x: 50 }}
+        animate={{ opacity: 1, scale: 1, x: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+        className="w-1/2"
+      >
+        <div className="relative group">
+          <div className="absolute -inset-4 bg-gradient-to-br from-pink-500 to-blue-600 rounded-3xl blur-2xl opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
+          <img
+            src={snapshot2}
+            alt="Triad of Knowledge Diagram"
+            className="relative rounded-2xl shadow-2xl border border-slate-700/50 w-full object-cover transform transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+        </div>
+      </motion.div>
     </div>
   </div>
 );
@@ -241,27 +263,40 @@ const Slide4 = () => (
   </div>
 );
 
+import snapshot4 from "./snapshot4.png";
+
 const Slide5 = () => (
   <div className="h-full flex flex-col justify-center px-20">
     <motion.h2
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="text-5xl font-bold text-white mb-16 text-center"
+      className="text-5xl font-bold text-white mb-12 text-center"
     >
       Persistent Knowledge & AI Acceleration
     </motion.h2>
 
-    <div className="grid grid-cols-2 gap-8">
+    <div className="grid grid-cols-2 gap-12 items-center">
       <motion.div
         initial={{ x: -50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-slate-800/40 p-10 rounded-3xl border border-slate-700"
+        className="space-y-6"
       >
-        <h3 className="text-3xl font-bold text-blue-400 mb-6">📝 Persistent Knowledge</h3>
-        <p className="text-slate-300 text-xl leading-relaxed">
-          Observations are stored in <code className="bg-slate-900 px-2 py-1 rounded text-yellow-400">graph.sqlite</code> and committed to Git. Knowledge becomes a first-class citizen of your repo.
-        </p>
+        <div className="bg-slate-800/40 p-8 rounded-3xl border border-slate-700 backdrop-blur-sm">
+          <h3 className="text-3xl font-bold text-blue-400 mb-4">📝 Persistent Knowledge</h3>
+          <p className="text-slate-300 text-xl leading-relaxed">
+            Observations are stored in <code className="bg-slate-900 px-2 py-1 rounded text-yellow-400">graph.sqlite</code> and committed to Git. Knowledge becomes a first-class citizen of your repo.
+          </p>
+        </div>
+
+        <div className="relative group overflow-hidden rounded-2xl border border-slate-700/50 shadow-2xl">
+          <div className="absolute inset-0 bg-blue-500/10 group-hover:bg-transparent transition-colors duration-300" />
+          <img
+            src={snapshot4}
+            alt="Persistent Knowledge UI"
+            className="w-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+          />
+        </div>
       </motion.div>
 
       <div className="space-y-6">
@@ -276,9 +311,10 @@ const Slide5 = () => (
             variants={contentVariants}
             initial="hidden"
             animate="visible"
-            className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700 flex items-center gap-6"
+            whileHover={{ scale: 1.02, x: 10 }}
+            className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700 flex items-center gap-6 backdrop-blur-sm"
           >
-            <div className="text-4xl">{item.icon}</div>
+            <div className="text-4xl bg-slate-900/50 p-3 rounded-xl">{item.icon}</div>
             <div>
               <h4 className="text-xl font-bold text-white">{item.title}</h4>
               <p className="text-slate-400">{item.desc}</p>
