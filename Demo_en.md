@@ -23,6 +23,8 @@
     - [Add Documents](#22-add-documents-to-knowledge-folder-1-minute)
     - [Intelligent Q&A](#23-use-ask-question-for-intelligent-qa-2-minutes)
     - [View Store Info](#24-view-rag-store-info-1-minute)
+    - [Switch to Local RAG (Optional)](#25-switch-to-local-rag-optional)
+    - [Local Q&A and Debugging](#26-local-qa-and-debugging-optional)
 - [Best Practices](#-best-practices)
 - [Appendix](#-appendix)
 
@@ -226,7 +228,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 
 ---
 
-### Scenario 5: Persistent Knowledge Base (RAG + Gemini) ☁️
+### Scenario 5: Persistent Knowledge Base (Cloud & Local RAG) ☁️💾
 
 **Background**: Project has detailed architecture docs and design decision documents.
 
@@ -238,21 +240,20 @@ Click the 🌐 icon in Knowledge Graph view title bar
 
 **Solution with VibeCoding**:
 1. Add documents to `Knowledge/` folder (supports PDF, MD, TXT, etc.)
-2. Documents automatically uploaded to **Google Gemini File Search Store** (cloud RAG)
-3. Use **Ask Question** for intelligent Q&A
-4. AI answers based on document content and shows source citations (Grounding)
-5. **Automatic Project Isolation**: Each project has independent Store, multi-project docs completely isolated
-6. **Incremental Indexing**: Already indexed documents won't be re-uploaded
-7. **Rebuild RAG Index**: Can fully sync local and cloud when needed
+2. Choose **Cloud RAG (Gemini File Search)** or **Local RAG (OpenAI-compatible endpoint)**
+3. Use **Ask Question** for intelligent Q&A. AI answers based on docs and shows citations
+4. **Automatic Project Isolation**: Each project owns an independent Store in both modes
+5. **Incremental Indexing + Rebuild**: Avoid duplicate uploads and fully resync when needed
 
 **Core Features**:
-- ✅ Vector semantic search (Gemini auto-chunks and embeds)
+- ✅ Vector semantic search (Gemini handles in Cloud mode; built-in SQLite + memory store handles Local mode)
 - ✅ Intelligent Q&A (Ask Question)
 - ✅ Traceable sources (Grounding Metadata)
 - ✅ Multi-format support (100+ formats)
 - ✅ Complete project isolation
 - ✅ Incremental indexing (no duplicate uploads)
-- ✅ Index rebuild (full sync)
+- ✅ Index rebuild (cloud/local full sync)
+- ✅ **Local RAG**: Zero extra dependencies, data stays in `.vscode/.knowledge/graph.sqlite`
 
 ---
 
@@ -1025,7 +1026,38 @@ Each project has a unique **File Search Store** to ensure documents are not conf
 
 ---
 
-#### 2.5 Incremental Indexing and Index Rebuild (Further Reading)
+#### 2.5 Switch to Local RAG (Optional)
+
+When documents are confidential or you need an offline demo, switch to the built-in local RAG mode (SQLite persistence + in-memory vectors).
+
+**Operations**:
+```
+1. Settings → Search "Knowledge Graph RAG Mode" → Select "local"
+2. Configure:
+   - Knowledge Graph > Rag: Local Api Base  (e.g., http://localhost:11434/v1 or any OpenAI-compatible endpoint)
+   - Knowledge Graph > Rag: Local Api Key   (if your endpoint requires auth)
+   - Knowledge Graph > Rag: Local Embedding Model  (e.g., text-embedding-3-small / nomic-embed-text)
+   - Knowledge Graph > Rag: Local Inference Model  (e.g., gpt-4.1 / llama3)
+3. Command Palette → "Knowledge: Rebuild RAG Index" (recommended when switching)
+4. Run Ask Question again – answers now come from local vectors + your local inference endpoint
+```
+
+**Tips**:
+- Vector data lives in `.vscode/.knowledge/graph.sqlite` → easy to back up or reset
+- Extension loads vectors into memory on startup and uses cosine similarity for retrieval
+- Local mode uses the same UI buttons (Ask Question / View Store Info / Rebuild Index)
+
+#### 2.6 Local Q&A and Debugging (Optional)
+
+**Demo Suggestions**:
+1. Run Ask Question in local mode and highlight that references still point to files (e.g., `test1.txt`)
+2. Open Output panel to show logs such as “Using Local RAG Provider” or “✅ Locally indexed …”
+3. To reset, delete `.vscode/.knowledge/graph.sqlite` or run `Rebuild RAG Index`
+4. If Ask Question fails, run `Knowledge: Test Connection` to verify the local API endpoint
+
+---
+
+#### 2.7 Incremental Indexing and Index Rebuild (Further Reading)
 
 **Incremental Indexing**:
 - ✅ Already indexed documents won't be re-uploaded
@@ -1040,10 +1072,10 @@ If local and cloud are out of sync (e.g., deleted local file), can:
 1. Click refresh icon (🔄) in sidebar "Documents (RAG)"
    Or Command Palette → "Knowledge: Rebuild RAG Index"
 2. Confirm operation
-3. Wait for completion (will delete cloud Store and re-upload all documents)
+3. Wait for completion (cloud mode deletes Store + re-uploads; local mode clears SQLite entries and re-chunks files)
 ```
 
-⚠️ **Note**: Rebuild deletes all cloud documents and re-uploads, ensuring local and cloud are fully consistent.
+⚠️ **Note**: Rebuild keeps both cloud and local vector stores fully consistent.
 
 ---
 
@@ -1107,14 +1139,15 @@ For complete features see:
 
 4. **Manage Project Documentation** 🆕
    ```
-   Write architecture docs → Put in Knowledge/ folder → Auto-indexes
+   Write architecture docs → Put in Knowledge/ folder → Auto-indexes (cloud or local)
    Need to find info → Ask Question → AI answers based on docs
    ```
 
-5. **Use AI Programming Tools** 🆕
+5. **Use AI Programming Tools / Local RAG** 🆕
    ```
-   Configure Gemini API Key → Docs auto-upload to cloud
-   Use Cursor/Copilot → AI can access project docs
+   Need cloud hosting → Configure Gemini API Key
+   Need offline/privacy → Switch RAG Mode = local and configure local endpoint
+   Use Cursor/Copilot → AI can access the latest project docs
    ```
 
 ### Team Collaboration
@@ -1142,7 +1175,7 @@ For complete features see:
    ```
    Use same API Key in multiple projects
    → Each project auto-isolated to independent Store
-   → Documents won't get confused
+   → Documents won't get confused; local mode keeps its own SQLite vector store per project
 ```
 
 ---

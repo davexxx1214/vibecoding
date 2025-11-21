@@ -23,6 +23,8 @@
     - [添加文档](#22-添加文档到-knowledge-文件夹1-分钟)
     - [智能问答](#23-使用-ask-question-进行智能问答2-分钟)
     - [查看 Store 信息](#24-查看-rag-store-信息1-分钟)
+    - [切换到本地 RAG（可选）](#25-切换到本地-rag可选)
+    - [本地问答与调试](#26-本地问答与调试可选)
 - [最佳实践](#-最佳实践)
 - [附录](#-附录)
 
@@ -226,7 +228,7 @@ VibeCoding 支持中英文双语界面：
 
 ---
 
-### 场景 5：持久知识库（RAG + Gemini）☁️
+### 场景 5：持久知识库（Cloud & Local RAG）☁️💾
 
 **背景**：项目有详细的架构文档和设计决策文档。
 
@@ -238,21 +240,20 @@ VibeCoding 支持中英文双语界面：
 
 **使用 VibeCoding 解决**：
 1. 在 `Knowledge/` 文件夹添加文档（支持 PDF、MD、TXT 等）
-2. 文档自动上传到 **Google Gemini File Search Store**（云端 RAG）
-3. 使用 **Ask Question** 进行智能问答
-4. AI 基于文档内容回答，并显示来源引用（Grounding）
-5. **项目自动隔离**：每个项目独立的 Store，多项目文档完全隔离
-6. **增量索引**：已索引文档不会重复上传
-7. **Rebuild RAG Index**：需要时可完全同步本地和云端
+2. 可选择 **云端 RAG（Gemini File Search）** 或 **本地 RAG（OpenAI 兼容接口）**
+3. 使用 **Ask Question** 进行智能问答，AI 基于文档回答并显示引用
+4. **项目自动隔离**：每个项目拥有独立的 Store，无论 Cloud 还是 Local
+5. **增量索引 + 重建索引**：避免重复上传，同时支持一键重建
 
 **核心特性**：
-- ✅ 向量语义搜索（Gemini 自动分块和嵌入）
+- ✅ 向量语义搜索（Cloud 模式由 Gemini 完成，Local 模式由内置向量库完成）
 - ✅ 智能问答（Ask Question）
 - ✅ 来源可追溯（Grounding Metadata）
 - ✅ 多格式支持（100+ 种）
 - ✅ 项目完全隔离
 - ✅ 增量索引（不重复上传）
-- ✅ 索引重建（完全同步）
+- ✅ 索引重建（本地/云端都可完全同步）
+- ✅ **Local RAG**：无需 Docker/外部服务，数据仅保存在 `.vscode/.knowledge/graph.sqlite`
 
 ---
 
@@ -1025,7 +1026,38 @@ _💡 点击文件名可以直接跳转查看原文档_
 
 ---
 
-#### 2.5 增量索引和重建索引（选读）
+#### 2.5 切换到本地 RAG（可选）
+
+如果你的文档包含敏感信息，或需要离线演示，可以切换到本地 RAG 模式（基于 SQLite + 内存向量缓存）。
+
+**操作**：
+```
+1. 设置 → 搜索 "Knowledge Graph RAG Mode" → 选择 "local"
+2. 配置以下选项：
+   - Knowledge Graph > Rag: Local Api Base  （例如 http://localhost:11434/v1 或其他 OpenAI 兼容接口）
+   - Knowledge Graph > Rag: Local Api Key    （若接口需要鉴权则填写）
+   - Knowledge Graph > Rag: Local Embedding Model  （如 text-embedding-3-small / nomic-embed-text）
+   - Knowledge Graph > Rag: Local Inference Model  （如 gpt-4.1 / llama3）
+3. 命令面板 → "Knowledge: Rebuild RAG Index"（第一次切换建议重建）
+4. 重新触发 Ask Question，回答即来自本地向量库 + 本地推理接口
+```
+
+**提示**：
+- 向量数据保存于 `.vscode/.knowledge/graph.sqlite` → 可随代码一起保存或清理
+- 插件启动时会自动将向量加载到内存，使用余弦相似度进行检索
+- 本地模式与云端模式共用相同的 UI（Ask Question / View Store Info / Rebuild Index）
+
+#### 2.6 本地问答与调试（可选）
+
+**演示建议**：
+1. 在本地模式下运行一次 Ask Question，展示结果仍会列出来源文件（source = test1.txt 等）
+2. 打开输出面板，可看到 “Using Local RAG Provider”、“Locally indexed: xxx”等日志
+3. 如果需要重置本地向量库，可删除 `.vscode/.knowledge/graph.sqlite` 或执行 `Rebuild RAG Index`
+4. Ask Question 失败时，先运行 `Knowledge: Test Connection` 检查本地 API 状态
+
+---
+
+#### 2.7 增量索引和重建索引（选读）
 
 **增量索引**：
 - ✅ 已索引的文档不会重复上传
@@ -1111,10 +1143,11 @@ _💡 点击文件名可以直接跳转查看原文档_
    需要查找信息 → Ask Question → AI 基于文档回答
    ```
 
-5. **使用 AI 编程工具** 🆕
+5. **使用 AI 编程工具 / 本地 RAG** 🆕
    ```
-   配置 Gemini API Key → 文档自动上传到云端
-   使用 Cursor/Copilot → AI 可以访问项目文档
+   需要云端托管 → 配置 Gemini API Key
+   需要离线/私有 → 切换 RAG Mode = local，配置本地接口
+   使用 Cursor/Copilot → AI 可以访问最新的项目文档
    ```
 
 ### 团队协作
@@ -1142,7 +1175,7 @@ _💡 点击文件名可以直接跳转查看原文档_
    ```
    使用同一个 API Key 在多个项目中
    → 每个项目自动隔离到独立的 Store
-   → 文档不会混淆
+   → 文档不会混淆；本地模式则各自拥有独立的 SQLite 向量库
 ```
 
 ---

@@ -132,12 +132,18 @@ npm run compile
 4. **Search**: Command Palette → "Knowledge: Search Graph"
 
 #### RAG Knowledge Base Features 🆕
+**Cloud Mode (Gemini)**:
 1. **Configure API Key**: Settings → Search "Gemini API Key" → Enter your key
-2. **Add Documents**: Create `Knowledge/` folder in project root, add documents (supports PDF, MD, TXT, etc.)
+2. **Add Documents**: Create `Knowledge/` folder in project root, add documents
 3. **Auto-indexing**: Documents automatically uploaded to Gemini, no manual action required
-4. **Intelligent Q&A**: Sidebar → Documents (RAG) → Click question mark icon → Enter question
-5. **View Store Info**: Sidebar → Documents (RAG) → Click info icon
-6. **Rebuild Index**: Sidebar → Documents (RAG) → Click refresh icon (deletes cloud index and re-uploads)
+
+**Local Mode (OpenAI Compatible)** 🆕:
+1. **Switch Mode**: Settings → Search "RAG Mode" → Select `local`
+2. **Configure API**: Set `Local: Api Base` (e.g., `http://localhost:11434/v1` or other OpenAI-compatible endpoint)
+3. **Configure Models**:
+   - `Local: Embedding Model` (e.g., `text-embedding-3-small` or `nomic-embed-text`)
+   - `Local: Inference Model` (e.g., `gpt-4.1` or `llama3`)
+4. **Rebuild Index**: After switching configuration, run `Knowledge: Rebuild RAG Index`
 
 ---
 
@@ -258,6 +264,12 @@ Project Root/
 - ✅ **Incremental Indexing**: Already indexed documents won't be re-uploaded, fast startup
 - ✅ **Multi-format Support**: Native support for PDF, TXT, MD, DOCX, JSON, code, etc. (100+ formats)
 - ✅ **Semantic Search**: Gemini automatically chunks, embeds, and retrieves
+
+#### Local RAG (Custom Vector Store)
+- ✅ **Privacy-first**: Documents and vectors only exist in local SQLite database, never leave the machine
+- ✅ **Zero dependency**: Built with sql.js (WebAssembly SQLite) + in-memory cache, works on Win/macOS/Linux without Docker or native modules
+- ✅ **Lightweight & maintainable**: Simple cosine similarity retrieval fits VS Code scenarios and is easy to debug
+- ✅ **Portable data**: All vectors stored in `.vscode/.knowledge/graph.sqlite`, easy to back up or review with the project
 
 #### Intelligent Q&A
 - ✅ **Ask Question**: Intelligent Q&A based on document content

@@ -290,10 +290,10 @@ vibecoding/
    - ✅ **模型灵活**：支持 Ollama、LocalAI、vLLM 等任何 OpenAI 兼容接口
    - ✅ **自定义配置**：可自定义 Embedding 模型和 Inference 推理模型
    - ✅ **轻量级实现**：
-     - 采用 **SQLite (持久化) + 内存 (计算)** 架构
-     - 向量序列化存储在 `local_rag_vectors` 表中，实现跨平台零依赖
-     - 启动时加载至内存缓存，使用余弦相似度 (Cosine Similarity) 进行快速检索
-     - 无需安装 Docker 或复杂的向量数据库服务 (Chroma/Milvus 等)
+     - 采用 **SQLite (持久化) + 内存 (计算)** 架构，跨 Win/macOS/Linux 无额外依赖
+     - 启动时加载向量到内存，用余弦相似度暴力检索，满足 VS Code 内常见的中小规模数据
+     - 无需安装 Docker、Python/Rust 依赖或额外服务，开箱即用、故障可控
+     - 数据随项目一起存储在 `.vscode/.knowledge/graph.sqlite`，便于备份与审查
 
 #### 智能问答
 - ✅ **Ask Question**：基于文档内容的智能问答
