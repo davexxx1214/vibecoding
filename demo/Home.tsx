@@ -1,495 +1,541 @@
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Volume2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
+import snapshot1 from "./snapshot1.png";
 
-// Slide components
+// --- Animation Variants ---
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 1000 : -1000,
+    opacity: 0,
+    scale: 0.95,
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+    scale: 1,
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 1000 : -1000,
+    opacity: 0,
+    scale: 0.95,
+  }),
+};
+
+const contentVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (custom: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: custom * 0.1, duration: 0.5, ease: "easeOut" },
+  }),
+};
+
+// --- Background Component ---
+const AnimatedBackground = () => (
+  <div className="absolute inset-0 overflow-hidden -z-10">
+    <div className="absolute inset-0 bg-slate-950" />
+    <motion.div
+      animate={{
+        scale: [1, 1.2, 1],
+        rotate: [0, 90, 0],
+        opacity: [0.3, 0.5, 0.3],
+      }}
+      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      className="absolute -top-[20%] -left-[10%] w-[60vw] h-[60vw] bg-blue-600/20 rounded-full blur-[100px]"
+    />
+    <motion.div
+      animate={{
+        scale: [1, 1.3, 1],
+        rotate: [0, -60, 0],
+        opacity: [0.2, 0.4, 0.2],
+      }}
+      transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
+      className="absolute -bottom-[20%] -right-[10%] w-[70vw] h-[70vw] bg-purple-600/20 rounded-full blur-[100px]"
+    />
+  </div>
+);
+
+// --- Slides ---
+
 const Slide1 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center overflow-hidden">
-    {/* Animated background elements */}
-    <div className="absolute inset-0 overflow-hidden">
-      <div className="absolute top-10 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: "2s" }}></div>
-    </div>
-
-    <div className="relative z-10 text-center px-8 max-w-4xl">
-      <h1 className="text-6xl font-bold text-white mb-6 animate-fade-in">
+  <div className="flex flex-col items-center justify-center h-full text-center px-12">
+    <motion.div
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.8, type: "spring" }}
+      className="mb-12 relative"
+    >
+      <div className="absolute -inset-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-3xl opacity-30 animate-pulse" />
+      <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 relative z-10">
         VibeCoding
       </h1>
-      <p className="text-3xl font-semibold text-blue-300 mb-8 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-        The Intelligent Knowledge Graph for Code
-      </p>
-      <p className="text-xl text-slate-300 mb-12 animate-fade-in" style={{ animationDelay: "0.4s" }}>
+    </motion.div>
+
+    <motion.p
+      custom={1}
+      variants={contentVariants}
+      initial="hidden"
+      animate="visible"
+      className="text-4xl font-bold text-slate-200 mb-8 max-w-4xl leading-tight"
+    >
+      The Intelligent Knowledge Graph for Code
+    </motion.p>
+
+    <motion.div
+      custom={2}
+      variants={contentVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex flex-col gap-6 items-center"
+    >
+      <div className="px-8 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-blue-200 font-semibold text-xl">
+        State Street 2025 Hackathon
+      </div>
+      <p className="text-slate-400 text-xl max-w-2xl">
         Accelerating AI-Powered Development with Persistent Project Context
       </p>
-      <div className="flex justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.6s" }}>
-        <div className="px-6 py-2 bg-blue-600 rounded-lg text-white font-semibold">
-          State Street 2025 Hackathon
-        </div>
-      </div>
-      <p className="text-slate-400 mt-12 text-lg animate-fade-in" style={{ animationDelay: "0.8s" }}>
-        Traditional code is static. We make it intelligent and dynamic for the AI era.
-      </p>
-    </div>
+    </motion.div>
   </div>
 );
 
 const Slide2 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-slate-900 mb-12 text-center animate-slide-in">
-        The AI Context Gap: Why AI Struggles with Large Codebases
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20">
+    <motion.h2
+      initial={{ opacity: 0, x: -50 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="text-6xl font-bold text-white mb-16"
+    >
+      The AI Context Gap
+    </motion.h2>
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-2xl font-bold text-red-700 mb-4">Developer Pain</h3>
-          <p className="text-slate-700 text-lg">
-            Code is complex, understanding dependencies is hard, and knowledge is lost when developers leave.
-          </p>
-        </div>
-
-        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-8 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-2xl font-bold text-orange-700 mb-4">AI Limitation</h3>
-          <p className="text-slate-700 text-lg">
-            Current AI tools are limited to small context windows. They lack persistent, structured, and human-annotated project knowledge.
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-8 text-center animate-slide-in" style={{ animationDelay: "0.6s" }}>
-        <p className="text-xl text-slate-800 font-semibold">
-          💡 <span className="text-blue-700">AI needs more than just code; it needs the knowledge *about* the code.</span>
+    <div className="grid grid-cols-2 gap-12">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-red-500/10 border border-red-500/30 p-10 rounded-3xl backdrop-blur-sm"
+      >
+        <h3 className="text-3xl font-bold text-red-400 mb-6 flex items-center gap-4">
+          <span className="text-4xl">😫</span> Developer Pain
+        </h3>
+        <p className="text-slate-300 text-2xl leading-relaxed">
+          Code is complex. Dependencies are hidden. <br />
+          <span className="text-white font-semibold">Knowledge is lost</span> when developers leave.
         </p>
-      </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-orange-500/10 border border-orange-500/30 p-10 rounded-3xl backdrop-blur-sm"
+      >
+        <h3 className="text-3xl font-bold text-orange-400 mb-6 flex items-center gap-4">
+          <span className="text-4xl">🤖</span> AI Limitation
+        </h3>
+        <p className="text-slate-300 text-2xl leading-relaxed">
+          AI tools lack deep context. They don't know the <br />
+          <span className="text-white font-semibold">"Why"</span> behind the code.
+        </p>
+      </motion.div>
     </div>
+
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.6 }}
+      className="mt-16 p-8 bg-blue-600/20 border border-blue-500/40 rounded-2xl text-center"
+    >
+      <p className="text-3xl text-blue-200 font-medium">
+        💡 AI needs more than just code; it needs the <span className="font-bold text-white">Knowledge Graph</span>.
+      </p>
+    </motion.div>
   </div>
 );
 
 const Slide3 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-white mb-12 text-center animate-slide-in">
-        VibeCoding: The Triad of Knowledge
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20">
+    <motion.h2
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-6xl font-bold text-white mb-20 text-center"
+    >
+      The Triad of Knowledge
+    </motion.h2>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-8 text-white text-center animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <div className="text-4xl mb-4">📦</div>
-          <h3 className="text-2xl font-bold mb-4">Entities</h3>
-          <p className="text-blue-100">
-            Code elements (Classes, Functions) and Business Concepts (API, Service) with precise location.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-8 text-white text-center animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <div className="text-4xl mb-4">🔗</div>
-          <h3 className="text-2xl font-bold mb-4">Relations</h3>
-          <p className="text-purple-100">
-            Directed connections between entities: uses, calls, depends_on, extends, implements.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-br from-pink-600 to-pink-700 rounded-lg p-8 text-white text-center animate-slide-in" style={{ animationDelay: "0.6s" }}>
-          <div className="text-4xl mb-4">💭</div>
-          <h3 className="text-2xl font-bold mb-4">Observations</h3>
-          <p className="text-pink-100">
-            Human-annotated, persistent notes (warnings, design decisions, TODOs).
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-slate-700 rounded-lg p-8 text-center animate-slide-in" style={{ animationDelay: "0.8s" }}>
-        <p className="text-xl text-white font-semibold">
-          These three elements form a structured, persistent <span className="text-blue-300">Knowledge Graph</span> that evolves with your code.
-        </p>
-      </div>
+    <div className="grid grid-cols-3 gap-8">
+      {[
+        { icon: "📦", title: "Entities", color: "blue", desc: "Code elements (Classes, Functions) & Business Concepts." },
+        { icon: "🔗", title: "Relations", color: "purple", desc: "Directed connections: uses, calls, depends_on." },
+        { icon: "💭", title: "Observations", color: "pink", desc: "Human-annotated, persistent notes & design decisions." },
+      ].map((item, index) => (
+        <motion.div
+          key={item.title}
+          custom={index}
+          variants={contentVariants}
+          initial="hidden"
+          animate="visible"
+          whileHover={{ scale: 1.05, y: -10 }}
+          className={`bg-${item.color}-500/10 border border-${item.color}-500/30 p-10 rounded-3xl backdrop-blur-sm flex flex-col items-center text-center`}
+        >
+          <div className="text-6xl mb-6">{item.icon}</div>
+          <h3 className={`text-3xl font-bold text-${item.color}-400 mb-4`}>{item.title}</h3>
+          <p className="text-slate-300 text-xl leading-relaxed">{item.desc}</p>
+        </motion.div>
+      ))}
     </div>
   </div>
 );
 
-import snapshot1 from "./snapshot1.png";
-
 const Slide4 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-6xl w-full flex gap-12 items-center">
+  <div className="h-full flex flex-col justify-center px-16">
+    <div className="flex gap-16 items-center">
       <div className="flex-1">
-        <h2 className="text-4xl font-bold text-slate-900 mb-8 animate-slide-in">
-          Feature 1: Visualizing Complexity
-        </h2>
+        <motion.h2
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-5xl font-bold text-white mb-10"
+        >
+          Visualizing Complexity
+        </motion.h2>
 
-        <div className="space-y-6 mb-8">
-          <div className="bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-500 p-4 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-            <h3 className="text-lg font-bold text-green-800 mb-1">🕸️ Understanding</h3>
-            <p className="text-slate-700 text-sm">
-              Instantly visualize the entire project architecture (Controller → Service → Entity).
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-            <h3 className="text-lg font-bold text-blue-800 mb-1">⚡ Impact Analysis</h3>
-            <p className="text-slate-700 text-sm">
-              Quickly see all components that depend on a specific entity.
-            </p>
-          </div>
-
-          <div className="bg-gradient-to-br from-red-50 to-red-100 border-l-4 border-red-500 p-4 animate-slide-in" style={{ animationDelay: "0.6s" }}>
-            <h3 className="text-lg font-bold text-red-800 mb-1">⚠️ Architecture Health</h3>
-            <p className="text-slate-700 text-sm">
-              Automatic detection of circular dependencies.
-            </p>
-          </div>
+        <div className="space-y-6">
+          {[
+            { title: "Understanding", desc: "Instantly visualize architecture.", color: "green" },
+            { title: "Impact Analysis", desc: "See dependencies before you break them.", color: "blue" },
+            { title: "Health Check", desc: "Spot circular dependencies instantly.", color: "red" },
+          ].map((item, index) => (
+            <motion.div
+              key={item.title}
+              custom={index}
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+              className={`p-6 rounded-xl bg-slate-800/50 border-l-4 border-${item.color}-500 backdrop-blur-sm`}
+            >
+              <h3 className={`text-2xl font-bold text-${item.color}-400 mb-1`}>{item.title}</h3>
+              <p className="text-slate-300 text-lg">{item.desc}</p>
+            </motion.div>
+          ))}
         </div>
       </div>
 
-      <div className="flex-1 animate-slide-in" style={{ animationDelay: "0.8s" }}>
-        <div className="relative rounded-xl overflow-hidden shadow-2xl border-4 border-slate-200 transform hover:scale-105 transition-transform duration-500">
-          <img src={snapshot1} alt="Interactive Graph Visualization" className="w-full h-auto object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-        </div>
-        <p className="text-center text-slate-500 text-sm mt-4 italic">
-          Interactive Graph Visualization powered by vis-network
-        </p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ duration: 0.8 }}
+        className="flex-1 relative group"
+      >
+        <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+        <img
+          src={snapshot1}
+          alt="Graph Visualization"
+          className="relative rounded-xl shadow-2xl border border-slate-700/50 w-full object-cover transform transition-transform duration-500 group-hover:scale-[1.02]"
+        />
+      </motion.div>
     </div>
   </div>
 );
 
 const Slide5 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-white mb-12 text-center animate-slide-in">
-        Feature 2: Persistent Knowledge & AI Acceleration
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20">
+    <motion.h2
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="text-5xl font-bold text-white mb-16 text-center"
+    >
+      Persistent Knowledge & AI Acceleration
+    </motion.h2>
+
+    <div className="grid grid-cols-2 gap-8">
+      <motion.div
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="bg-slate-800/40 p-10 rounded-3xl border border-slate-700"
+      >
+        <h3 className="text-3xl font-bold text-blue-400 mb-6">📝 Persistent Knowledge</h3>
+        <p className="text-slate-300 text-xl leading-relaxed">
+          Observations are stored in <code className="bg-slate-900 px-2 py-1 rounded text-yellow-400">graph.sqlite</code> and committed to Git. Knowledge becomes a first-class citizen of your repo.
+        </p>
+      </motion.div>
 
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-2xl font-bold mb-3">📝 Persistent Knowledge</h3>
-          <p className="text-blue-100">
-            Observations (design notes, performance warnings) are stored in local SQLite and committed to Git, making knowledge a first-class citizen.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-2xl font-bold mb-3">🤖 One-Click Export</h3>
-          <p className="text-purple-100">
-            Generates structured Markdown/JSON of the graph for AI consumption.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-r from-pink-600 to-pink-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.6s" }}>
-          <h3 className="text-2xl font-bold mb-3">🎯 Scenario Switching</h3>
-          <p className="text-pink-100">
-            8 built-in AI context templates (Frontend, Backend, Testing, Debugging) to instantly tailor the AI's focus.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.8s" }}>
-          <h3 className="text-2xl font-bold mb-3">⚙️ Integrated Context</h3>
-          <p className="text-green-100">
-            Automatically generates configuration files for AI tools (.cursorrules, copilot-instructions.md).
-          </p>
-        </div>
+        {[
+          { title: "One-Click Export", desc: "Generate Markdown/JSON for AI context.", icon: "🤖" },
+          { title: "Scenario Switching", desc: "Context templates for Frontend, Backend, Testing.", icon: "🎯" },
+          { title: "Auto-Config", desc: "Generates .cursorrules & copilot-instructions.md.", icon: "⚙️" },
+        ].map((item, index) => (
+          <motion.div
+            key={item.title}
+            custom={index + 2}
+            variants={contentVariants}
+            initial="hidden"
+            animate="visible"
+            className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700 flex items-center gap-6"
+          >
+            <div className="text-4xl">{item.icon}</div>
+            <div>
+              <h4 className="text-xl font-bold text-white">{item.title}</h4>
+              <p className="text-slate-400">{item.desc}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   </div>
 );
 
 const Slide6 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-slate-900 mb-12 text-center animate-slide-in">
-        Feature 3: Persistent RAG Knowledge Base
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20">
+    <motion.h2
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="text-6xl font-bold text-white mb-16 text-center"
+    >
+      RAG Knowledge Base
+    </motion.h2>
 
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-8 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-2xl font-bold text-blue-800 mb-4">☁️ Cloud RAG (Gemini)</h3>
-          <ul className="text-slate-700 space-y-2">
-            <li>✓ Hosted, multi-format support (100+ file types)</li>
-            <li>✓ Ideal for public/less sensitive docs</li>
-            <li>✓ Semantic search powered by Gemini</li>
-          </ul>
-        </div>
+    <div className="flex gap-12 justify-center">
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        className="w-1/3 bg-gradient-to-b from-blue-900/40 to-slate-900/40 border border-blue-500/30 p-10 rounded-3xl backdrop-blur-sm"
+      >
+        <div className="text-5xl mb-6">☁️</div>
+        <h3 className="text-3xl font-bold text-blue-400 mb-4">Cloud RAG</h3>
+        <p className="text-slate-400 text-lg mb-6">Powered by Google Gemini File Search.</p>
+        <ul className="space-y-3 text-slate-300 text-lg">
+          <li>✓ Hosted & Managed</li>
+          <li>✓ 100+ File Formats</li>
+          <li>✓ Semantic Search</li>
+        </ul>
+      </motion.div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-8 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-2xl font-bold text-green-800 mb-4">💾 Local RAG (Private)</h3>
-          <ul className="text-slate-700 space-y-2">
-            <li>✓ Data privacy focus</li>
-            <li>✓ All vectors stored locally in SQLite</li>
-            <li>✓ Any OpenAI-compatible endpoint</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="bg-slate-100 rounded-lg p-8 animate-slide-in" style={{ animationDelay: "0.6s" }}>
-        <h3 className="text-2xl font-bold text-slate-900 mb-4">🤖 Smart Q&A</h3>
-        <p className="text-slate-700 text-lg">
-          Use "Ask Question" to query project documents. Answers are grounded with source citations (Grounding Metadata).
-        </p>
-      </div>
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        className="w-1/3 bg-gradient-to-b from-green-900/40 to-slate-900/40 border border-green-500/30 p-10 rounded-3xl backdrop-blur-sm"
+      >
+        <div className="text-5xl mb-6">💾</div>
+        <h3 className="text-3xl font-bold text-green-400 mb-4">Local RAG</h3>
+        <p className="text-slate-400 text-lg mb-6">Privacy-first, offline-capable.</p>
+        <ul className="space-y-3 text-slate-300 text-lg">
+          <li>✓ 100% Local SQLite</li>
+          <li>✓ OpenAI Compatible</li>
+          <li>✓ Secure & Private</li>
+        </ul>
+      </motion.div>
     </div>
   </div>
 );
 
 const Slide7 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-white mb-12 text-center animate-slide-in">
-        Real-World Impact: Onboarding & Refactoring
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20">
+    <motion.h2
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="text-5xl font-bold text-white mb-16 text-center"
+    >
+      Real-World Impact
+    </motion.h2>
 
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-2xl font-bold mb-4">👶 New Developer Onboarding</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="font-semibold text-green-100 mb-2">Before:</p>
-              <p className="text-green-50">Weeks of reading code and asking questions</p>
-            </div>
-            <div>
-              <p className="font-semibold text-green-100 mb-2">With VibeCoding:</p>
-              <p className="text-green-50">View the Knowledge Graph for instant architectural overview. Use Ask Question on RAG base for instant answers from documentation.</p>
-            </div>
-          </div>
+    <div className="space-y-8">
+      <motion.div
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="bg-slate-800/50 p-10 rounded-3xl border-l-8 border-green-500 flex items-center gap-10"
+      >
+        <div className="text-6xl">👶</div>
+        <div>
+          <h3 className="text-3xl font-bold text-white mb-2">Onboarding</h3>
+          <p className="text-slate-300 text-xl">
+            From <span className="text-red-400 line-through">weeks of confusion</span> to <span className="text-green-400 font-bold">minutes of clarity</span>.
+            New devs explore the graph instead of reading stale docs.
+          </p>
         </div>
+      </motion.div>
 
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-2xl font-bold mb-4">🔧 Safe Refactoring</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="font-semibold text-blue-100 mb-2">Before:</p>
-              <p className="text-blue-50">Tedious global search and manual impact assessment</p>
-            </div>
-            <div>
-              <p className="font-semibold text-blue-100 mb-2">With VibeCoding:</p>
-              <p className="text-blue-50">Click on the entity to be refactored, and the graph instantly highlights all dependent components. Assess impact in seconds.</p>
-            </div>
-          </div>
+      <motion.div
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="bg-slate-800/50 p-10 rounded-3xl border-l-8 border-blue-500 flex items-center gap-10"
+      >
+        <div className="text-6xl">🔧</div>
+        <div>
+          <h3 className="text-3xl font-bold text-white mb-2">Refactoring</h3>
+          <p className="text-slate-300 text-xl">
+            Assess impact in seconds. Click an entity, see every dependency.
+            <span className="text-blue-400 font-bold"> Refactor with confidence.</span>
+          </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   </div>
 );
 
 const Slide8 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-slate-900 mb-12 text-center animate-slide-in">
-        Technical Architecture & Innovation
-      </h2>
+  <div className="h-full flex flex-col justify-center px-20 text-center">
+    <motion.h2
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="text-7xl font-bold text-white mb-12"
+    >
+      The Future of Code
+    </motion.h2>
 
-      <div className="mb-8 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-        <h3 className="text-2xl font-bold text-slate-900 mb-4">Tech Stack</h3>
-        <p className="text-slate-700 text-lg mb-4">
-          VS Code Extension API • TypeScript • sql.js (WebAssembly SQLite) • vis-network visualization
-        </p>
-      </div>
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      className="text-4xl text-blue-400 font-semibold mb-20"
+    >
+      Intelligent. Persistent. AI-Ready.
+    </motion.p>
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-xl font-bold text-blue-800 mb-3">🌍 Cross-Platform</h3>
-          <p className="text-slate-700">
-            WebAssembly SQLite eliminates external dependencies for true "zero-setup" experience.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.6s" }}>
-          <h3 className="text-xl font-bold text-purple-800 mb-3">🔒 Project Isolation</h3>
-          <p className="text-slate-700">
-            Unique Store IDs ensure multi-project work is secure and clean.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.8s" }}>
-          <h3 className="text-xl font-bold text-green-800 mb-3">🌐 Multi-Language</h3>
-          <p className="text-slate-700">
-            Full i18n support (English/Chinese) for all UI, commands, and templates.
-          </p>
-        </div>
-      </div>
+    <div className="flex justify-center gap-8">
+      <motion.div
+        whileHover={{ scale: 1.1 }}
+        className="bg-white/10 backdrop-blur-md px-12 py-6 rounded-2xl border border-white/20"
+      >
+        <p className="text-2xl text-white font-bold">🚀 Try the Demo</p>
+      </motion.div>
+      <motion.div
+        whileHover={{ scale: 1.1 }}
+        className="bg-blue-600 px-12 py-6 rounded-2xl shadow-lg shadow-blue-600/30"
+      >
+        <p className="text-2xl text-white font-bold">⭐ Star on GitHub</p>
+      </motion.div>
     </div>
+
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 1 }}
+      className="mt-20 text-slate-500 text-xl"
+    >
+      State Street 2025 Hackathon
+    </motion.p>
   </div>
 );
 
-const Slide9 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-white mb-12 text-center animate-slide-in">
-        VibeCoding: Value for Financial Services & State Street
-      </h2>
-
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <h3 className="text-2xl font-bold mb-3">📋 Regulatory Compliance & Audit</h3>
-          <p className="text-blue-100">
-            Observations can be used to tag code with compliance notes, audit trails, and security warnings, making code review and auditing faster.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <h3 className="text-2xl font-bold mb-3">🏛️ Legacy System Modernization</h3>
-          <p className="text-purple-100">
-            Quickly map dependencies and identify technical debt (circular dependencies, performance warnings) in large, complex legacy systems.
-          </p>
-        </div>
-
-        <div className="bg-gradient-to-r from-pink-600 to-pink-700 rounded-lg p-8 text-white animate-slide-in" style={{ animationDelay: "0.6s" }}>
-          <h3 className="text-2xl font-bold mb-3">💾 Knowledge Retention</h3>
-          <p className="text-pink-100">
-            Critical in high-turnover environments. The persistent knowledge graph ensures institutional knowledge is never lost.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const Slide10 = () => (
-  <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full text-center">
-      <h2 className="text-5xl font-bold text-slate-900 mb-8 animate-slide-in">
-        The Future of Code
-      </h2>
-      <p className="text-3xl font-semibold text-blue-600 mb-12 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-        Intelligent, Persistent, and AI-Ready
-      </p>
-
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-12 mb-8 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-        <p className="text-xl text-slate-800 mb-6">
-          VibeCoding is a complete, production-ready tool that bridges the gap between code, human knowledge, and AI.
-        </p>
-
-        <div className="space-y-4">
-          <p className="text-lg text-slate-700">
-            <span className="font-bold text-blue-700">✨ Future Plans:</span> Automated entity creation (AST parsing), advanced graph querying
-          </p>
-          <p className="text-lg text-slate-700">
-            <span className="font-bold text-blue-700">🎬 Live Demo:</span> NestJS RealWorld Example App demonstration
-          </p>
-        </div>
-      </div>
-
-      <div className="text-center animate-slide-in" style={{ animationDelay: "0.6s" }}>
-        <p className="text-2xl font-bold text-slate-900 mb-4">Thank You!</p>
-        <p className="text-xl text-slate-600">State Street 2025 Hackathon</p>
-      </div>
-    </div>
-  </div>
-);
-
-const slides = [Slide1, Slide2, Slide3, Slide4, Slide5, Slide6, Slide7, Slide8, Slide9, Slide10];
+const slides = [Slide1, Slide2, Slide3, Slide4, Slide5, Slide6, Slide7, Slide8];
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [direction, setDirection] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const paginate = (newDirection: number) => {
+    const nextSlide = currentSlide + newDirection;
+    if (nextSlide >= 0 && nextSlide < slides.length) {
+      setDirection(newDirection);
+      setCurrentSlide(nextSlide);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") {
-        setCurrentSlide((prev) => (prev + 1) % slides.length);
+        paginate(1);
       } else if (e.key === "ArrowLeft") {
-        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+        paginate(-1);
       } else if (e.key === "f" || e.key === "F") {
-        setIsFullscreen(!isFullscreen);
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+          setIsFullscreen(true);
+        } else {
+          document.exitFullscreen();
+          setIsFullscreen(false);
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen]);
+  }, [currentSlide]);
 
   const CurrentSlide = slides[currentSlide];
 
   return (
-    <div className={`w-screen h-screen bg-slate-900 flex flex-col ${isFullscreen ? "fixed inset-0 z-50" : ""}`}>
-      {/* Main slide area */}
-      <div className="flex-1 overflow-hidden">
-        <CurrentSlide />
+    <div className="w-screen h-screen bg-slate-950 text-slate-100 overflow-hidden relative font-sans selection:bg-blue-500/30">
+      <AnimatedBackground />
+
+      {/* Slide Container */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={currentSlide}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              x: { type: "spring", stiffness: 300, damping: 30 },
+              opacity: { duration: 0.2 },
+            }}
+            className="w-full h-full max-w-[1600px] mx-auto"
+          >
+            <CurrentSlide />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Controls */}
-      <div className="bg-slate-950 border-t border-slate-700 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-between items-end bg-gradient-to-t from-slate-950 to-transparent z-50">
+        <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-            className="text-white border-slate-600 hover:bg-slate-800"
+            onClick={() => paginate(-1)}
+            disabled={currentSlide === 0}
+            className="text-slate-400 hover:text-white hover:bg-white/10"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-8 h-8" />
           </Button>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-            className="text-white border-slate-600 hover:bg-slate-800"
+            onClick={() => paginate(1)}
+            disabled={currentSlide === slides.length - 1}
+            className="text-slate-400 hover:text-white hover:bg-white/10"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-8 h-8" />
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-white text-sm font-medium">
-            {currentSlide + 1} / {slides.length}
-          </span>
-          <div className="w-48 h-2 bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${((currentSlide + 1) / slides.length) * 100}%` }}
-            ></div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-1 mb-2">
+            {slides.map((_, idx) => (
+              <div
+                key={idx}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide ? "w-8 bg-blue-500" : "w-2 bg-slate-700"
+                  }`}
+              />
+            ))}
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="text-white border-slate-600 hover:bg-slate-800"
-            title="Fullscreen (F)"
+            onClick={() => {
+              if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                setIsFullscreen(true);
+              } else {
+                document.exitFullscreen();
+                setIsFullscreen(false);
+              }
+            }}
+            className="text-slate-400 hover:text-white hover:bg-white/10"
           >
-            <Maximize2 className="w-5 h-5" />
+            {isFullscreen ? <Minimize2 /> : <Maximize2 />}
           </Button>
         </div>
       </div>
-
-      {/* Keyboard hints */}
-      <div className="bg-slate-900 px-6 py-2 text-center text-xs text-slate-400">
-        Use arrow keys or space to navigate • Press F for fullscreen
-      </div>
-
-      {/* Global styles for animations */}
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fadeIn 0.8s ease-out forwards;
-          opacity: 0;
-        }
-
-        .animate-slide-in {
-          animation: slideIn 0.6s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </div>
   );
 }
