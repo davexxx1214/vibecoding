@@ -107,42 +107,47 @@ const Slide3 = () => (
   </div>
 );
 
+import snapshot1 from "./snapshot1.png";
+
 const Slide4 = () => (
   <div className="relative w-full h-full bg-gradient-to-br from-white to-slate-50 flex flex-col items-center justify-center overflow-hidden p-12">
-    <div className="max-w-5xl w-full">
-      <h2 className="text-5xl font-bold text-slate-900 mb-12 text-center animate-slide-in">
-        Feature 1: Visualizing Complexity & Impact Analysis
-      </h2>
+    <div className="max-w-6xl w-full flex gap-12 items-center">
+      <div className="flex-1">
+        <h2 className="text-4xl font-bold text-slate-900 mb-8 animate-slide-in">
+          Feature 1: Visualizing Complexity
+        </h2>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.2s" }}>
-          <div className="text-3xl mb-3">🕸️</div>
-          <h3 className="text-xl font-bold text-green-800 mb-3">Understanding</h3>
-          <p className="text-slate-700">
-            Instantly visualize the entire project architecture (Controller → Service → Entity layers).
-          </p>
-        </div>
+        <div className="space-y-6 mb-8">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-500 p-4 animate-slide-in" style={{ animationDelay: "0.2s" }}>
+            <h3 className="text-lg font-bold text-green-800 mb-1">🕸️ Understanding</h3>
+            <p className="text-slate-700 text-sm">
+              Instantly visualize the entire project architecture (Controller → Service → Entity).
+            </p>
+          </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.4s" }}>
-          <div className="text-3xl mb-3">⚡</div>
-          <h3 className="text-xl font-bold text-blue-800 mb-3">Impact Analysis</h3>
-          <p className="text-slate-700">
-            Quickly see all components that depend on a specific entity.
-          </p>
-        </div>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 animate-slide-in" style={{ animationDelay: "0.4s" }}>
+            <h3 className="text-lg font-bold text-blue-800 mb-1">⚡ Impact Analysis</h3>
+            <p className="text-slate-700 text-sm">
+              Quickly see all components that depend on a specific entity.
+            </p>
+          </div>
 
-        <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded-lg p-6 animate-slide-in" style={{ animationDelay: "0.6s" }}>
-          <div className="text-3xl mb-3">⚠️</div>
-          <h3 className="text-xl font-bold text-red-800 mb-3">Architecture Health</h3>
-          <p className="text-slate-700">
-            Automatic detection of circular dependencies (critical architectural flaws).
-          </p>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 border-l-4 border-red-500 p-4 animate-slide-in" style={{ animationDelay: "0.6s" }}>
+            <h3 className="text-lg font-bold text-red-800 mb-1">⚠️ Architecture Health</h3>
+            <p className="text-slate-700 text-sm">
+              Automatic detection of circular dependencies.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-slate-100 rounded-lg p-8 text-center animate-slide-in" style={{ animationDelay: "0.8s" }}>
-        <p className="text-lg text-slate-800">
-          <span className="font-bold text-blue-700">Interactive Graph Visualization</span> powered by vis-network with double-click code navigation.
+      <div className="flex-1 animate-slide-in" style={{ animationDelay: "0.8s" }}>
+        <div className="relative rounded-xl overflow-hidden shadow-2xl border-4 border-slate-200 transform hover:scale-105 transition-transform duration-500">
+          <img src={snapshot1} alt="Interactive Graph Visualization" className="w-full h-auto object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+        </div>
+        <p className="text-center text-slate-500 text-sm mt-4 italic">
+          Interactive Graph Visualization powered by vis-network
         </p>
       </div>
     </div>
