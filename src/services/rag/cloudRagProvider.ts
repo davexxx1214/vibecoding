@@ -162,7 +162,10 @@ export class CloudRAGProvider implements IRAGProvider {
     let operation = await client.fileSearchStores.uploadToFileSearchStore({
       file: filePath,
       fileSearchStoreName: this.storeName,
-      config: { displayName: fileName }
+      config: {
+        displayName: fileName,
+        mimeType,
+      }
     });
 
     let attempts = 0;
