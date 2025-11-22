@@ -1,4 +1,4 @@
-# VibeCoding Demo Guide
+# VibeKnowledge Demo Guide
 
 > Complete demo based on [NestJS RealWorld Example App](https://github.com/lujakob/nestjs-realworld-example-app)
 
@@ -124,7 +124,7 @@ npm install
 cp src/config.ts.example src/config.ts
 ```
 
-**Note**: Demonstrating VibeCoding extension doesn't require running the project, just the code files.
+**Note**: Demonstrating VibeKnowledge extension doesn't require running the project, just the code files.
 
 ### Step 2: Open Project in VS Code
 
@@ -132,14 +132,14 @@ cp src/config.ts.example src/config.ts
 code .
 ```
 
-### Step 3: Start VibeCoding Extension
+### Step 3: Start VibeKnowledge Extension
 
 1. Press `F5` in your `vibecoding` project to start extension debugging
 2. Open `nestjs-realworld-example-app` project in the newly opened Extension Development Host window
 
 ### Step 4: Set Language (Optional) 🌐
 
-VibeCoding supports Chinese and English interfaces:
+VibeKnowledge supports Chinese and English interfaces:
 
 **Method 1: Through Settings**
 ```
@@ -174,7 +174,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 - 😵 Don't know where UserService is called
 - 😵 Don't know what modifying ArticleService will affect
 
-**Solution with VibeCoding**:
+**Solution with VibeKnowledge**:
 1. Quickly mark core entities
 2. Build relationship graph
 3. Export to AI to generate project overview
@@ -189,7 +189,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 - 😵 Don't know how many places call this method
 - 😵 Don't know what features might break after modification
 
-**Solution with VibeCoding**:
+**Solution with VibeKnowledge**:
 1. View ArticleService dependency chain
 2. Show all call sites
 3. Assess impact scope
@@ -205,7 +205,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 - 😵 New developers don't know which code has pitfalls
 - 😵 Performance optimization experience can't be passed down
 
-**Solution with VibeCoding**:
+**Solution with VibeKnowledge**:
 1. Add observations to key entities
 2. Record performance issues and optimization plans
 3. Knowledge graph committed to Git with code
@@ -221,7 +221,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 - 😵 Need to re-explain context every time
 - 😵 AI doesn't know team's coding standards
 
-**Solution with VibeCoding**:
+**Solution with VibeKnowledge**:
 1. Export knowledge graph as Markdown
 2. Generate `.cursorrules` configuration
 3. AI automatically learns project knowledge
@@ -238,7 +238,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 - 😵 Searching documents is inefficient
 - 😵 Documents from multiple projects easily get confused
 
-**Solution with VibeCoding**:
+**Solution with VibeKnowledge**:
 1. Add documents to `Knowledge/` folder (supports PDF, MD, TXT, etc.)
 2. Choose **Cloud RAG (Gemini File Search)** or **Local RAG (OpenAI-compatible endpoint)**
 3. Use **Ask Question** for intelligent Q&A. AI answers based on docs and shows citations
@@ -259,7 +259,7 @@ Click the 🌐 icon in Knowledge Graph view title bar
 
 ## 📖 Complete Demo Script
 
-### VibeCoding Complete Features Demo (About 25 minutes)
+### VibeKnowledge Complete Features Demo (About 25 minutes)
 
 This demo includes two core features: **Knowledge Graph Visualization** and **RAG Intelligent Q&A**!
 
@@ -1081,7 +1081,7 @@ If local and cloud are out of sync (e.g., deleted local file), can:
 
 ## 🎉 Demo Complete
 
-**Congratulations! You've mastered VibeCoding's core features:**
+**Congratulations! You've mastered VibeKnowledge's core features:**
 
 ### ✅ Skills Learned
 1. Create Entity
@@ -1183,7 +1183,7 @@ For complete features see:
 ## 🚀 Get Started
 
 Now you can:
-1. Use VibeCoding in your projects
+1. Use VibeKnowledge in your projects
 2. Mark core entities and relations
 3. Use visualization graph to understand project architecture
 4. Configure Gemini API Key to enable RAG features
@@ -1239,5 +1239,5 @@ Now you can:
 
 ## 🔚 End of Demo
 
-**Thank you for using VibeCoding!**
+**Thank you for using VibeKnowledge!**
 

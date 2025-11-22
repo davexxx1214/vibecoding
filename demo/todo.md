@@ -1,4 +1,4 @@
-# VibeCoding Hackathon Presentation - TODO
+# VibeKnowledge Hackathon Presentation - TODO
 
 ## Core Features
 - [x] Create dynamic slide presentation component with 10 slides

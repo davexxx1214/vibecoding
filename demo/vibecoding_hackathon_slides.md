@@ -1,7 +1,7 @@
-# VibeCoding: The Intelligent Knowledge Graph for Code
+# VibeKnowledge: The Intelligent Knowledge Graph for Code
 
 ## Slide 1: Title Slide - The Challenge & The Solution (The Hook)
-- **Title:** VibeCoding: The Intelligent Knowledge Graph for Code
+- **Title:** VibeKnowledge: The Intelligent Knowledge Graph for Code
 - **Subtitle:** Accelerating AI-Powered Development with Persistent Project Context
 - **Hackathon:** State Street 2025 Hackathon Entry
 - **Visual:** A stylized image of a VS Code window with a vibrant, interconnected graph overlaying the code.
@@ -14,8 +14,8 @@
 - **Visual:** A graphic showing a small, isolated code snippet (AI's current view) next to a large, complex system (the reality).
 - **Key Message:** AI needs more than just code; it needs the **knowledge** *about* the code.
 
-## Slide 3: VibeCoding's Core Concept - The Triad of Knowledge
-- **Title:** VibeCoding: Building the Intelligent Knowledge Graph
+## Slide 3: VibeKnowledge's Core Concept - The Triad of Knowledge
+- **Title:** VibeKnowledge: Building the Intelligent Knowledge Graph
 - **Concept:** We transform the codebase into a structured, persistent Knowledge Graph using three core elements:
     1.  **Entities:** Code elements (Classes, Functions) and Business Concepts (API, Service) with precise location.
     2.  **Relations:** Directed connections between entities (`uses`, `calls`, `depends_on`).
@@ -52,11 +52,11 @@
 - **Title:** Real-World Impact: Onboarding & Refactoring
 - **Scenario 1: New Developer Onboarding:**
     - **Before:** Weeks of reading code and asking questions.
-    - **With VibeCoding:** View the Knowledge Graph for an instant architectural overview. Use "Ask Question" on the RAG base for instant answers from documentation.
+    - **With VibeKnowledge:** View the Knowledge Graph for an instant architectural overview. Use "Ask Question" on the RAG base for instant answers from documentation.
 - **Scenario 2: Safe Refactoring:**
     - **Before:** Tedious global search and manual impact assessment.
-    - **With VibeCoding:** Click on the entity to be refactored, and the graph instantly highlights all dependent components. **Assess impact in seconds.**
-- **Visual:** Two side-by-side icons/images: a confused developer (Before) vs. a confident developer with a clear graph (With VibeCoding).
+    - **With VibeKnowledge:** Click on the entity to be refactored, and the graph instantly highlights all dependent components. **Assess impact in seconds.**
+- **Visual:** Two side-by-side icons/images: a confused developer (Before) vs. a confident developer with a clear graph (With VibeKnowledge).
 
 ## Slide 8: Technical Architecture & Innovation
 - **Title:** Technical Architecture & Key Innovations
@@ -67,15 +67,15 @@
 - **Visual:** A simple architecture diagram (VS Code UI -> Commands -> Services -> SQLite) and a callout box for the WebAssembly SQLite innovation.
 
 ## Slide 9: The State Street Connection - Value Proposition
-- **Title:** VibeCoding: Value for Financial Services & State Street
+- **Title:** VibeKnowledge: Value for Financial Services & State Street
 - **Value 1: Regulatory Compliance & Audit:** Observations can be used to tag code with compliance notes, audit trails, and security warnings, making code review and auditing faster.
 - **Value 2: Legacy System Modernization:** Quickly map dependencies and identify technical debt (circular dependencies, performance warnings) in large, complex legacy systems.
 - **Value 3: Knowledge Retention:** Critical in high-turnover environments. The persistent knowledge graph ensures institutional knowledge is never lost.
-- **Visual:** State Street logo or a relevant financial services graphic alongside the VibeCoding logo.
+- **Visual:** State Street logo or a relevant financial services graphic alongside the VibeKnowledge logo.
 
 ## Slide 10: Call to Action - Future & Demo
 - **Title:** The Future of Code: Intelligent, Persistent, and AI-Ready
-- **Summary:** VibeCoding is a complete, production-ready tool that bridges the gap between code, human knowledge, and AI.
+- **Summary:** VibeKnowledge is a complete, production-ready tool that bridges the gap between code, human knowledge, and AI.
 - **Next Steps:**
     - **Future Plans:** Automated entity creation (AST parsing), advanced graph querying.
     - **Call to Action:** See the live demo! (Mention the NestJS RealWorld Example App demo).

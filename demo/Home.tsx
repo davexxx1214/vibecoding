@@ -71,7 +71,7 @@ const Slide1 = () => (
     >
       <div className="absolute -inset-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-3xl opacity-30 animate-pulse" />
       <h1 className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 relative z-10 pb-2 pr-2">
-        VibeCoding
+        VibeKnowledge
       </h1>
     </motion.div>
 

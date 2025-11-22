@@ -1,4 +1,4 @@
-# VibeCoding 演示指南
+# VibeKnowledge 演示指南
 
 > 基于 [NestJS RealWorld Example App](https://github.com/lujakob/nestjs-realworld-example-app) 的完整演示
 
@@ -124,7 +124,7 @@ npm install
 cp src/config.ts.example src/config.ts
 ```
 
-**注意**：演示 VibeCoding 插件不需要运行项目，只需要代码文件。
+**注意**：演示 VibeKnowledge 插件不需要运行项目，只需要代码文件。
 
 ### 步骤 2：在 VS Code 中打开项目
 
@@ -132,14 +132,14 @@ cp src/config.ts.example src/config.ts
 code .
 ```
 
-### 步骤 3：启动 VibeCoding 插件
+### 步骤 3：启动 VibeKnowledge 插件
 
 1. 在你的 `vibecoding` 项目中按 `F5` 启动插件调试
 2. 在新打开的 Extension Development Host 窗口中打开 `nestjs-realworld-example-app` 项目
 
 ### 步骤 4：设置语言（可选）🌐
 
-VibeCoding 支持中英文双语界面：
+VibeKnowledge 支持中英文双语界面：
 
 **方式 1：通过设置**
 ```
@@ -174,7 +174,7 @@ VibeCoding 支持中英文双语界面：
 - 😵 不知道 UserService 被哪些地方调用
 - 😵 不知道修改 ArticleService 会影响哪些功能
 
-**使用 VibeCoding 解决**：
+**使用 VibeKnowledge 解决**：
 1. 快速标记核心实体
 2. 建立关系图谱
 3. 导出给 AI 生成项目概览
@@ -189,7 +189,7 @@ VibeCoding 支持中英文双语界面：
 - 😵 不知道有多少地方调用了这个方法
 - 😵 修改后可能破坏哪些功能
 
-**使用 VibeCoding 解决**：
+**使用 VibeKnowledge 解决**：
 1. 查看 ArticleService 的依赖链
 2. 显示所有调用点
 3. 评估影响范围
@@ -205,7 +205,7 @@ VibeCoding 支持中英文双语界面：
 - 😵 新人不知道哪些代码有坑
 - 😵 性能优化经验无法传承
 
-**使用 VibeCoding 解决**：
+**使用 VibeKnowledge 解决**：
 1. 添加观察记录到关键实体
 2. 记录性能问题和优化方案
 3. 知识图谱随代码提交到 Git
@@ -221,7 +221,7 @@ VibeCoding 支持中英文双语界面：
 - 😵 每次都要重新解释上下文
 - 😵 AI 不知道团队的编码规范
 
-**使用 VibeCoding 解决**：
+**使用 VibeKnowledge 解决**：
 1. 导出知识图谱为 Markdown
 2. 生成 `.cursorrules` 配置
 3. AI 自动学习项目知识
@@ -238,7 +238,7 @@ VibeCoding 支持中英文双语界面：
 - 😵 搜索文档效率低
 - 😵 多个项目的文档容易混淆
 
-**使用 VibeCoding 解决**：
+**使用 VibeKnowledge 解决**：
 1. 在 `Knowledge/` 文件夹添加文档（支持 PDF、MD、TXT 等）
 2. 可选择 **云端 RAG（Gemini File Search）** 或 **本地 RAG（OpenAI 兼容接口）**
 3. 使用 **Ask Question** 进行智能问答，AI 基于文档回答并显示引用
@@ -259,7 +259,7 @@ VibeCoding 支持中英文双语界面：
 
 ## 📖 完整演示脚本
 
-### VibeCoding 完整功能演示（约 25 分钟）
+### VibeKnowledge 完整功能演示（约 25 分钟）
 
 本演示包含两大核心功能：**知识图谱可视化** 和 **RAG 智能问答**！
 
@@ -1081,7 +1081,7 @@ _💡 点击文件名可以直接跳转查看原文档_
 
 ## 🎉 演示完成
 
-**恭喜！你已经掌握了 VibeCoding 的核心功能：**
+**恭喜！你已经掌握了 VibeKnowledge 的核心功能：**
 
 ### ✅ 学会的技能
 1. 创建实体（Create Entity）
@@ -1183,7 +1183,7 @@ _💡 点击文件名可以直接跳转查看原文档_
 ## 🚀 开始使用
 
 现在你可以：
-1. 在你的项目中使用 VibeCoding
+1. 在你的项目中使用 VibeKnowledge
 2. 标记核心实体和关系
 3. 使用可视化图谱理解项目架构
 4. 配置 Gemini API Key，启用 RAG 功能
@@ -1239,4 +1239,4 @@ _💡 点击文件名可以直接跳转查看原文档_
 
 ## 🔚 End of Demo
 
-**感谢使用 VibeCoding！**
+**感谢使用 VibeKnowledge！**

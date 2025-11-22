@@ -1,4 +1,4 @@
-# VibeCoding - VS Code Knowledge Graph Extension
+# VibeKnowledge - VS Code Knowledge Graph Extension
 
 > Transform your codebase into an intelligent knowledge network for more efficient AI programming
 
@@ -20,7 +20,7 @@ A VS Code extension based on Knowledge Graph and SQLite that helps developers un
 
 ## 🎯 Core Philosophy
 
-VibeCoding transforms your VS Code workspace into an **intelligent knowledge graph** through three core concepts:
+VibeKnowledge transforms your VS Code workspace into an **intelligent knowledge graph** through three core concepts:
 
 ### 1. Entities
 Elements in your codebase with precise code locations:
@@ -56,7 +56,7 @@ Notes and comments about entities - the core value of knowledge graph:
 
 **All core features completed!** 🎉
 
-VibeCoding is a fully functional VS Code knowledge graph extension with three core modules:
+VibeKnowledge is a fully functional VS Code knowledge graph extension with three core modules:
 
 ### 1️⃣ Knowledge Graph Management
 - ✅ Complete CRUD for entities, relations, and observations
@@ -82,7 +82,7 @@ VibeCoding is a fully functional VS Code knowledge graph extension with three co
 
 ### 🌐 Internationalization Support (Completed) ✨
 
-VibeCoding has completed a full multi-language support system:
+VibeKnowledge has completed a full multi-language support system:
 
 - ✅ **Language Switching Framework**: Complete i18n service and type system
 - ✅ **Chinese & English**: Full support for UI, commands, and prompts in both languages

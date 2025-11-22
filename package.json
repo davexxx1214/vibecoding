@@ -1,6 +1,6 @@
 {
-  "name": "vscode-knowledge-graph",
-  "displayName": "Knowledge Graph",
+  "name": "vibe-knowledge",
+  "displayName": "Vibe Knowledge",
   "description": "将工作区转化为智能知识网络的 VS Code 插件",
   "version": "0.1.0",
   "publisher": "your-publisher-name",
