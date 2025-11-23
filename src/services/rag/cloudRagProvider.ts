@@ -210,6 +210,7 @@ export class CloudRAGProvider implements IRAGProvider {
   private dbService: DatabaseService;
   private geminiClient: GeminiClient;
   private indexedFiles: Map<string, IndexedFile> = new Map();
+  private indexingFiles: Set<string> = new Set();
   private storeId: string = '';
   private storeName: string = '';  // fileSearchStores/xxx 格式
   private projectName: string = '';
@@ -364,55 +365,82 @@ export class CloudRAGProvider implements IRAGProvider {
       return;
     }
 
-    const existingFile = this.indexedFiles.get(relativePath);
-    if (existingFile) {
-      await this.deleteCloudFile(existingFile.geminiFileUri);
+    if (this.indexingFiles.has(relativePath)) {
+      console.log(`[CloudRAG] Skip duplicate indexing request: ${relativePath}`);
+      return;
     }
+    this.indexingFiles.add(relativePath);
 
-    // Upload to Gemini
-    let operation = await client.fileSearchStores.uploadToFileSearchStore({
-      file: filePath,
-      fileSearchStoreName: this.storeName,
-      config: {
-        displayName: fileName,
-        mimeType,
+    try {
+      const existingFile = this.indexedFiles.get(relativePath);
+      if (existingFile) {
+        await this.deleteCloudFile(existingFile.geminiFileUri, relativePath, fileName);
       }
-    });
 
-    let attempts = 0;
-    while (!operation.done && attempts < 60) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      operation = await client.operations.get({ operation });
-      attempts++;
+      // Upload to Gemini
+      let operation = await client.fileSearchStores.uploadToFileSearchStore({
+        file: filePath,
+        fileSearchStoreName: this.storeName,
+        config: {
+          displayName: fileName,
+          mimeType,
+          customMetadata: [
+            {
+              key: 'relativePath',
+              stringValue: relativePath,
+            }
+          ],
+        }
+      });
+
+      let attempts = 0;
+      while (!operation.done && attempts < 60) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        operation = await client.operations.get({ operation });
+        attempts++;
+      }
+
+      if (!operation.done) {
+        throw new Error(t().extension.rag.indexFile.uploadTimeout(fileName));
+      }
+
+      const geminiFileUri =
+        operation.response?.documentName ||
+        operation.result?.name ||
+        operation.result?.documentName ||
+        null;
+
+      if (!geminiFileUri) {
+        console.error('[CloudRAG] Failed to obtain Gemini file URI after upload, aborting index.');
+        return;
+      }
+      const now = Date.now();
+      const fileId = this.generateDeterministicFileId(relativePath);
+
+      const indexedFile: IndexedFile = {
+        id: fileId,
+        filePath: relativePath,
+        fileName,
+        fileSize: stats.size,
+        mimeType,
+        indexedAt: now,
+        geminiFileUri,
+        storeId: this.storeId,
+      };
+
+      const db = this.dbService.getDatabase();
+      db.run(
+        `INSERT OR REPLACE INTO indexed_files (id, file_path, file_name, file_size, mime_type, indexed_at, gemini_file_uri, store_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [fileId, relativePath, fileName, stats.size, mimeType, now, geminiFileUri, this.storeId]
+      );
+      this.dbService.save();
+
+      this.indexedFiles.set(relativePath, indexedFile);
+      await this.updateStoreFileCount();
+      vscode.window.showInformationMessage(t().extension.rag.indexFile.success(fileName));
+    } finally {
+      this.indexingFiles.delete(relativePath);
     }
-
-    if (!operation.done) throw new Error(t().extension.rag.indexFile.uploadTimeout(fileName));
-
-    const geminiFileUri = operation.result?.name || `gemini_file_${Date.now()}`;
-    const now = Date.now();
-    const fileId = this.generateDeterministicFileId(relativePath);
-
-    const indexedFile: IndexedFile = {
-      id: fileId,
-      filePath: relativePath,
-      fileName,
-      fileSize: stats.size,
-      mimeType,
-      indexedAt: now,
-      geminiFileUri,
-      storeId: this.storeId,
-    };
-
-    const db = this.dbService.getDatabase();
-    db.run(
-      `INSERT OR REPLACE INTO indexed_files (id, file_path, file_name, file_size, mime_type, indexed_at, gemini_file_uri, store_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [fileId, relativePath, fileName, stats.size, mimeType, now, geminiFileUri, this.storeId]
-    );
-    this.dbService.save();
-
-    this.indexedFiles.set(relativePath, indexedFile);
-    await this.updateStoreFileCount();
-    vscode.window.showInformationMessage(t().extension.rag.indexFile.success(fileName));
   }
 
   public async removeFileFromIndex(filePath: string, workspaceRoot: string): Promise<void> {
@@ -444,7 +472,7 @@ export class CloudRAGProvider implements IRAGProvider {
     }
 
     // 2. Delete from Cloud (if we have the URI)
-    await this.deleteCloudFile(geminiFileUri);
+    await this.deleteCloudFile(geminiFileUri, relativePath, fileName);
 
     // 3. Delete from Local DB and Cache
     const db = this.dbService.getDatabase();
@@ -468,32 +496,62 @@ export class CloudRAGProvider implements IRAGProvider {
     return `file_${this.storeId}_${relativePath.replace(/[^a-zA-Z0-9]/g, '_')}`;
   }
 
-  private async deleteCloudFile(geminiFileUri?: string): Promise<void> {
-    if (!geminiFileUri) {
-      return;
-    }
-
-    if (!geminiFileUri.startsWith('files/')) {
-      // This is a local placeholder ID
-      console.log(`[CloudRAG] Skipping cloud delete for local-only ID: ${geminiFileUri}`);
-      return;
-    }
-
+  private async deleteCloudFile(geminiFileUri?: string, relativePath?: string, fileName?: string): Promise<void> {
     const client = this.geminiClient.getClient();
-    if (!client) return;
+    if (!client || !this.storeName) return;
 
-    try {
-      await client.files.delete({ name: geminiFileUri });
-      console.log(`[CloudRAG] Deleted cloud file: ${geminiFileUri}`);
-    } catch (error: any) {
-      if (error.status === 404) {
-        console.warn(`[CloudRAG] Cloud file not found during deletion: ${geminiFileUri}`);
-      } else if (error.status === 400 || error.message?.includes('INVALID_ARGUMENT')) {
-        console.warn(`[CloudRAG] Invalid file name for deletion (likely already removed): ${geminiFileUri}`);
-      } else {
-        console.error(`[CloudRAG] Failed to delete cloud file ${geminiFileUri}:`, error);
+    let targetDocumentName = geminiFileUri;
+
+    if (!targetDocumentName || !targetDocumentName.startsWith('fileSearchStores/')) {
+      targetDocumentName = await this.findDocumentName(relativePath, fileName);
+      if (!targetDocumentName) {
+        console.warn(`[CloudRAG] Unable to resolve cloud document for ${relativePath || fileName || 'unknown file'}, skip deletion.`);
+        return;
       }
     }
+
+    try {
+      const deleteParams: any = {
+        name: targetDocumentName,
+        config: { force: true },
+      };
+      await client.fileSearchStores.documents.delete(deleteParams);
+      console.log(`[CloudRAG] Deleted cloud document: ${targetDocumentName}`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.warn(`[CloudRAG] Cloud document already removed: ${targetDocumentName}`);
+      } else {
+        console.error(`[CloudRAG] Failed to delete cloud document ${targetDocumentName}:`, error);
+      }
+    }
+  }
+
+  private async findDocumentName(relativePath?: string, fileName?: string): Promise<string | null> {
+    const client = this.geminiClient.getClient();
+    if (!client || !this.storeName) return null;
+
+    try {
+      const pager = await client.fileSearchStores.documents.list({ parent: this.storeName });
+      for await (const document of pager) {
+        if (!document?.name) continue;
+
+        const metadataMatch = relativePath && document.customMetadata?.some(
+          meta => meta.key === 'relativePath' && meta.stringValue === relativePath
+        );
+
+        if (metadataMatch) {
+          return document.name;
+        }
+
+        if (!document.customMetadata?.length && fileName && document.displayName === fileName) {
+          return document.name;
+        }
+      }
+    } catch (error) {
+      console.error('[CloudRAG] Failed to list documents when resolving cloud file:', error);
+    }
+
+    return null;
   }
 
   private getSupportedMimeType(filePath: string): string | null {
