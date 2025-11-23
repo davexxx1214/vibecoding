@@ -21,7 +21,30 @@ export const zh = {
       viewLogs: '查看日志',
       retry: '重试',
       reconnected: '✅ Gemini API 已重新连接，RAG 功能已启用！',
-      invalidKey: '⚠️ API Key 无效，请检查配置'
+      invalidKey: '⚠️ API Key 无效，请检查配置',
+      indexFile: {
+        success: (fileName: string) => `✅ 成功索引: ${fileName}`,
+        successLocal: (fileName: string) => `✅ 本地索引成功: ${fileName}`,
+        uploadTimeout: (fileName: string) => `上传超时: ${fileName}`,
+        embeddingFailed: (fileName: string) => `嵌入失败: ${fileName}`
+      },
+      askQuestion: {
+        title: '知识图谱: 提问',
+        notInitialized: {
+          message: '请先在设置中配置 Gemini API Key',
+          openSettings: '打开设置'
+        },
+        noDocuments: '没有已索引的文档。请在 Knowledge/ 文件夹中添加文档。',
+        prompt: '向文档提问',
+        placeholder: '例如：这个项目使用了什么数据库？',
+        validateEmpty: '问题不能为空',
+        thinking: '正在思考...',
+        success: '✅ 问答完成',
+        fallbackAnswer: '无法生成回答',
+        noRelevantDocuments: '本地未找到相关文档。',
+        citationSource: (title: string) => `来源：${title}`,
+        copyToClipboard: '复制到剪贴板',
+      }
     }
   },
 

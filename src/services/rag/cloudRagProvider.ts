@@ -6,7 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GeminiClient } from '../geminiClient';
 import { DatabaseService } from '../database';
 import { IRAGProvider } from './ragProvider';
-import { SearchResult, QuestionAnswerResult, StoreInfo, IndexedFile } from './types';
+import { t } from '../../i18n/i18nService';
 
 export class CloudRAGProvider implements IRAGProvider {
   private dbService: DatabaseService;
@@ -175,7 +175,7 @@ export class CloudRAGProvider implements IRAGProvider {
       attempts++;
     }
 
-    if (!operation.done) throw new Error(`Upload timeout for ${fileName}`);
+    if (!operation.done) throw new Error(t().extension.rag.indexFile.uploadTimeout(fileName));
 
     const geminiFileUri = operation.result?.name || `gemini_file_${Date.now()}`;
     const now = Date.now();
@@ -201,7 +201,7 @@ export class CloudRAGProvider implements IRAGProvider {
 
     this.indexedFiles.set(relativePath, indexedFile);
     await this.updateStoreFileCount();
-    vscode.window.showInformationMessage(`✅ 成功索引: ${fileName}`);
+    vscode.window.showInformationMessage(t().extension.rag.indexFile.success(fileName));
   }
 
   public async removeFileFromIndex(filePath: string, workspaceRoot: string): Promise<void> {
@@ -282,7 +282,7 @@ export class CloudRAGProvider implements IRAGProvider {
       config: { tools: [{ fileSearch: { fileSearchStoreNames: [this.storeName] } }] }
     });
 
-    const answer = response.text || '无法生成回答';
+    const answer = response.text || t().extension.rag.askQuestion.fallbackAnswer;
     const sources: string[] = [];
     const citations: string[] = [];
 
@@ -292,7 +292,7 @@ export class CloudRAGProvider implements IRAGProvider {
         const title = chunk.retrievedContext?.title;
         if (title) {
           sources.push(title);
-          citations.push(`来源：${title}`);
+          citations.push(t().extension.rag.askQuestion.citationSource(title));
         }
       }
     }

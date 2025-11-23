@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { t } from '../../i18n/i18nService';
 import { DatabaseService } from '../database';
 import { IRAGProvider } from './ragProvider';
 import { SearchResult, QuestionAnswerResult, StoreInfo, IndexedFile } from './types';
@@ -204,7 +205,7 @@ export class LocalRAGProvider implements IRAGProvider {
                 vectors.push(vector);
             } catch (error) {
                 console.error(`Failed to embed chunk for ${fileName}:`, error);
-                vscode.window.showErrorMessage(`Embedding failed for ${fileName}`);
+                vscode.window.showErrorMessage(t().extension.rag.indexFile.embeddingFailed(fileName));
                 return;
             }
         }
@@ -250,7 +251,7 @@ export class LocalRAGProvider implements IRAGProvider {
         this.vectorCache.set(relativePath, dbChunks);
         await this.updateStoreFileCount();
         
-        vscode.window.showInformationMessage(`✅ Locally indexed: ${fileName}`);
+        vscode.window.showInformationMessage(t().extension.rag.indexFile.successLocal(fileName));
     }
 
     private chunkText(text: string, chunkSize: number, overlap: number): string[] {
@@ -382,7 +383,7 @@ export class LocalRAGProvider implements IRAGProvider {
         
         if (results.length === 0) {
             return {
-                answer: "No relevant documents found locally.",
+                answer: t().extension.rag.askQuestion.noRelevantDocuments,
                 sources: [],
                 citations: []
             };
@@ -418,7 +419,7 @@ export class LocalRAGProvider implements IRAGProvider {
         const answer = data.choices[0].message.content;
 
         const sources = Array.from(new Set(results.map(r => r.fileName)));
-        const citations = sources.map(s => `Source: ${s}`);
+        const citations = sources.map(s => t().extension.rag.askQuestion.citationSource(s));
 
         return {
             answer,

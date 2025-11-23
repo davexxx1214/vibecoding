@@ -22,7 +22,30 @@ export const en = {
       viewLogs: 'View logs',
       retry: 'Retry',
       reconnected: '✅ Gemini API reconnected, RAG enabled!',
-      invalidKey: '⚠️ API Key is invalid, please check configuration'
+      invalidKey: '⚠️ API Key is invalid, please check configuration',
+      indexFile: {
+        success: (fileName: string) => `✅ Indexed successfully: ${fileName}`,
+        successLocal: (fileName: string) => `✅ Locally indexed: ${fileName}`,
+        uploadTimeout: (fileName: string) => `Upload timeout for ${fileName}`,
+        embeddingFailed: (fileName: string) => `Embedding failed for ${fileName}`
+      },
+      askQuestion: {
+        title: 'Knowledge: Ask Question',
+        notInitialized: {
+          message: 'Please configure Gemini API Key in settings first',
+          openSettings: 'Open settings'
+        },
+        noDocuments: 'No indexed documents. Please add documents to the Knowledge/ folder.',
+        prompt: 'Ask a question',
+        placeholder: 'e.g., What database does this project use?',
+        validateEmpty: 'Question cannot be empty',
+        thinking: 'Thinking...',
+        success: '✅ Question answered',
+        fallbackAnswer: 'Unable to generate answer',
+        noRelevantDocuments: 'No relevant documents found locally.',
+        citationSource: (title: string) => `Source: ${title}`,
+        copyToClipboard: 'Copy to clipboard',
+      }
     }
   },
 
