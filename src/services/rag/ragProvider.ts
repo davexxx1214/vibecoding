@@ -2,6 +2,7 @@ import { SearchResult, QuestionAnswerResult, StoreInfo, IndexedFile } from './ty
 
 export interface IRAGProvider {
     initialize(workspaceRoot: string): Promise<void>;
+    isFileSupported(filePath: string): boolean;
     indexFile(filePath: string, workspaceRoot: string): Promise<void>;
     removeFileFromIndex(filePath: string, workspaceRoot: string): Promise<void>;
     searchDocuments(query: string): Promise<SearchResult[]>;

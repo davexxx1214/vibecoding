@@ -28,6 +28,11 @@ export const zh = {
         uploadTimeout: (fileName: string) => `上传超时: ${fileName}`,
         embeddingFailed: (fileName: string) => `嵌入失败: ${fileName}`
       },
+      removeFile: {
+        success: (fileName: string) => `✅ 已从索引中删除: ${fileName}`,
+        failed: (fileName: string) => `❌ 删除索引失败: ${fileName}`,
+        notFound: (fileName: string) => `⚠️ 索引中未找到文件: ${fileName}`
+      },
       askQuestion: {
         title: '知识图谱: 提问',
         notInitialized: {

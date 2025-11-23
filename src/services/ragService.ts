@@ -84,7 +84,11 @@ export class RAGService {
     this.fileWatcher.onDidCreate(async (uri) => {
       console.log(`File created: ${uri.fsPath}`);
       try {
-          await this.provider?.indexFile(uri.fsPath, workspaceRoot);
+          if (!this.provider?.isFileSupported(uri.fsPath)) {
+            console.log(`Skipping unsupported file type: ${uri.fsPath}`);
+            return;
+          }
+          await this.provider.indexFile(uri.fsPath, workspaceRoot);
       } catch (e) {
           console.error('Error indexing created file:', e);
       }
@@ -93,7 +97,11 @@ export class RAGService {
     this.fileWatcher.onDidChange(async (uri) => {
       console.log(`File changed: ${uri.fsPath}`);
       try {
-          await this.provider?.indexFile(uri.fsPath, workspaceRoot);
+          if (!this.provider?.isFileSupported(uri.fsPath)) {
+            console.log(`Skipping unsupported file type: ${uri.fsPath}`);
+            return;
+          }
+          await this.provider.indexFile(uri.fsPath, workspaceRoot);
       } catch (e) {
            console.error('Error indexing changed file:', e);
       }
@@ -123,7 +131,9 @@ export class RAGService {
     }
 
     const files = this.scanDirectory(knowledgeFolder);
-    const indexedFiles = new Set(this.provider?.getIndexedFiles().map(f => f.filePath));
+    const indexedFiles = new Set(
+      this.provider ? this.provider.getIndexedFiles().map(f => f.filePath) : []
+    );
     
     let newFileCount = 0;
     for (const filePath of files) {
@@ -143,7 +153,6 @@ export class RAGService {
 
   private scanDirectory(dirPath: string): string[] {
     const files: string[] = [];
-    const supportedExtensions = ['.md', '.txt', '.pdf', '.json', '.ts', '.js', '.py', '.java', '.go', '.cpp', '.c', '.h'];
 
     const scan = (dir: string) => {
       if (!fs.existsSync(dir)) return;
@@ -154,8 +163,7 @@ export class RAGService {
         if (entry.isDirectory()) {
           scan(fullPath);
         } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).toLowerCase();
-          if (supportedExtensions.includes(ext)) {
+          if (!this.provider || this.provider.isFileSupported(fullPath)) {
             files.push(fullPath);
           }
         }

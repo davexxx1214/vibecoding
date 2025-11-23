@@ -29,6 +29,11 @@ export const en = {
         uploadTimeout: (fileName: string) => `Upload timeout for ${fileName}`,
         embeddingFailed: (fileName: string) => `Embedding failed for ${fileName}`
       },
+      removeFile: {
+        success: (fileName: string) => `✅ Removed from index: ${fileName}`,
+        failed: (fileName: string) => `Failed to remove index: ${fileName}`,
+        notFound: (fileName: string) => `⚠️ File not found in index: ${fileName}`
+      },
       askQuestion: {
         title: 'Knowledge: Ask Question',
         notInitialized: {

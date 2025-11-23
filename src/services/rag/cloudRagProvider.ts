@@ -5,8 +5,206 @@ import * as crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import { GeminiClient } from '../geminiClient';
 import { DatabaseService } from '../database';
+import { lookup as lookupMimeType } from 'mime-types';
 import { IRAGProvider } from './ragProvider';
+import { SearchResult, QuestionAnswerResult, StoreInfo, IndexedFile } from './types';
 import { t } from '../../i18n/i18nService';
+
+const APPLICATION_MIME_TYPES = [
+  'application/dart',
+  'application/ecmascript',
+  'application/json',
+  'application/ms-java',
+  'application/msword',
+  'application/pdf',
+  'application/sql',
+  'application/typescript',
+  'application/vnd.curl',
+  'application/vnd.dart',
+  'application/vnd.ibm.secure-container',
+  'application/vnd.jupyter',
+  'application/vnd.ms-excel',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+  'application/x-csh',
+  'application/x-hwp',
+  'application/x-hwp-v5',
+  'application/x-latex',
+  'application/x-php',
+  'application/x-powershell',
+  'application/x-sh',
+  'application/x-shellscript',
+  'application/x-tex',
+  'application/x-zsh',
+  'application/xml',
+  'application/zip',
+].map(type => type.toLowerCase());
+
+const TEXT_MIME_TYPES = [
+  'text/1d-interleaved-parityfec',
+  'text/red',
+  'text/sgml',
+  'text/cache-manifest',
+  'text/calendar',
+  'text/cql',
+  'text/cql-extension',
+  'text/cql-identifier',
+  'text/css',
+  'text/csv',
+  'text/csv-schema',
+  'text/dns',
+  'text/encaprtp',
+  'text/enriched',
+  'text/example',
+  'text/fhirpath',
+  'text/flexfec',
+  'text/fwdred',
+  'text/gff3',
+  'text/grammar-ref-list',
+  'text/hl7v2',
+  'text/html',
+  'text/javascript',
+  'text/jcr-cnd',
+  'text/jsx',
+  'text/markdown',
+  'text/mizar',
+  'text/n3',
+  'text/parameters',
+  'text/parityfec',
+  'text/php',
+  'text/plain',
+  'text/provenance-notation',
+  'text/prs.fallenstein.rst',
+  'text/prs.lines.tag',
+  'text/prs.prop.logic',
+  'text/raptorfec',
+  'text/rfc822-headers',
+  'text/rtf',
+  'text/rtp-enc-aescm128',
+  'text/rtploopback',
+  'text/rtx',
+  'text/shaclc',
+  'text/shex',
+  'text/spdx',
+  'text/strings',
+  'text/t140',
+  'text/tab-separated-values',
+  'text/texmacs',
+  'text/troff',
+  'text/tsv',
+  'text/tsx',
+  'text/turtle',
+  'text/ulpfec',
+  'text/uri-list',
+  'text/vcard',
+  'text/vnd.dmclientscript',
+  'text/vnd.iptc.nitf',
+  'text/vnd.iptc.newsml',
+  'text/vnd.a',
+  'text/vnd.abc',
+  'text/vnd.ascii-art',
+  'text/vnd.curl',
+  'text/vnd.debian.copyright',
+  'text/vnd.dvb.subtitle',
+  'text/vnd.esmertec.theme-descriptor',
+  'text/vnd.exchangeable',
+  'text/vnd.familysearch.gedcom',
+  'text/vnd.ficlab.flt',
+  'text/vnd.fly',
+  'text/vnd.fmi.flexstor',
+  'text/vnd.gml',
+  'text/vnd.graphviz',
+  'text/vnd.hans',
+  'text/vnd.hgl',
+  'text/vnd.in3d.3dml',
+  'text/vnd.in3d.spot',
+  'text/vnd.latex-z',
+  'text/vnd.motorola.reflex',
+  'text/vnd.ms-mediapackage',
+  'text/vnd.net2phone.commcenter.command',
+  'text/vnd.radisys.msml-basic-layout',
+  'text/vnd.senx.warpscript',
+  'text/vnd.sosi',
+  'text/vnd.sun.j2me.app-descriptor',
+  'text/vnd.trolltech.linguist',
+  'text/vnd.wap.si',
+  'text/vnd.wap.sl',
+  'text/vnd.wap.wml',
+  'text/vnd.wap.wmlscript',
+  'text/vtt',
+  'text/wgsl',
+  'text/x-asm',
+  'text/x-bibtex',
+  'text/x-boo',
+  'text/x-c',
+  'text/x-c++hdr',
+  'text/x-c++src',
+  'text/x-cassandra',
+  'text/x-chdr',
+  'text/x-coffeescript',
+  'text/x-component',
+  'text/x-csh',
+  'text/x-csharp',
+  'text/x-csrc',
+  'text/x-cuda',
+  'text/x-d',
+  'text/x-diff',
+  'text/x-dsrc',
+  'text/x-emacs-lisp',
+  'text/x-erlang',
+  'text/x-gff3',
+  'text/x-go',
+  'text/x-haskell',
+  'text/x-java',
+  'text/x-java-properties',
+  'text/x-java-source',
+  'text/x-kotlin',
+  'text/x-lilypond',
+  'text/x-lisp',
+  'text/x-literate-haskell',
+  'text/x-lua',
+  'text/x-moc',
+  'text/x-objcsrc',
+  'text/x-pascal',
+  'text/x-pcs-gcd',
+  'text/x-perl',
+  'text/x-perl-script',
+  'text/x-python',
+  'text/x-python-script',
+  'text/x-r-markdown',
+  'text/x-rsrc',
+  'text/x-rst',
+  'text/x-ruby-script',
+  'text/x-rust',
+  'text/x-sass',
+  'text/x-scala',
+  'text/x-scheme',
+  'text/x-script.python',
+  'text/x-scss',
+  'text/x-setext',
+  'text/x-sfv',
+  'text/x-sh',
+  'text/x-siesta',
+  'text/x-sos',
+  'text/x-sql',
+  'text/x-swift',
+  'text/x-tcl',
+  'text/x-tex',
+  'text/x-vbasic',
+  'text/x-vcalendar',
+  'text/xml',
+  'text/xml-dtd',
+  'text/xml-external-parsed-entity',
+  'text/yaml',
+].map(type => type.toLowerCase());
+
+const CLOUD_SUPPORTED_MIME_TYPES = new Set<string>([
+  ...APPLICATION_MIME_TYPES,
+  ...TEXT_MIME_TYPES,
+]);
 
 export class CloudRAGProvider implements IRAGProvider {
   private dbService: DatabaseService;
@@ -42,6 +240,10 @@ export class CloudRAGProvider implements IRAGProvider {
     // Note: File watching and initial scan are handled by the main RAGService or we should move it here?
     // The original RAGService handled file watching. It's better if the Provider handles the *actions* but maybe the Service handles the *watching*.
     // For now, let's assume the Service calls indexFile/removeFileFromIndex.
+  }
+
+  public isFileSupported(filePath: string): boolean {
+    return this.getSupportedMimeType(filePath) !== null;
   }
 
   private createIndexTable(): void {
@@ -156,7 +358,16 @@ export class CloudRAGProvider implements IRAGProvider {
 
     const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
     const fileName = path.basename(filePath);
-    const mimeType = this.getMimeType(filePath);
+    const mimeType = this.getSupportedMimeType(filePath);
+    if (!mimeType) {
+      console.warn(`[CloudRAG] Unsupported file type, skipping: ${fileName}`);
+      return;
+    }
+
+    const existingFile = this.indexedFiles.get(relativePath);
+    if (existingFile) {
+      await this.deleteCloudFile(existingFile.geminiFileUri);
+    }
 
     // Upload to Gemini
     let operation = await client.fileSearchStores.uploadToFileSearchStore({
@@ -179,7 +390,7 @@ export class CloudRAGProvider implements IRAGProvider {
 
     const geminiFileUri = operation.result?.name || `gemini_file_${Date.now()}`;
     const now = Date.now();
-    const fileId = `file_${Date.now()}_${relativePath.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const fileId = this.generateDeterministicFileId(relativePath);
 
     const indexedFile: IndexedFile = {
       id: fileId,
@@ -206,11 +417,43 @@ export class CloudRAGProvider implements IRAGProvider {
 
   public async removeFileFromIndex(filePath: string, workspaceRoot: string): Promise<void> {
     const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
+    const fileName = path.basename(filePath);
+    
+    console.log(`[CloudRAG] Removing file from index: ${relativePath}`);
+
+    // 1. Try to get Gemini File URI from memory cache or DB
+    let geminiFileUri: string | undefined;
+    const cachedFile = this.indexedFiles.get(relativePath);
+    
+    if (cachedFile) {
+      geminiFileUri = cachedFile.geminiFileUri;
+    } else {
+      const db = this.dbService.getDatabase();
+      const result = db.exec(
+        `SELECT gemini_file_uri FROM indexed_files WHERE file_path = ? AND store_id = ?`,
+        [relativePath, this.storeId]
+      );
+      if (result.length > 0 && result[0].values.length > 0) {
+        geminiFileUri = result[0].values[0][0] as string;
+      }
+    }
+
+    if (!geminiFileUri) {
+        console.log(`[CloudRAG] File not found in index: ${relativePath}`);
+        return;
+    }
+
+    // 2. Delete from Cloud (if we have the URI)
+    await this.deleteCloudFile(geminiFileUri);
+
+    // 3. Delete from Local DB and Cache
     const db = this.dbService.getDatabase();
     db.run(`DELETE FROM indexed_files WHERE file_path = ? AND store_id = ?`, [relativePath, this.storeId]);
     this.dbService.save();
     this.indexedFiles.delete(relativePath);
     await this.updateStoreFileCount();
+    
+    vscode.window.showInformationMessage(t().extension.rag.removeFile.success(fileName));
   }
 
   private async updateStoreFileCount(): Promise<void> {
@@ -221,16 +464,43 @@ export class CloudRAGProvider implements IRAGProvider {
     this.dbService.save();
   }
 
-  private getMimeType(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      '.md': 'text/markdown', '.txt': 'text/plain', '.pdf': 'application/pdf',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.json': 'application/json', '.ts': 'text/typescript', '.js': 'text/javascript',
-      '.py': 'text/x-python', '.java': 'text/x-java', '.go': 'text/x-go',
-      '.cpp': 'text/x-c++', '.c': 'text/x-c', '.h': 'text/x-c-header',
-    };
-    return mimeTypes[ext] || 'text/plain';
+  private generateDeterministicFileId(relativePath: string): string {
+    return `file_${this.storeId}_${relativePath.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  }
+
+  private async deleteCloudFile(geminiFileUri?: string): Promise<void> {
+    if (!geminiFileUri) {
+      return;
+    }
+
+    if (!geminiFileUri.startsWith('files/')) {
+      // This is a local placeholder ID
+      console.log(`[CloudRAG] Skipping cloud delete for local-only ID: ${geminiFileUri}`);
+      return;
+    }
+
+    const client = this.geminiClient.getClient();
+    if (!client) return;
+
+    try {
+      await client.files.delete({ name: geminiFileUri });
+      console.log(`[CloudRAG] Deleted cloud file: ${geminiFileUri}`);
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.warn(`[CloudRAG] Cloud file not found during deletion: ${geminiFileUri}`);
+      } else if (error.status === 400 || error.message?.includes('INVALID_ARGUMENT')) {
+        console.warn(`[CloudRAG] Invalid file name for deletion (likely already removed): ${geminiFileUri}`);
+      } else {
+        console.error(`[CloudRAG] Failed to delete cloud file ${geminiFileUri}:`, error);
+      }
+    }
+  }
+
+  private getSupportedMimeType(filePath: string): string | null {
+    const mime = lookupMimeType(filePath);
+    if (!mime) return null;
+    const normalized = mime.toLowerCase();
+    return CLOUD_SUPPORTED_MIME_TYPES.has(normalized) ? normalized : null;
   }
 
   public async searchDocuments(query: string): Promise<SearchResult[]> {
@@ -349,15 +619,25 @@ export class CloudRAGProvider implements IRAGProvider {
       const client = this.geminiClient.getClient();
       if (!client || !this.storeName) return null;
       try {
+        // 1. Get Cloud Store Info
         const store = await client.fileSearchStores.get({ name: this.storeName });
+        
+        // 2. Sync local store info with cloud status (optional but good for consistency)
+        // If cloud count differs significantly, maybe we should warn or re-sync?
+        // For now, just return the real cloud data.
+        
         return {
           storeName: store.name || this.storeName,
           displayName: store.displayName,
-          activeDocumentsCount: parseInt(store.activeDocumentsCount || '0'),
-          pendingDocumentsCount: parseInt(store.pendingDocumentsCount || '0'),
-          failedDocumentsCount: parseInt(store.failedDocumentsCount || '0'),
+          // Ensure we parse the string counts correctly, default to 0
+          activeDocumentsCount: typeof store.activeDocumentsCount === 'number' ? store.activeDocumentsCount : parseInt(store.activeDocumentsCount || '0'),
+          pendingDocumentsCount: typeof store.pendingDocumentsCount === 'number' ? store.pendingDocumentsCount : parseInt(store.pendingDocumentsCount || '0'),
+          failedDocumentsCount: typeof store.failedDocumentsCount === 'number' ? store.failedDocumentsCount : parseInt(store.failedDocumentsCount || '0'),
         };
-      } catch (e) { return null; }
+      } catch (e) { 
+          console.error('[CloudRAG] Failed to get store info from cloud:', e);
+          return null; 
+      }
   }
 
   public async testConnection(): Promise<boolean> {

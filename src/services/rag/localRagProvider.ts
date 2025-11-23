@@ -15,6 +15,13 @@ interface Chunk {
 }
 
 export class LocalRAGProvider implements IRAGProvider {
+    private static readonly SUPPORTED_TEXT_EXTENSIONS = new Set<string>([
+        '.md', '.markdown', '.txt', '.json', '.ts', '.tsx', '.js', '.jsx',
+        '.py', '.java', '.kt', '.kts', '.go', '.rs', '.rb', '.php', '.swift',
+        '.scala', '.c', '.h', '.hpp', '.hh', '.cpp', '.cc', '.cxx', '.cs',
+        '.m', '.mm', '.sh', '.bash', '.zsh', '.ps1', '.psm1', '.csh', '.sql',
+        '.yml', '.yaml', '.toml', '.ini', '.cfg', '.conf', '.log'
+    ]);
     private dbService: DatabaseService;
     private workspaceRoot: string = '';
     private projectName: string = '';
@@ -186,7 +193,16 @@ export class LocalRAGProvider implements IRAGProvider {
         return crypto.createHash('md5').update(workspaceRoot).digest('hex').substring(0, 8);
     }
 
+    public isFileSupported(filePath: string): boolean {
+        const ext = path.extname(filePath).toLowerCase();
+        return LocalRAGProvider.SUPPORTED_TEXT_EXTENSIONS.has(ext);
+    }
+
     public async indexFile(filePath: string, workspaceRoot: string): Promise<void> {
+        if (!this.isFileSupported(filePath)) {
+            console.log(`[LocalRAG] Unsupported file type, skipping: ${filePath}`);
+            return;
+        }
         if (!fs.existsSync(filePath)) return;
         const content = fs.readFileSync(filePath, 'utf-8');
         const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');

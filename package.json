@@ -394,6 +394,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
+    "mime-types": "^3.0.2",
     "sql.js": "^1.13.0",
     "vis-network": "^10.0.2"
   }
