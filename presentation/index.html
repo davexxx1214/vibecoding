@@ -121,6 +121,37 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 20;
+        }
+
+        .theme-btn {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(15, 23, 42, 0.6);
+            color: #f8fafc;
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-transform: capitalize;
+            letter-spacing: 0.02em;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(6px);
+        }
+
+        .theme-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35);
+        }
+
         /* Controls */
         .controls {
             position: absolute;
@@ -247,6 +278,11 @@
         <span id="current">1</span> / <span id="total">10</span>
     </div>
 
+    <div class="theme-toggle" role="group" aria-label="Theme selector">
+        <button class="theme-btn" data-theme="white">White</button>
+        <button class="theme-btn active" data-theme="blue">Blue</button>
+    </div>
+
     <div class="click-zone left" onclick="prevSlide()">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -282,11 +318,50 @@
 
     <script>
         const totalSlides = 11;
+        const themes = {
+            white: { label: 'White', path: 'white' },
+            blue: { label: 'Blue', path: 'blue' }
+        };
         let currentSlide = 0;
+        let currentTheme = 'blue';
         const slider = document.getElementById('slider');
         const dotsContainer = document.getElementById('dots');
         const currentEl = document.getElementById('current');
         const totalEl = document.getElementById('total');
+        const themeButtons = document.querySelectorAll('.theme-btn');
+
+        themeButtons.forEach(button => {
+            button.addEventListener('click', () => setTheme(button.dataset.theme));
+        });
+
+        function setTheme(theme) {
+            if (!themes[theme] || theme === currentTheme) return;
+            currentTheme = theme;
+            updateThemeButtons();
+            updateThemeAssets();
+        }
+
+        function updateThemeButtons() {
+            themeButtons.forEach(button => {
+                if (button.dataset.theme === currentTheme) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+        }
+
+        function updateThemeAssets() {
+            const slideImages = document.querySelectorAll('.slide img');
+            slideImages.forEach((img, index) => {
+                img.src = getImagePath(index + 1);
+                img.alt = `Slide ${index + 1} (${themes[currentTheme].label} theme)`;
+            });
+        }
+
+        function getImagePath(index) {
+            return `${themes[currentTheme].path}/${index}.png`;
+        }
 
         // Initialize
         function init() {
@@ -297,7 +372,7 @@
                 // Slide
                 const slide = document.createElement('div');
                 slide.className = `slide ${i === 1 ? 'active' : ''}`;
-                slide.innerHTML = `<img src="${i}.png" alt="Slide ${i}">`;
+                slide.innerHTML = `<img src="${getImagePath(i)}" alt="Slide ${i} (${themes[currentTheme].label} theme)">`;
                 slider.appendChild(slide);
 
                 // Dot
@@ -306,6 +381,8 @@
                 dot.onclick = () => goToSlide(i - 1);
                 dotsContainer.appendChild(dot);
             }
+
+            updateThemeButtons();
         }
 
         function updateUI() {
