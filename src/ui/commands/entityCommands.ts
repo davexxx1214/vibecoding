@@ -675,40 +675,41 @@ export class EntityCommands {
     }
 
     const observations = this.observationService.getObservations(targetEntity.id);
-    if (observations.length === 0) {
-      vscode.window.showInformationMessage(translations.noObservations);
-      return;
-    }
+    let selectedObservation: Observation | null = null;
 
-    const observationItems = observations.map((observation) => {
-      const preview =
-        observation.content.length > 80
-          ? `${observation.content.substring(0, 80)}...`
-          : observation.content;
+    if (observations.length > 0) {
+      const observationItems = observations.map((observation) => {
+        const preview =
+          observation.content.length > 80
+            ? `${observation.content.substring(0, 80)}...`
+            : observation.content;
 
-      const timestamp = new Date(observation.updatedAt || observation.createdAt).toLocaleString();
+        const timestamp = new Date(observation.updatedAt || observation.createdAt).toLocaleString();
 
-      return {
-        label: preview,
-        description: timestamp,
-        observation,
-      } as vscode.QuickPickItem & { observation: Observation };
-    });
+        return {
+          label: preview,
+          description: timestamp,
+          observation,
+        } as vscode.QuickPickItem & { observation: Observation };
+      });
 
-    const selected = await vscode.window.showQuickPick(observationItems, {
-      placeHolder: translations.selectPlaceholder,
-      matchOnDescription: true,
-    });
+      const selected = await vscode.window.showQuickPick(observationItems, {
+        placeHolder: translations.selectPlaceholder,
+        matchOnDescription: true,
+      });
 
-    if (!selected) {
-      return;
+      if (!selected) {
+        return;
+      }
+
+      selectedObservation = selected.observation;
     }
 
     const validationMessage =
       translations.validateEmpty || t().commands.addObservation.validateEmpty;
 
     const updatedContent = await this.openObservationEditorPanel(
-      selected.observation.content,
+      selectedObservation ? selectedObservation.content : '',
       translations
     );
 
@@ -723,17 +724,23 @@ export class EntityCommands {
     }
 
     try {
-      const updated = this.observationService.updateObservation(
-        selected.observation.id,
-        trimmedContent
-      );
+      if (selectedObservation) {
+        const updated = this.observationService.updateObservation(
+          selectedObservation.id,
+          trimmedContent
+        );
 
-      if (!updated) {
-        vscode.window.showErrorMessage(translations.error('Observation not found'));
-        return;
+        if (!updated) {
+          vscode.window.showErrorMessage(translations.error('Observation not found'));
+          return;
+        }
+
+        vscode.window.showInformationMessage(translations.success(targetEntity.name));
+      } else {
+        this.observationService.addObservation(targetEntity.id, trimmedContent);
+        const successMessage = t().commands.addObservation.success || translations.success(targetEntity.name);
+        vscode.window.showInformationMessage(successMessage);
       }
-
-      vscode.window.showInformationMessage(translations.success(targetEntity.name));
     } catch (error) {
       vscode.window.showErrorMessage(translations.error(String(error)));
     }
