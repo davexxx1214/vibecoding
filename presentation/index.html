@@ -142,31 +142,65 @@
             display: inline-flex;
             flex-direction: column;
             align-items: stretch;
-            gap: 0.35rem;
-            padding: 0.35rem 0.45rem;
-            border-radius: 18px;
+            gap: 0.25rem;
+            padding: 0.25rem 0.35rem;
+            border-radius: 16px;
             background: rgba(2, 6, 23, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(6px);
         }
 
         .theme-btn {
+            position: relative;
             border: none;
-            background: transparent;
-            color: #cbd5f5;
-            padding: 0.45rem 0.9rem;
-            border-radius: 12px;
+            width: clamp(70px, 7.2vw, 94px);
+            height: clamp(30px, 3.8vw, 42px);
+            border-radius: 999px;
             cursor: pointer;
-            font-size: 0.85rem;
-            text-transform: capitalize;
-            letter-spacing: 0.02em;
-            transition: all 0.2s ease;
+            background: linear-gradient(135deg, #f8fafc, #d9e3ff);
+            box-shadow: 0 6px 12px rgba(15, 23, 42, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            overflow: hidden;
+        }
+
+        .theme-btn[data-theme="blue"] {
+            background: linear-gradient(135deg, #2563eb, #5de0ff);
+        }
+
+        .theme-btn::after {
+            content: attr(data-icon);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            width: 100%;
+            height: 100%;
+        }
+
+        .theme-btn[data-theme="blue"]::after {
+            color: #eef2ff;
         }
 
         .theme-btn.active {
-            background: var(--primary);
-            color: #fff;
-            box-shadow: 0 8px 18px rgba(59, 130, 246, 0.35);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 12px 28px rgba(59, 130, 246, 0.45);
+        }
+
+        .theme-btn:not(.active) {
+            opacity: 0.78;
+        }
+
+        .theme-btn .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
         }
 
         .counter {
@@ -296,8 +330,12 @@
 
     <div class="top-controls">
         <div class="theme-toggle" role="group" aria-label="Theme selector">
-            <button class="theme-btn" data-theme="white">White</button>
-            <button class="theme-btn active" data-theme="blue">Blue</button>
+            <button class="theme-btn" data-theme="white" data-icon="☀" aria-label="Switch to white theme">
+                <span class="sr-only">White theme</span>
+            </button>
+            <button class="theme-btn active" data-theme="blue" data-icon="🌙" aria-label="Switch to blue theme">
+                <span class="sr-only">Blue theme</span>
+            </button>
         </div>
         <div class="counter">
             <span id="current">1</span> / <span id="total">10</span>
