@@ -98,93 +98,123 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 2rem;
+            padding: clamp(0.15rem, 0.8vw, 0.5rem);
             pointer-events: none;
-            transform: scale(0.95);
         }
 
         .slide.active {
             opacity: 1;
             pointer-events: auto;
-            transform: scale(1);
             z-index: 10;
         }
 
         .slide img {
-            max-width: 100%;
-            max-height: 100%;
+            width: auto;
+            height: auto;
+            max-width: calc(100vw - 0.75rem);
+            max-height: calc(100vh - 1.5rem);
             object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.6);
+            border: none;
+            background: transparent;
         }
 
-        /* Theme Toggle */
-        .theme-toggle {
+        /* Compact Top Controls */
+        .top-controls {
             position: absolute;
-            top: 2rem;
-            left: 2rem;
+            right: 0.85rem;
+            bottom: 0.85rem;
             display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 0.5rem;
-            z-index: 20;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .theme-toggle,
+        .counter {
+            pointer-events: auto;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            padding: 0.35rem 0.45rem;
+            border-radius: 18px;
+            background: rgba(2, 6, 23, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(6px);
         }
 
         .theme-btn {
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(15, 23, 42, 0.6);
-            color: #f8fafc;
-            padding: 0.4rem 0.9rem;
-            border-radius: 999px;
+            border: none;
+            background: transparent;
+            color: #cbd5f5;
+            padding: 0.45rem 0.9rem;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 0.85rem;
             text-transform: capitalize;
             letter-spacing: 0.02em;
             transition: all 0.2s ease;
-            backdrop-filter: blur(6px);
         }
 
         .theme-btn.active {
             background: var(--primary);
             color: #fff;
-            border-color: rgba(255, 255, 255, 0.6);
-            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35);
+            box-shadow: 0 8px 18px rgba(59, 130, 246, 0.35);
         }
 
-        /* Controls */
+        .counter {
+            background: rgba(2, 6, 23, 0.7);
+            padding: 0.5rem 0.9rem;
+            border-radius: 14px;
+            font-variant-numeric: tabular-nums;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            backdrop-filter: blur(6px);
+        }
+
+        /* Bottom Controls */
         .controls {
             position: absolute;
-            bottom: 2rem;
-            left: 0;
-            right: 0;
+            right: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            gap: 2rem;
-            z-index: 20;
-            padding: 1rem;
-            background: linear-gradient(to top, rgba(2, 6, 23, 0.8), transparent);
+            gap: 0.6rem;
+            z-index: 25;
+            padding: 0.5rem 0.45rem;
+            border-radius: 24px;
+            background: rgba(2, 6, 23, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
         }
 
         .nav-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: white;
-            width: 50px;
-            height: 50px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             justify-content: center;
             align-items: center;
             transition: all 0.2s;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
         }
 
         .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.1);
+            transform: translateY(-1px);
         }
 
         .nav-btn:active {
@@ -192,19 +222,21 @@
         }
 
         .nav-btn svg {
-            width: 24px;
-            height: 24px;
-            stroke-width: 2.5;
+            width: 22px;
+            height: 22px;
+            stroke-width: 2.2;
         }
 
         .progress-container {
             display: flex;
-            gap: 0.5rem;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
         }
 
         .progress-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.2);
             cursor: pointer;
@@ -213,21 +245,9 @@
 
         .progress-dot.active {
             background: var(--primary);
-            width: 24px;
+            height: 18px;
+            width: 6px;
             border-radius: 4px;
-        }
-
-        .counter {
-            position: absolute;
-            top: 2rem;
-            right: 2rem;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-variant-numeric: tabular-nums;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
         }
 
         /* Click zones for easier navigation */
@@ -274,13 +294,14 @@
         <div class="orb orb-2"></div>
     </div>
 
-    <div class="counter">
-        <span id="current">1</span> / <span id="total">10</span>
-    </div>
-
-    <div class="theme-toggle" role="group" aria-label="Theme selector">
-        <button class="theme-btn" data-theme="white">White</button>
-        <button class="theme-btn active" data-theme="blue">Blue</button>
+    <div class="top-controls">
+        <div class="theme-toggle" role="group" aria-label="Theme selector">
+            <button class="theme-btn" data-theme="white">White</button>
+            <button class="theme-btn active" data-theme="blue">Blue</button>
+        </div>
+        <div class="counter">
+            <span id="current">1</span> / <span id="total">10</span>
+        </div>
     </div>
 
     <div class="click-zone left" onclick="prevSlide()">
@@ -301,7 +322,7 @@
     <div class="controls">
         <button class="nav-btn" onclick="prevSlide()" aria-label="Previous Slide">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
             </svg>
         </button>
 
@@ -311,7 +332,7 @@
 
         <button class="nav-btn" onclick="nextSlide()" aria-label="Next Slide">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 9l7 7 7-7" />
             </svg>
         </button>
     </div>
