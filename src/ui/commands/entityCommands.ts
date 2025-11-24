@@ -5,7 +5,7 @@ import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
 import { ExportService } from '../../services/exportService';
 import { AIIntegrationService } from '../../services/aiIntegrationService';
-import { Entity, EntityType } from '../../utils/types';
+import { Entity, EntityType, Observation } from '../../utils/types';
 import { t } from '../../i18n/i18nService';
 
 /**
@@ -642,6 +642,100 @@ export class EntityCommands {
       );
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to create relation: ${error}`);
+    }
+  }
+
+  /**
+   * 编辑实体的观察记录
+   */
+  public async editObservation(treeItem?: any): Promise<void> {
+    const translations = t().commands.editObservation;
+    let targetEntity: Entity | null = null;
+
+    if (treeItem?.entity) {
+      targetEntity = treeItem.entity;
+    } else if (treeItem && typeof treeItem === 'string') {
+      targetEntity = this.entityService.getEntity(treeItem);
+    }
+
+    if (!targetEntity) {
+      const editor = vscode.window.activeTextEditor;
+      if (editor) {
+        const relativePath = this.getRelativePath(editor.document);
+        if (relativePath) {
+          const line = editor.selection.active.line + 1;
+          targetEntity = this.entityService.findEntityAtLocation(relativePath, line);
+        }
+      }
+    }
+
+    if (!targetEntity) {
+      vscode.window.showWarningMessage(t().commands.viewEntityDetails.notFound);
+      return;
+    }
+
+    const observations = this.observationService.getObservations(targetEntity.id);
+    if (observations.length === 0) {
+      vscode.window.showInformationMessage(translations.noObservations);
+      return;
+    }
+
+    const observationItems = observations.map((observation) => {
+      const preview =
+        observation.content.length > 80
+          ? `${observation.content.substring(0, 80)}...`
+          : observation.content;
+
+      const timestamp = new Date(observation.updatedAt || observation.createdAt).toLocaleString();
+
+      return {
+        label: preview,
+        description: timestamp,
+        observation,
+      } as vscode.QuickPickItem & { observation: Observation };
+    });
+
+    const selected = await vscode.window.showQuickPick(observationItems, {
+      placeHolder: translations.selectPlaceholder,
+      matchOnDescription: true,
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    const validationMessage =
+      translations.validateEmpty || t().commands.addObservation.validateEmpty;
+
+    const updatedContent = await this.openObservationEditorPanel(
+      selected.observation.content,
+      translations
+    );
+
+    if (updatedContent === undefined) {
+      return;
+    }
+
+    const trimmedContent = updatedContent.trim();
+    if (!trimmedContent) {
+      vscode.window.showWarningMessage(validationMessage);
+      return;
+    }
+
+    try {
+      const updated = this.observationService.updateObservation(
+        selected.observation.id,
+        trimmedContent
+      );
+
+      if (!updated) {
+        vscode.window.showErrorMessage(translations.error('Observation not found'));
+        return;
+      }
+
+      vscode.window.showInformationMessage(translations.success(targetEntity.name));
+    } catch (error) {
+      vscode.window.showErrorMessage(translations.error(String(error)));
     }
   }
 
@@ -1379,6 +1473,184 @@ export class EntityCommands {
     } catch (error) {
       vscode.window.showErrorMessage(`生成 AI 摘要失败: ${error}`);
     }
+  }
+
+  /**
+   * 打开多行观察记录编辑面板
+   */
+  private async openObservationEditorPanel(
+    initialContent: string,
+    translations: ReturnType<typeof t>['commands']['editObservation']
+  ): Promise<string | undefined> {
+    const panel = vscode.window.createWebviewPanel(
+      'knowledgeEditObservation',
+      translations.title,
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: false
+      }
+    );
+
+    panel.webview.html = this.getObservationEditorHtml(panel.webview, initialContent, translations);
+
+    return new Promise<string | undefined>((resolve) => {
+      let resolved = false;
+      const finalize = (value?: string) => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        resolve(value);
+      };
+
+      panel.webview.onDidReceiveMessage((message) => {
+        if (message.type === 'save') {
+          finalize(message.content as string);
+          panel.dispose();
+        } else if (message.type === 'cancel') {
+          finalize(undefined);
+          panel.dispose();
+        }
+      });
+
+      panel.onDidDispose(() => {
+        finalize(undefined);
+      });
+    });
+  }
+
+  private getObservationEditorHtml(
+    webview: vscode.Webview,
+    initialContent: string,
+    translations: ReturnType<typeof t>['commands']['editObservation']
+  ): string {
+    const nonce = this.getNonce();
+    const hint =
+      translations.editorHint ||
+      'Edit the observation below. Press Ctrl/Cmd + Enter to save quickly.';
+    const saveLabel = t().common.save;
+    const cancelLabel = t().common.cancel;
+    const placeholder = translations.placeholder || '';
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}'; style-src ${webview.cspSource} 'unsafe-inline';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${translations.title}</title>
+  <style>
+    body {
+      font-family: var(--vscode-font-family);
+      margin: 0;
+      padding: 16px;
+      background: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+    }
+    h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+    }
+    .hint {
+      font-size: 12px;
+      opacity: 0.85;
+      margin-bottom: 12px;
+    }
+    textarea {
+      width: 100%;
+      height: calc(100vh - 150px);
+      box-sizing: border-box;
+      background: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-editorWidget-border));
+      border-radius: 4px;
+      padding: 12px;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
+      resize: vertical;
+    }
+    textarea:focus {
+      outline: 1px solid var(--vscode-focusBorder);
+    }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    button {
+      border: none;
+      border-radius: 4px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.save {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+    button.save:hover {
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+    }
+    button.cancel {
+      background: transparent;
+      border: 1px solid var(--vscode-button-border, var(--vscode-editorWidget-border));
+      color: var(--vscode-editor-foreground);
+    }
+  </style>
+</head>
+<body>
+  <h2>${translations.title}</h2>
+  <div class="hint">${hint}</div>
+  <textarea id="editor" placeholder="${this.escapeHtml(placeholder)}">${this.escapeHtml(initialContent)}</textarea>
+  <div class="actions">
+    <button class="cancel" id="cancel">${cancelLabel}</button>
+    <button class="save" id="save">${saveLabel}</button>
+  </div>
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    const textarea = document.getElementById('editor');
+    const saveButton = document.getElementById('save');
+    const cancelButton = document.getElementById('cancel');
+
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+
+    saveButton.addEventListener('click', () => {
+      vscode.postMessage({ type: 'save', content: textarea.value });
+    });
+
+    cancelButton.addEventListener('click', () => {
+      vscode.postMessage({ type: 'cancel' });
+    });
+
+    textarea.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault();
+        vscode.postMessage({ type: 'save', content: textarea.value });
+      }
+    });
+  </script>
+</body>
+</html>
+    `;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private getNonce(): string {
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length: 32 }, () => possible.charAt(Math.floor(Math.random() * possible.length))).join('');
   }
 }
 

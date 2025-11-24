@@ -142,6 +142,18 @@ export const zh = {
       noObservations: '没有可删除的观察记录'
     },
 
+    editObservation: {
+      title: '知识图谱: 编辑观察记录',
+      selectPlaceholder: '选择要编辑的观察记录',
+      noObservations: '该实体还没有观察记录',
+      prompt: '更新观察内容',
+      placeholder: '例如：为 findOne 添加缓存',
+      validateEmpty: '观察内容不能为空',
+      editorHint: '在下方文本框中自由编辑，可使用 Ctrl/Cmd + Enter 快速保存。',
+      success: (entityName: string) => `✅ 已更新 ${entityName} 的观察记录`,
+      error: (error: string) => `更新观察记录失败: ${error}`
+    },
+
     visualizeGraph: {
       title: '知识图谱: 可视化图谱',
       error: (error: string) => `打开图谱错误: ${error}`

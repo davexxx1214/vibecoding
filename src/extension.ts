@@ -243,6 +243,22 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(
+        'knowledge.editObservation',
+        async (treeItem) => {
+          try {
+            console.log('Executing: knowledge.editObservation');
+            await entityCommands.editObservation(treeItem);
+            codeLensProvider.refresh();
+          } catch (error) {
+            console.error('Error in editObservation:', error);
+            vscode.window.showErrorMessage(`Error editing observation: ${error}`);
+          }
+        }
+      )
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
         'knowledge.addRelation',
         async () => {
           try {

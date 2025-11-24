@@ -86,6 +86,13 @@ export interface LanguagePack {
       error: (error: string) => string;
       noObservations: string;
     };
+    editObservation: CommandTranslations & {
+      selectPlaceholder: string;
+      noObservations: string;
+      success: (entityName: string) => string;
+      error: (error: string) => string;
+      editorHint?: string;
+    };
     visualizeGraph: CommandTranslations & {
       error: (error: string) => string;
     };

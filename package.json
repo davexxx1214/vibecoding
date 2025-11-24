@@ -29,6 +29,10 @@
         "title": "Knowledge: Add Observation to Entity..."
       },
       {
+        "command": "knowledge.editObservation",
+        "title": "Knowledge: Edit Observation"
+      },
+      {
         "command": "knowledge.addRelation",
         "title": "Knowledge: Add Relation"
       },
@@ -202,6 +206,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "knowledge.editObservation",
+          "when": "view == knowledgeGraphExplorer && viewItem == entity",
+          "group": "knowledge@0.9"
+        },
         {
           "command": "knowledge.deleteEntity",
           "when": "view == knowledgeGraphExplorer && viewItem == entity",

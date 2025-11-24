@@ -143,6 +143,18 @@ export const en = {
       noObservations: 'No observations to delete'
     },
 
+    editObservation: {
+      title: 'Knowledge: Edit Observation',
+      selectPlaceholder: 'Select an observation to edit',
+      noObservations: 'This entity has no observations yet',
+      prompt: 'Update observation content',
+      placeholder: 'e.g., Add caching for findOne',
+      validateEmpty: 'Observation cannot be empty',
+      editorHint: 'Use the editor below to update the note. Press Ctrl/Cmd + Enter to save quickly.',
+      success: (entityName: string) => `✅ Observation updated for ${entityName}`,
+      error: (error: string) => `Failed to update observation: ${error}`
+    },
+
     visualizeGraph: {
       title: 'Knowledge: Visualize Graph',
       error: (error: string) => `Error opening graph: ${error}`
