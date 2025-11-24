@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
+import { ObservationService } from '../../services/observationService';
 import { t } from '../../i18n/i18nService';
 
 /**
@@ -13,18 +14,21 @@ export class GraphView {
     private readonly _extensionUri: vscode.Uri;
     private readonly _entityService: EntityService;
     private readonly _relationService: RelationService;
+    private readonly _observationService: ObservationService;
     private _disposables: vscode.Disposable[] = [];
 
     private constructor(
         panel: vscode.WebviewPanel,
         extensionUri: vscode.Uri,
         entityService: EntityService,
-        relationService: RelationService
+        relationService: RelationService,
+        observationService: ObservationService
     ) {
         this._panel = panel;
         this._extensionUri = extensionUri;
         this._entityService = entityService;
         this._relationService = relationService;
+        this._observationService = observationService;
 
         // 设置初始内容
         this._update();
@@ -45,7 +49,8 @@ export class GraphView {
     public static createOrShow(
         extensionUri: vscode.Uri,
         entityService: EntityService,
-        relationService: RelationService
+        relationService: RelationService,
+        observationService: ObservationService
     ) {
         // 如果已经存在，则更新数据并显示
         if (GraphView.currentPanel) {
@@ -69,7 +74,8 @@ export class GraphView {
             panel,
             extensionUri,
             entityService,
-            relationService
+            relationService,
+            observationService
         );
     }
 
@@ -124,7 +130,9 @@ export class GraphView {
         this._panel.webview.postMessage({
             type: 'graphData',
             data: {
-                entities: entities.map(e => ({
+                entities: entities.map(e => {
+                    const observations = this._observationService.getObservations(e.id);
+                    return {
                     id: e.id,
                     name: e.name,
                     type: e.type,
@@ -132,7 +140,15 @@ export class GraphView {
                     startLine: e.startLine,
                     endLine: e.endLine,
                     description: e.description,
-                })),
+                        observations: observations.map(o => ({
+                            id: o.id,
+                            content: o.content,
+                            createdAt: o.createdAt,
+                            updatedAt: o.updatedAt,
+                        })),
+                        observationCount: observations.length,
+                    };
+                }),
                 relations: allRelations.map(r => ({
                     id: r.id,
                     sourceId: r.sourceEntityId,
@@ -297,6 +313,35 @@ export class GraphView {
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
+        .tooltip .obs-section {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 6px;
+        }
+
+        .tooltip .obs-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .tooltip .obs-list {
+            margin: 0;
+            padding-left: 16px;
+            max-width: 260px;
+        }
+
+        .tooltip .obs-list li {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .tooltip .obs-more,
+        .tooltip .obs-empty {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
         @keyframes flow {
             from {
                 stroke-dashoffset: 10;
@@ -360,7 +405,10 @@ export class GraphView {
             tooltip: {
                 type: '${translations.tooltip.type}',
                 file: '${translations.tooltip.file}',
-                description: '${translations.tooltip.description}'
+                description: '${translations.tooltip.description}',
+                observations: '${translations.tooltip.observations}',
+                noObservations: '${translations.tooltip.noObservations}',
+                more: '${translations.tooltip.more}'
             },
             cyclicDependency: '${translations.cyclicDependency}'
         };
@@ -861,16 +909,65 @@ export class GraphView {
             tooltip.style.opacity = 1;
             tooltip.style.left = (event.pageX + 10) + 'px';
             tooltip.style.top = (event.pageY + 10) + 'px';
-            tooltip.innerHTML = \`
-                <strong>\${d.name}</strong><br>
-                \${i18n.tooltip.type}: \${d.type}<br>
-                \${i18n.tooltip.file}: \${d.filePath}:\${d.startLine}<br>
-                \${d.description ? i18n.tooltip.description + ': ' + d.description : ''}
+
+            let html = \`
+                <strong>\${escapeHtml(d.name)}</strong><br>
+                \${i18n.tooltip.type}: \${escapeHtml(d.type)}<br>
+                \${i18n.tooltip.file}: \${escapeHtml(d.filePath)}:\${d.startLine}<br>
             \`;
+
+            if (d.description) {
+                html += \`\${i18n.tooltip.description}: \${escapeHtml(d.description)}<br>\`;
+            }
+
+            html += renderObservations(d);
+            tooltip.innerHTML = html;
         }
         
         function hideTooltip() {
             tooltip.style.opacity = 0;
+        }
+
+        function renderObservations(entity) {
+            const observations = entity.observations || [];
+            const total = entity.observationCount || observations.length || 0;
+
+            if (!total) {
+                return '';
+            }
+
+            let html = '<div class="obs-section">';
+            html += \`<div class="obs-title">\${i18n.tooltip.observations}\${total ? ' (' + total + ')' : ''}</div>\`;
+
+            const maxItems = 3;
+            const visible = observations.slice(0, maxItems);
+
+            html += '<ul class="obs-list">';
+            visible.forEach(item => {
+                html += \`<li>\${escapeHtml(item.content || '')}</li>\`;
+            });
+            html += '</ul>';
+
+            const remaining = Math.max(total - visible.length, 0);
+            if (remaining > 0) {
+                html += \`<div class="obs-more">\${i18n.tooltip.more.replace('{count}', remaining)}</div>\`;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        function escapeHtml(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+            return value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/\\n/g, '<br>');
         }
 
         function fitGraph() {

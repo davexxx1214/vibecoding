@@ -414,7 +414,12 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.commands.registerCommand('knowledge.visualizeGraph', () => {
         try {
           console.log('Executing: knowledge.visualizeGraph');
-          GraphView.createOrShow(context.extensionUri, entityService, relationService);
+          GraphView.createOrShow(
+            context.extensionUri,
+            entityService,
+            relationService,
+            observationService
+          );
         } catch (error) {
           console.error('Error in visualizeGraph:', error);
           vscode.window.showErrorMessage(`Error opening graph: ${error}`);

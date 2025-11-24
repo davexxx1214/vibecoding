@@ -515,7 +515,10 @@ export const en = {
     tooltip: {
       type: 'Type',
       file: 'File',
-      description: 'Description'
+      description: 'Description',
+      observations: 'Observations',
+      noObservations: 'No observations yet',
+      more: '+{count} more'
     },
     cyclicDependency: 'Cyclic Dependency'
   },

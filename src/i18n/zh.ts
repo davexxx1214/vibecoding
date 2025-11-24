@@ -514,7 +514,10 @@ export const zh = {
     tooltip: {
       type: '类型',
       file: '文件',
-      description: '描述'
+      description: '描述',
+      observations: '观察记录',
+      noObservations: '暂无观察记录',
+      more: '还有 {count} 条'
     },
     cyclicDependency: '循环依赖'
   },

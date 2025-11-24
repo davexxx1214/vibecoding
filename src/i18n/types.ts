@@ -329,6 +329,9 @@ export interface LanguagePack {
       type: string;
       file: string;
       description: string;
+      observations: string;
+      noObservations: string;
+      more: string;
     };
     cyclicDependency: string;
   };
