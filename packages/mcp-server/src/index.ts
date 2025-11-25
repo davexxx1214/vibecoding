@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { loadConfig, LogLevel } from './config.js';
 import { GraphDatabase } from './database.js';
-import { startMcpServer } from './server.js';
+import { startMcpServer, type Logger } from './server.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -13,7 +13,7 @@ async function main(): Promise<void> {
   const database = new GraphDatabase(config.dbPath);
   database.open();
 
-  const server = await startMcpServer(config, database);
+  const server = await startMcpServer(config, database, logger);
   logger.info('VibeKnowledge MCP Server 已启动，等待 Cursor / Copilot 连接...');
 
   const shutdown = async (signal: NodeJS.Signals) => {
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', shutdown);
 }
 
-function createLogger(level: LogLevel) {
+function createLogger(level: LogLevel): Logger {
   const levelWeight: Record<LogLevel, number> = {
     debug: 0,
     info: 1,
@@ -55,6 +55,7 @@ function createLogger(level: LogLevel) {
   return {
     debug: log('debug'),
     info: log('info'),
+    warn: log('info'),
     error: log('error')
   };
 }

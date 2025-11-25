@@ -293,6 +293,7 @@ export const zh = {
         answerLabel: '## 答案\n\n',
         sourcesLabel: '## 参考来源\n\n',
         citationsLabel: '\n## 引用\n\n',
+        storeIdLabel: (id: string) => `_Store ID：${id}_`,
         generatedAt: (date: string) => `_生成时间：${date}_\n`
       },
       saved: (filename: string) => `✅ 已保存到 ${filename}`,

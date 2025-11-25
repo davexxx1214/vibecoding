@@ -103,20 +103,26 @@ VibeKnowledge 已完成完整的多语言支持系统：
 - ✅ 扩展激活和错误提示
 - ✅ 进度提示和成功消息
 
-### 🔌 MCP Server（计划中）🆕
+### 🔌 MCP Server（进行中）🆕
 
 > **Model Context Protocol (MCP)** 是一个开放协议，让 AI 模型能够安全地访问外部工具和数据源。
 
-VibeKnowledge 计划提供独立的 MCP Server，让 **Cursor** 和 **GitHub Copilot** 等 AI 编程工具直接访问知识图谱和 RAG 功能，实现更深度的 AI 辅助开发。
+我们已经实现了首个独立的 MCP Server，可让 **Cursor** 和 **GitHub Copilot** 直接调用知识图谱与 RAG 能力。当前版本已经在生产中使用，正持续扩展功能。
 
-#### 设计目标
-- 🎯 **独立部署**：作为独立 npm 包，通过 `npx @vibeknowledge/mcp-server` 启动
-- 🔗 **复用现有数据**：直接读取 `graph.sqlite` 和 RAG 索引
-- 🔒 **只读优先**：主要提供查询能力，写操作保留在 VS Code 插件中
-- 📁 **项目隔离**：启动时指定工作区路径，自动定位对应数据库
-- 🤖 **AI 工具集成**：深度支持 Cursor 和 GitHub Copilot
+#### 当前能力
+- ✅ 独立部署：`npx @vibeknowledge/mcp-server --workspace <project>` 即可启动
+- ✅ 复用现有数据：直接读取 `.vscode/.knowledge/graph.sqlite` 与云端/本地 RAG 索引
+- ✅ 资源接口：`knowledge://overview`（实体/关系/观察统计等）
+- ✅ 工具接口：`ask_question`（自动根据 `rag.mode` 选择 cloud/local RAG，返回引用）
+- ✅ 文档化：详见《[MCP 使用指南](./MCP_USAGE.md)》，包含 Cursor/GitHub Copilot 配置示例
 
-#### 架构设计
+#### 设计目标（进行中）
+- 🎯 扩展更多 Resource（entities / relations / observations / 文件上下文）
+- 🎯 增加更多 Tool（搜实体、依赖链分析、导出图谱等）
+- 🎯 更完整的 Prompts/Instructions 支持，方便 AI 在不同场景调用
+- 🔒 保持只读优先，写操作仍由 VS Code 插件负责，确保安全
+
+#### 架构设计（已实现）
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -136,7 +142,7 @@ VibeKnowledge 计划提供独立的 MCP Server，让 **Cursor** 和 **GitHub Cop
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### 计划提供的 Resources（资源）
+#### Resources（已上线 / 规划中）
 
 | Resource URI | 说明 |
 |--------------|------|
@@ -147,7 +153,7 @@ VibeKnowledge 计划提供独立的 MCP Server，让 **Cursor** 和 **GitHub Cop
 | `knowledge://observations` | 所有观察记录 |
 | `knowledge://files/{path}` | 指定文件的知识上下文 |
 
-#### 计划提供的 Tools（工具）
+#### Tools（已上线 / 规划中）
 
 | Tool 名称 | 说明 | 参数 |
 |-----------|------|------|
@@ -158,7 +164,7 @@ VibeKnowledge 计划提供独立的 MCP Server，让 **Cursor** 和 **GitHub Cop
 | `export_graph` | 导出知识图谱 | `format: 'markdown' \| 'json'` |
 | `detect_circular_deps` | 检测循环依赖 | - |
 
-#### 使用场景示例
+#### 使用场景示例（现状）
 
 配置好 MCP 后，在 Cursor 中：
 
@@ -174,14 +180,14 @@ AI：(自动调用 search_entities + get_dependency_chain)
    观察记录：⚠️ "findOne 方法没有缓存，高并发可能有性能问题"
 ```
 
-#### 实现计划
+#### 持续迭代计划
 
-- 🔜 Phase 1：基础框架搭建（MCP Server 初始化、数据库连接）
-- 🔜 Phase 2：实现 Resources（知识图谱数据暴露）
-- 🔜 Phase 3：实现 Tools（搜索、依赖分析、RAG 问答）
-- 🔜 Phase 4：文档和配置指南（Cursor / GitHub Copilot 配置说明）
+- ✅ Phase 1：基础框架搭建（已完成）
+- ✅ Phase 2：首批 Resource/Tool 上线（已完成）
+- 🔄 Phase 3：更多 Resource/Tool（search_entities、get_dependency_chain 等）
+- 🔄 Phase 4：增强 Prompts/文档、更多示例脚本
 
-> 📘 **使用说明**：详见《[MCP 使用指南](./MCP_USAGE.md)》
+> 📘 **使用说明**：详见《[MCP 使用指南](./MCP_USAGE.md)》，包含 Cursor / GitHub Copilot 配置与常见问题
 
 ---
 

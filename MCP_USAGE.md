@@ -22,6 +22,38 @@
    - 日志全部输出到 `stderr`，`stdout` 专用于 MCP 协议通信。
    - **提示**：Cursor / Copilot 会按 `mcp.json` 自动启动 server，除非需要独立调试，一般无需在此手动运行。
 
+### RAG 配置来源（用于 Q&A）
+
+- MCP 会优先读取 `项目/.vscode/settings.json` 中的 `knowledgeGraph.rag.*` 配置，与 VS Code 插件保持一致。
+- 也可以通过 CLI 参数或环境变量覆盖：
+
+  | 目的 | CLI 参数 | 环境变量 |
+  |------|---------|----------|
+  | 模式 | `--rag-mode local` / `none` | `VIBEKNOWLEDGE_RAG_MODE` |
+  | API Base | `--rag-api-base http://localhost:11434/v1` | `VIBEKNOWLEDGE_RAG_API_BASE` |
+  | API Key | `--rag-api-key sk-xxx` | `VIBEKNOWLEDGE_RAG_API_KEY` |
+  | Embedding 模型 | `--rag-embedding-model text-embedding-3-small` | `VIBEKNOWLEDGE_RAG_EMBEDDING` |
+  | 推理模型 | `--rag-inference-model gpt-4.1` | `VIBEKNOWLEDGE_RAG_INFERENCE` |
+  | Gemini API Key（云端 RAG） | `--gemini-api-key AIza...` | `VIBEKNOWLEDGE_GEMINI_API_KEY` |
+  | Gemini 模型 | `--gemini-model gemini-2.5-flash` | `VIBEKNOWLEDGE_GEMINI_MODEL` |
+
+- 目前 `ask_question` 使用 **local RAG**，请确保 `Knowledge/` 目录已在 VS Code 中完成索引，并且本地推理接口可用。
+- 当 `knowledgeGraph.rag.mode` 设为 `cloud` 时，会自动切换至 **Gemini File Search**，并使用 `knowledgeGraph.gemini.*` 配置。
+
+示例 `settings.json`：
+
+```jsonc
+{
+  "knowledgeGraph.gemini.apiKey": "AIxxxxxx",
+  "knowledgeGraph.gemini.model": "gemini-2.5-flash",
+  "knowledgeGraph.rag.mode": "cloud",
+  "knowledgeGraph.rag.local.apiBase": "http://xx.xx.xx.xx:3000/v1",
+  "knowledgeGraph.rag.local.apiKey": "sk-xxxxxx",
+  "knowledgeGraph.rag.local.embeddingModel": "text-embedding-3-small",
+  "knowledgeGraph.rag.local.inferenceModel": "gpt-4.1"
+}
+```
+
 ---
 
 ## 2. Cursor 集成步骤
@@ -47,7 +79,9 @@
    ```
 
 5. 保存后，Cursor 会自动以子进程方式启动该 server，并在日志面板提示连接结果。
-6. 测试：在对话中输入 “列出知识图谱概览” 或使用 `@mcp vibeknowledge resource knowledge://overview`，确认能返回数据。
+6. 测试：
+   - 资源：`@mcp vibeknowledge resource knowledge://overview`
+   - 工具：`@mcp vibeknowledge tool ask_question {"question": "项目的数据库连接数是多少？"}`
 
 ---
 
@@ -86,4 +120,23 @@
 | 想查看实时日志 | MCP Server 日志打印在启动终端的 `stderr`，不会污染协议输出 |
 
 如需在多个项目间复用，可为每个项目同时运行一个 MCP 进程，并在 `mcp.json` 中配置不同的名称与工作区路径。
+
+---
+
+## 5. MCP 提供的工具与资源
+
+| 类型 | 名称 | 说明 |
+|------|------|------|
+| Resource | `knowledge://overview` | 返回实体/关系/观察记录的统计信息 |
+| Tool | `ask_question` | 自动根据 `rag.mode` 调用本地或云端 RAG，并附带引用文件 |
+
+### `ask_question` 使用示例
+
+```jsonc
+@mcp vibeknowledge tool ask_question {
+  "question": "项目的数据库最大连接数是？"
+}
+```
+
+返回格式：正文为回答内容，末尾列出引用文件（附相似度），方便进一步打开原文档。
 

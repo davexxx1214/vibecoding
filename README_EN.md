@@ -103,20 +103,26 @@ VibeKnowledge has completed a full multi-language support system:
 - ✅ Extension activation and error messages
 - ✅ Progress indicators and success messages
 
-### 🔌 MCP Server (Planned) 🆕
+### 🔌 MCP Server (In Progress) 🆕
 
 > **Model Context Protocol (MCP)** is an open protocol that enables AI models to securely access external tools and data sources.
 
-VibeKnowledge plans to provide a standalone MCP Server, allowing **Cursor** and **GitHub Copilot** to directly access the knowledge graph and RAG features for deeper AI-assisted development.
+We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can directly consume the knowledge graph and RAG answers. The first version is running in production, and we are actively expanding the feature set.
 
-#### Design Goals
-- 🎯 **Standalone Deployment**: As an independent npm package, run via `npx @vibeknowledge/mcp-server`
-- 🔗 **Reuse Existing Data**: Directly read `graph.sqlite` and RAG indexes
-- 🔒 **Read-Only First**: Primarily provides query capabilities; write operations remain in VS Code extension
-- 📁 **Project Isolation**: Specify workspace path at startup, auto-locate corresponding database
-- 🤖 **AI Tool Integration**: Deep support for Cursor and GitHub Copilot
+#### Current Capabilities
+- ✅ Standalone deployment via `npx @vibeknowledge/mcp-server --workspace <project>`
+- ✅ Reuse project data: reads `.vscode/.knowledge/graph.sqlite` and cloud/local RAG indexes
+- ✅ Resource: `knowledge://overview` (entity/relation statistics, tech summary, etc.)
+- ✅ Tool: `ask_question` (automatically chooses cloud/local RAG, returns referenced documents)
+- ✅ Documentation: see the [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot setup
 
-#### Architecture Design
+#### Roadmap / Design Goals
+- 🎯 More resources (entities, relations, observations, file contexts)
+- 🎯 Additional tools (search_entities, dependency chain, export, circular deps, etc.)
+- 🎯 Prompt/Instruction support to share best practices with AI assistants
+- 🔒 Read-only first: write operations remain inside the VS Code extension
+
+#### Architecture (Implemented)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -136,7 +142,7 @@ VibeKnowledge plans to provide a standalone MCP Server, allowing **Cursor** and 
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Planned Resources
+#### Resources (Shipped / Planned)
 
 | Resource URI | Description |
 |--------------|-------------|
@@ -147,7 +153,7 @@ VibeKnowledge plans to provide a standalone MCP Server, allowing **Cursor** and 
 | `knowledge://observations` | All observations |
 | `knowledge://files/{path}` | Knowledge context for specific file |
 
-#### Planned Tools
+#### Tools (Shipped / Planned)
 
 | Tool Name | Description | Parameters |
 |-----------|-------------|------------|
@@ -158,7 +164,7 @@ VibeKnowledge plans to provide a standalone MCP Server, allowing **Cursor** and 
 | `export_graph` | Export knowledge graph | `format: 'markdown' \| 'json'` |
 | `detect_circular_deps` | Detect circular dependencies | - |
 
-#### Usage Example
+#### Usage Example (Today)
 
 After configuring MCP, in Cursor:
 
@@ -174,14 +180,14 @@ AI: (auto-invokes search_entities + get_dependency_chain)
    Observation: ⚠️ "findOne method has no cache, may have performance issues under high concurrency"
 ```
 
-#### Implementation Plan
+#### Iteration Plan
 
-- 🔜 Phase 1: Basic framework setup (MCP Server initialization, database connection)
-- 🔜 Phase 2: Implement Resources (knowledge graph data exposure)
-- 🔜 Phase 3: Implement Tools (search, dependency analysis, RAG Q&A)
-- 🔜 Phase 4: Documentation and configuration guide (Cursor / GitHub Copilot setup instructions)
+- ✅ Phase 1: Core server & data access (done)
+- ✅ Phase 2: First resource/tool release (done)
+- 🔄 Phase 3: Expand resource/tool coverage (search, dependency, exports...)
+- 🔄 Phase 4: Enhanced prompts, playbooks, and more MCP recipes
 
-> 📘 **Usage Guide**: see [MCP Usage Guide](./MCP_USAGE.md)
+> 📘 **Usage Guide**: see [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot configuration details
 
 ---
 

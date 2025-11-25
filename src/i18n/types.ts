@@ -200,6 +200,7 @@ export interface LanguagePack {
         answerLabel: string;
         sourcesLabel: string;
         citationsLabel: string;
+        storeIdLabel: (id: string) => string;
         generatedAt: (date: string) => string;
       };
       saved: (filename: string) => string;

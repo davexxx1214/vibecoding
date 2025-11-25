@@ -74,5 +74,9 @@ export class GraphDatabase {
     }
     return this.db;
   }
+
+  public getConnection(): Database.Database {
+    return this.ensureDb();
+  }
 }
 

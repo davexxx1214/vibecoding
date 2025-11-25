@@ -294,6 +294,7 @@ export const en = {
         answerLabel: '## Answer\n\n',
         sourcesLabel: '## References\n\n',
         citationsLabel: '\n## Citations\n\n',
+        storeIdLabel: (id: string) => `_Store ID: ${id}_`,
         generatedAt: (date: string) => `_Generated at: ${date}_\n`
       },
       saved: (filename: string) => `✅ Saved to ${filename}`,

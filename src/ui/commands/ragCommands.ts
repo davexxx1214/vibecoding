@@ -86,6 +86,7 @@ export class RAGCommands {
     question: string
   ): Promise<void> {
     const translations = t().rag.askQuestion;
+    const storeId = this.ragService.getStoreInfo()?.storeId ?? 'unknown';
 
     // 构建 Markdown 格式的答案
     let markdown = translations.result.title;
@@ -93,6 +94,7 @@ export class RAGCommands {
     markdown += `---\n\n`;
     markdown += translations.result.answerLabel;
     markdown += `${result.answer}\n\n`;
+    markdown += `${translations.result.storeIdLabel(storeId)}\n\n`;
 
     if (result.sources.length > 0) {
       markdown += `---\n\n`;
