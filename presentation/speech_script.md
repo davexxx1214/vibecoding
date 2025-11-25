@@ -1,6 +1,6 @@
 🎤 VibeKnowledge Hackathon Presentation Script (2025)
 
-这里是为您准备的完整版逐页演讲稿（Slide 1 - Slide 11）。不仅包含英文台词，还包括了每一页的视觉分析（帮助您确认讲到了图上的重点）和演讲提示（帮助您控制节奏）。
+这里是为您准备的完整版逐页演讲稿（Slide 1 - Slide 12）。不仅包含英文台词，还包括了每一页的视觉分析（帮助您确认讲到了图上的重点）和演讲提示（帮助您控制节奏）。
 
 1️⃣ Slide 1: Title & Vision (封面与愿景)
 
@@ -299,7 +299,32 @@ And at the top, we connect seamlessly to Google Gemini and AI coding tools.
 
 This modular design ensures that the plugin is stable, scalable, and easy to maintain. It is built to last."
 
-1️⃣1️⃣ Slide 11: Thank You (结语)
+1️⃣1️⃣ Slide 11: MCP Integration (MCP 融合页)
+
+🖼️ 视觉分析 (Visual Analysis):
+
+画面分成三个卡片：左边是 “Knowledge Graph + MCP”，中间是 “AI Collaboration + MCP”，右边是 “RAG + MCP”。每个卡片都标出了 MCP Server 如何把该主题的能力暴露给 Cursor / Copilot。
+
+💡 Key Points:
+
+- MCP 不是另一个插件，而是把我们的能力扩展到了 IDE 之外。
+- 每个主题（图谱、AI、RAG）都有专属的 MCP 接口，可以即插即用。
+- 这是我们让“人 + AI + 图谱”真正闭环的关键。
+
+🗣️ English Script:
+
+"Before we wrap up, slide eleven is a brand-new page dedicated to MCP integration.
+
+For every pillar you just saw, we now have a matching MCP surface:
+- The Knowledge Graph can be queried as resources such as `knowledge://overview`.
+- AI Collaboration scenarios are now tools that Cursor / Copilot can call on demand.
+- And our RAG pipelines are exposed through `ask_question`, giving AI the same trusted answers you just saw.
+
+This is how we bring VibeKnowledge beyond VS Code and into any AI workflow – securely and context-rich."
+
+✅ Tip: 这页要强调 “每个主题 + MCP”，可以用手指在屏幕上三个卡片之间移动，展示闭环。
+
+1️⃣2️⃣ Slide 12: Thank You (结语)
 
 🖼️ 视觉分析 (Visual Analysis):
 
