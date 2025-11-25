@@ -103,6 +103,86 @@ VibeKnowledge 已完成完整的多语言支持系统：
 - ✅ 扩展激活和错误提示
 - ✅ 进度提示和成功消息
 
+### 🔌 MCP Server（计划中）🆕
+
+> **Model Context Protocol (MCP)** 是一个开放协议，让 AI 模型能够安全地访问外部工具和数据源。
+
+VibeKnowledge 计划提供独立的 MCP Server，让 **Cursor** 和 **GitHub Copilot** 等 AI 编程工具直接访问知识图谱和 RAG 功能，实现更深度的 AI 辅助开发。
+
+#### 设计目标
+- 🎯 **独立部署**：作为独立 npm 包，通过 `npx @vibeknowledge/mcp-server` 启动
+- 🔗 **复用现有数据**：直接读取 `graph.sqlite` 和 RAG 索引
+- 🔒 **只读优先**：主要提供查询能力，写操作保留在 VS Code 插件中
+- 📁 **项目隔离**：启动时指定工作区路径，自动定位对应数据库
+- 🤖 **AI 工具集成**：深度支持 Cursor 和 GitHub Copilot
+
+#### 架构设计
+
+```
+┌─────────────────────────────────────────────────────────┐
+│            AI Client (Cursor / GitHub Copilot)          │
+└─────────────────────────┬───────────────────────────────┘
+                          │ MCP Protocol (stdio)
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                 VibeKnowledge MCP Server                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
+│  │  Resources  │  │    Tools    │  │     Prompts     │  │
+│  └──────┬──────┘  └──────┬──────┘  └────────┬────────┘  │
+└─────────┼────────────────┼──────────────────┼───────────┘
+          ▼                ▼                  ▼
+┌─────────────────────────────────────────────────────────┐
+│        graph.sqlite + Knowledge/ 文档 + RAG 索引         │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 计划提供的 Resources（资源）
+
+| Resource URI | 说明 |
+|--------------|------|
+| `knowledge://overview` | 项目知识图谱概览（实体数、关系数、技术栈等） |
+| `knowledge://entities` | 所有实体列表 |
+| `knowledge://entities/{id}` | 单个实体详情（含观察记录和关联关系） |
+| `knowledge://relations` | 所有关系列表 |
+| `knowledge://observations` | 所有观察记录 |
+| `knowledge://files/{path}` | 指定文件的知识上下文 |
+
+#### 计划提供的 Tools（工具）
+
+| Tool 名称 | 说明 | 参数 |
+|-----------|------|------|
+| `search_entities` | 模糊搜索实体 | `query: string` |
+| `get_dependency_chain` | 获取依赖链分析 | `entityId: string, depth?: number` |
+| `ask_question` | RAG 智能问答 | `question: string` |
+| `get_entity_context` | 获取实体完整上下文 | `entityId: string` |
+| `export_graph` | 导出知识图谱 | `format: 'markdown' \| 'json'` |
+| `detect_circular_deps` | 检测循环依赖 | - |
+
+#### 使用场景示例
+
+配置好 MCP 后，在 Cursor 中：
+
+```
+用户：帮我分析 UserService 的影响范围
+
+AI：(自动调用 search_entities + get_dependency_chain)
+   
+   找到 UserService，它被以下组件依赖：
+   - UserController (uses)
+   - ArticleService (uses)
+   
+   观察记录：⚠️ "findOne 方法没有缓存，高并发可能有性能问题"
+```
+
+#### 实现计划
+
+- 🔜 Phase 1：基础框架搭建（MCP Server 初始化、数据库连接）
+- 🔜 Phase 2：实现 Resources（知识图谱数据暴露）
+- 🔜 Phase 3：实现 Tools（搜索、依赖分析、RAG 问答）
+- 🔜 Phase 4：文档和配置指南（Cursor / GitHub Copilot 配置说明）
+
+> 📘 **使用说明**：详见《[MCP 使用指南](./MCP_USAGE.md)》
+
 ---
 
 ## 🚀 快速开始
@@ -228,7 +308,7 @@ vibecoding/
 #### 基础图谱功能
 - ✅ **实体管理**：手动创建和管理代码实体（Function、Class、Interface、Variable 等）
 - ✅ **关系管理**：建立实体间的关系（uses、calls、extends、implements、depends_on）
-- ✅ **观察记录**：为实体添加笔记、警告、TODO、设计决策等观察记录
+- ✅ **观察记录**：为实体添加笔记、警告、TODO、设计决策等观察记录（支持多行编辑，若实体暂无记录会自动创建首条笔记）
 - ✅ **模糊搜索**：快速搜索实体和观察记录
 - ✅ **数据持久化**：基于 SQLite 的本地数据库存储
 
@@ -246,6 +326,7 @@ vibecoding/
 - ✅ **循环依赖检测**：自动识别并标记循环依赖
 - ✅ **双击跳转**：双击节点直接跳转到代码位置
 - ✅ **拖拽交互**：支持节点拖拽、缩放、平移
+- ✅ **节点悬浮详情**：Tooltip 自动展示观察记录摘要及剩余条数，快速掌握风险与 TODO
 
 ---
 

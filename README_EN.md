@@ -103,6 +103,86 @@ VibeKnowledge has completed a full multi-language support system:
 - ✅ Extension activation and error messages
 - ✅ Progress indicators and success messages
 
+### 🔌 MCP Server (Planned) 🆕
+
+> **Model Context Protocol (MCP)** is an open protocol that enables AI models to securely access external tools and data sources.
+
+VibeKnowledge plans to provide a standalone MCP Server, allowing **Cursor** and **GitHub Copilot** to directly access the knowledge graph and RAG features for deeper AI-assisted development.
+
+#### Design Goals
+- 🎯 **Standalone Deployment**: As an independent npm package, run via `npx @vibeknowledge/mcp-server`
+- 🔗 **Reuse Existing Data**: Directly read `graph.sqlite` and RAG indexes
+- 🔒 **Read-Only First**: Primarily provides query capabilities; write operations remain in VS Code extension
+- 📁 **Project Isolation**: Specify workspace path at startup, auto-locate corresponding database
+- 🤖 **AI Tool Integration**: Deep support for Cursor and GitHub Copilot
+
+#### Architecture Design
+
+```
+┌─────────────────────────────────────────────────────────┐
+│            AI Client (Cursor / GitHub Copilot)          │
+└─────────────────────────┬───────────────────────────────┘
+                          │ MCP Protocol (stdio)
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                 VibeKnowledge MCP Server                │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
+│  │  Resources  │  │    Tools    │  │     Prompts     │  │
+│  └──────┬──────┘  └──────┬──────┘  └────────┬────────┘  │
+└─────────┼────────────────┼──────────────────┼───────────┘
+          ▼                ▼                  ▼
+┌─────────────────────────────────────────────────────────┐
+│        graph.sqlite + Knowledge/ docs + RAG index        │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Planned Resources
+
+| Resource URI | Description |
+|--------------|-------------|
+| `knowledge://overview` | Project knowledge graph overview (entity count, relations, tech stack, etc.) |
+| `knowledge://entities` | All entities list |
+| `knowledge://entities/{id}` | Single entity details (with observations and relations) |
+| `knowledge://relations` | All relations list |
+| `knowledge://observations` | All observations |
+| `knowledge://files/{path}` | Knowledge context for specific file |
+
+#### Planned Tools
+
+| Tool Name | Description | Parameters |
+|-----------|-------------|------------|
+| `search_entities` | Fuzzy search entities | `query: string` |
+| `get_dependency_chain` | Get dependency chain analysis | `entityId: string, depth?: number` |
+| `ask_question` | RAG intelligent Q&A | `question: string` |
+| `get_entity_context` | Get complete entity context | `entityId: string` |
+| `export_graph` | Export knowledge graph | `format: 'markdown' \| 'json'` |
+| `detect_circular_deps` | Detect circular dependencies | - |
+
+#### Usage Example
+
+After configuring MCP, in Cursor:
+
+```
+User: Help me analyze the impact scope of UserService
+
+AI: (auto-invokes search_entities + get_dependency_chain)
+   
+   Found UserService, it is depended on by:
+   - UserController (uses)
+   - ArticleService (uses)
+   
+   Observation: ⚠️ "findOne method has no cache, may have performance issues under high concurrency"
+```
+
+#### Implementation Plan
+
+- 🔜 Phase 1: Basic framework setup (MCP Server initialization, database connection)
+- 🔜 Phase 2: Implement Resources (knowledge graph data exposure)
+- 🔜 Phase 3: Implement Tools (search, dependency analysis, RAG Q&A)
+- 🔜 Phase 4: Documentation and configuration guide (Cursor / GitHub Copilot setup instructions)
+
+> 📘 **Usage Guide**: see [MCP Usage Guide](./MCP_USAGE.md)
+
 ---
 
 ## 🚀 Quick Start
@@ -213,7 +293,7 @@ Project Root/
 #### Basic Graph Features
 - ✅ **Entity Management**: Manually create and manage code entities (Function, Class, Interface, Variable, etc.)
 - ✅ **Relation Management**: Establish relations between entities (uses, calls, extends, implements, depends_on)
-- ✅ **Observations**: Add notes, warnings, TODOs, design decisions to entities
+- ✅ **Observations**: Add notes, warnings, TODOs, design decisions to entities (multi-line editor from entity context menu; automatically creates the first note when none exists)
 - ✅ **Fuzzy Search**: Quickly search entities and observations
 - ✅ **Data Persistence**: Local SQLite database storage
 
@@ -231,6 +311,7 @@ Project Root/
 - ✅ **Circular Dependency Detection**: Automatically identify and mark circular dependencies
 - ✅ **Double-click Navigation**: Double-click node to jump to code location
 - ✅ **Drag Interaction**: Support node dragging, zoom, pan
+- ✅ **Node Tooltip Details**: Hover tooltip shows observation previews with remaining-count indicator for quick risk scanning
 
 ---
 
