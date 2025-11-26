@@ -2,8 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { ServerConfig } from './config.js';
 import type { GraphDatabase } from './database.js';
-import { registerBaseResources } from './resources/registerResources.js';
 import { registerTools } from './tools/registerTools.js';
+import { registerPrompts } from './prompts/registerPrompts.js';
 import { createRagEngine } from './rag/ragEngineFactory.js';
 import type { RagEngine } from './rag/ragEngine.js';
 
@@ -24,14 +24,13 @@ export async function startMcpServer(
     version: config.serverVersion
   });
 
-  registerBaseResources(server, db);
-
   const ragEngine: RagEngine | null = await createRagEngine(
     config,
     db,
     logger
   );
-  registerTools(server, ragEngine, logger);
+  registerTools(server, db, ragEngine, logger);
+  registerPrompts(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

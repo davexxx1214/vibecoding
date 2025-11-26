@@ -112,7 +112,7 @@ VibeKnowledge 已完成完整的多语言支持系统：
 #### 当前能力
 - ✅ 独立部署：`npx @vibeknowledge/mcp-server --workspace <project>` 即可启动
 - ✅ 复用现有数据：直接读取 `.vscode/.knowledge/graph.sqlite` 与云端/本地 RAG 索引
-- ✅ 资源接口：`knowledge://overview`（实体/关系/观察统计等）
+- ✅ 图谱检索工具：`search_entities`（实体）、`search_observations`（观察记录）
 - ✅ 工具接口：`ask_question`（自动根据 `rag.mode` 选择 cloud/local RAG，返回引用）
 - ✅ 文档化：详见《[MCP 使用指南](./MCP_USAGE.md)》，包含 Cursor/GitHub Copilot 配置示例
 
@@ -142,7 +142,9 @@ VibeKnowledge 已完成完整的多语言支持系统：
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Resources（已上线 / 规划中）
+#### Resources（规划中）
+
+> 资源接口仍在迭代中，目前推荐直接使用 Tool（search_entities / search_observations）获取图谱信息。
 
 | Resource URI | 说明 |
 |--------------|------|
@@ -157,7 +159,8 @@ VibeKnowledge 已完成完整的多语言支持系统：
 
 | Tool 名称 | 说明 | 参数 |
 |-----------|------|------|
-| `search_entities` | 模糊搜索实体 | `query: string` |
+| `search_entities` | 模糊搜索实体 | `query?: string, type?: string, filePath?: string, limit?: number` |
+| `search_observations` | 查询观察记录 | `query?: string, entityId?: string, limit?: number` |
 | `get_dependency_chain` | 获取依赖链分析 | `entityId: string, depth?: number` |
 | `ask_question` | RAG 智能问答 | `question: string` |
 | `get_entity_context` | 获取实体完整上下文 | `entityId: string` |

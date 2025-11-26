@@ -112,7 +112,7 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 #### Current Capabilities
 - ✅ Standalone deployment via `npx @vibeknowledge/mcp-server --workspace <project>`
 - ✅ Reuse project data: reads `.vscode/.knowledge/graph.sqlite` and cloud/local RAG indexes
-- ✅ Resource: `knowledge://overview` (entity/relation statistics, tech summary, etc.)
+- ✅ Graph query tools: `search_entities` (entities) & `search_observations` (observations)
 - ✅ Tool: `ask_question` (automatically chooses cloud/local RAG, returns referenced documents)
 - ✅ Documentation: see the [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot setup
 
@@ -142,7 +142,9 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Resources (Shipped / Planned)
+#### Resources (Planned)
+
+> Resource endpoints are still in progress; today the recommended approach is to use the search tools for entities / observations.
 
 | Resource URI | Description |
 |--------------|-------------|
@@ -157,7 +159,8 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 
 | Tool Name | Description | Parameters |
 |-----------|-------------|------------|
-| `search_entities` | Fuzzy search entities | `query: string` |
+| `search_entities` | Fuzzy search entities | `query?: string, type?: string, filePath?: string, limit?: number` |
+| `search_observations` | Query observation notes | `query?: string, entityId?: string, limit?: number` |
 | `get_dependency_chain` | Get dependency chain analysis | `entityId: string, depth?: number` |
 | `ask_question` | RAG intelligent Q&A | `question: string` |
 | `get_entity_context` | Get complete entity context | `entityId: string` |

@@ -2,16 +2,168 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { RagEngine, RagAnswer } from '../rag/ragEngine.js';
 import type { Logger } from '../server.js';
+import type {
+  GraphDatabase,
+  EntityRecord,
+  ObservationRecord
+} from '../database.js';
+
+const DEFAULT_LIMIT = 20;
 
 export function registerTools(
   server: McpServer,
+  db: GraphDatabase,
   ragEngine: RagEngine | null,
   logger: Logger
 ): void {
-  if (!ragEngine) {
-    return;
-  }
+  registerSearchEntitiesTool(server, db, logger);
+  registerSearchObservationsTool(server, db, logger);
 
+  if (ragEngine) {
+    registerAskQuestionTool(server, ragEngine, logger);
+  }
+}
+
+function registerSearchEntitiesTool(
+  server: McpServer,
+  db: GraphDatabase,
+  logger: Logger
+): void {
+  const inputSchema = z.object({
+    query: z
+      .string()
+      .describe('用于匹配实体名称、文件路径或描述的关键字')
+      .optional(),
+    type: z
+      .string()
+      .describe('实体类型（如 service/component/function）')
+      .optional(),
+    filePath: z.string().describe('按文件路径过滤（支持模糊匹配）').optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .describe('最多返回的实体数量，默认 20')
+      .optional()
+  });
+
+  server.registerTool(
+    'search_entities',
+    {
+      title: 'Search Entities',
+      description:
+        '基于 knowledge graph 查询实体，支持按名称、类型、文件路径模糊匹配。',
+      inputSchema
+    },
+    async ({ query = '', type, filePath, limit = DEFAULT_LIMIT }) => {
+      try {
+        logger.debug?.(
+          `[search_entities] query="${query}", type=${type ?? 'all'}, file=${filePath ?? 'any'}, limit=${limit}`
+        );
+        const results = db.searchEntities({
+          query,
+          type,
+          filePath,
+          limit
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: formatEntityResults(results)
+            }
+          ]
+        };
+      } catch (error) {
+        logger.error('[search_entities] failed:', error);
+        const message =
+          error instanceof Error ? error.message : '未知错误，无法搜索实体';
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `search_entities 执行失败：${message}`
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+}
+
+function registerSearchObservationsTool(
+  server: McpServer,
+  db: GraphDatabase,
+  logger: Logger
+): void {
+  const inputSchema = z.object({
+    query: z
+      .string()
+      .describe('匹配观察内容或实体名称的关键字')
+      .optional(),
+    entityId: z.string().describe('限定只搜索某个实体的观察记录').optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .describe('最多返回的观察记录数量，默认 20')
+      .optional()
+  });
+
+  server.registerTool(
+    'search_observations',
+    {
+      title: 'Search Observations',
+      description:
+        '查询知识图谱中的观察记录，可按关键字或实体进行过滤。',
+      inputSchema
+    },
+    async ({ query = '', entityId, limit = DEFAULT_LIMIT }) => {
+      try {
+        logger.debug?.(
+          `[search_observations] query="${query}", entity=${entityId ?? 'all'}, limit=${limit}`
+        );
+        const results = db.searchObservations({
+          query,
+          entityId,
+          limit
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: formatObservationResults(results)
+            }
+          ]
+        };
+      } catch (error) {
+        logger.error('[search_observations] failed:', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : '未知错误，无法搜索观察记录';
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `search_observations 执行失败：${message}`
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+}
+
+function registerAskQuestionTool(
+  server: McpServer,
+  ragEngine: RagEngine,
+  logger: Logger
+): void {
   const inputSchema = z.object({
     question: z
       .string()
@@ -60,6 +212,36 @@ export function registerTools(
       }
     }
   );
+}
+
+function formatEntityResults(results: EntityRecord[]): string {
+  if (results.length === 0) {
+    return '未找到匹配的实体。';
+  }
+
+  return results
+    .map((entity, index) => {
+      const location = `${entity.filePath}:${entity.startLine}-${entity.endLine}`;
+      const updatedAt = new Date(entity.updatedAt).toISOString();
+      const description = entity.description
+        ? `\n    描述：${entity.description}`
+        : '';
+      return `${index + 1}. [${entity.type}] ${entity.name}\n    位置：${location}\n    更新时间：${updatedAt}${description}`;
+    })
+    .join('\n\n');
+}
+
+function formatObservationResults(results: ObservationRecord[]): string {
+  if (results.length === 0) {
+    return '未找到匹配的观察记录。';
+  }
+
+  return results
+    .map((item, index) => {
+      const updatedAt = new Date(item.updatedAt).toISOString();
+      return `${index + 1}. ${item.content}\n    实体：${item.entityName} [${item.entityType}]\n    路径：${item.filePath}\n    更新时间：${updatedAt}`;
+    })
+    .join('\n\n');
 }
 
 function formatAnswer(result: RagAnswer): string {

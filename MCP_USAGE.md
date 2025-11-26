@@ -80,18 +80,19 @@
 
 5. 保存后，Cursor 会自动以子进程方式启动该 server，并在日志面板提示连接结果。
 6. 测试：
-   - 资源：`@mcp vibeknowledge resource knowledge://overview`
-   - 工具：`@mcp vibeknowledge tool ask_question {"question": "项目的数据库连接数是多少？"}`
+   - 查询实体：`@mcp vibeknowledge tool search_entities {"query": "UserService"}`
+   - 查询观察记录：`@mcp vibeknowledge tool search_observations {"limit": 5}`
+   - RAG 问答：`@mcp vibeknowledge tool ask_question {"question": "项目的数据库连接数是多少？"}`
 
 ---
 
 ## 3. GitHub Copilot（VS Code）集成
 
-1. Copilot Desktop / VS Code 版本需 ≥ 1.215，确保开启 MCP 预览。
-2. 编辑配置文件：
-   - Windows：`%APPDATA%\GitHub Copilot\mcp.json`
-   - macOS / Linux：`~/.config/github-copilot/mcp.json`
-3. 添加与 Cursor 相同的配置：
+1. 手动创建工作区配置文件
+   在你的项目根目录下创建文件夹 .vscode（如果不存在）。
+   在 .vscode 文件夹中新建 mcp.json 文件。
+
+2. 在 mcp.json 中添加配置：
 
    ```jsonc
    {
@@ -106,7 +107,7 @@
    }
    ```
 
-4. 重启 VS Code，Copilot 会自动连接该 MCP server。随后即可在 Copilot Chat 中直接请求项目概览、实体信息等。
+3. 重启 VS Code，Copilot 会自动连接该 MCP server。随后即可在 Copilot Chat 中直接请求项目概览、实体信息等。
 
 ---
 
@@ -123,11 +124,13 @@
 
 ---
 
-## 5. MCP 提供的工具与资源
+## 5. MCP 提供的工具
 
 | 类型 | 名称 | 说明 |
 |------|------|------|
-| Resource | `knowledge://overview` | 返回实体/关系/观察记录的统计信息 |
+| Tool | `search_entities` | 根据名称、类型、文件路径模糊搜索实体 |
+| Tool | `search_observations` | 检索观察记录，可按关键字或实体 ID 过滤 |
+| Prompt | `get_observations` | 引导 AI 调用 `search_observations` 工具 |
 | Tool | `ask_question` | 自动根据 `rag.mode` 调用本地或云端 RAG，并附带引用文件 |
 
 ### `ask_question` 使用示例
