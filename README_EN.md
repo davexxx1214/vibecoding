@@ -103,11 +103,11 @@ VibeKnowledge has completed a full multi-language support system:
 - ✅ Extension activation and error messages
 - ✅ Progress indicators and success messages
 
-### 🔌 MCP Server (In Progress) 🆕
+### 🔌 MCP Server (Completed) 🆕
 
 > **Model Context Protocol (MCP)** is an open protocol that enables AI models to securely access external tools and data sources.
 
-We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can directly consume the knowledge graph and RAG answers. The first version is running in production, and we are actively expanding the feature set.
+We ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can directly consume the knowledge graph and RAG answers. The production version now covers all planned capabilities for this phase.
 
 #### Current Capabilities
 - ✅ Standalone deployment via `npx @vibeknowledge/mcp-server --workspace <project>`
@@ -118,13 +118,7 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 - ✅ Tool: `ask_question` (automatically chooses cloud/local RAG, returns referenced documents)
 - ✅ Documentation: see the [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot setup
 
-#### Roadmap / Design Goals
-- 🎯 More resources (entities, relations, observations, file contexts)
-- 🎯 Additional tools (search_entities, dependency chain, export, circular deps, etc.)
-- 🎯 Prompt/Instruction support to share best practices with AI assistants
-- 🔒 Read-only first: write operations remain inside the VS Code extension
-
-#### Architecture (Implemented)
+#### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -144,54 +138,32 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Resources (Shipped / Planned)
-
-> The first resource `knowledge://overview` is live today; additional entity / relation resources are still under active development and can be complemented with the search tools.
+#### Resources (Shipped)
 
 | Resource URI | Description |
 |--------------|-------------|
-| `knowledge://overview` | Project knowledge graph overview (entity count, relations, tech stack, etc.) |
-| `knowledge://entities` | All entities list |
-| `knowledge://entities/{id}` | Single entity details (with observations and relations) |
-| `knowledge://relations` | All relations list |
-| `knowledge://observations` | All observations |
-| `knowledge://files/{path}` | Knowledge context for specific file |
+| `knowledge://overview` | Knowledge graph overview (entity, relation, observation stats, last updated time) |
 
-#### Tools (Shipped / Planned)
+#### Tools (Shipped)
 
 | Tool Name | Description | Parameters |
 |-----------|-------------|------------|
 | `search_entities` | Fuzzy search entities | `query?: string, type?: string, filePath?: string, limit?: number` |
 | `search_observations` | Query observation notes | `query?: string, entityId?: string, limit?: number` |
 | `knowledge://relations` | List relations | `verb?: string, source?: string, target?: string, limit?: number` |
-| `get_dependency_chain` | Get dependency chain analysis | `entityId: string, depth?: number` |
 | `ask_question` | RAG intelligent Q&A | `question: string` |
-| `get_entity_context` | Get complete entity context | `entityId: string` |
-| `export_graph` | Export knowledge graph | `format: 'markdown' \| 'json'` |
-| `detect_circular_deps` | Detect circular dependencies | - |
 
 #### Usage Example (Today)
 
 After configuring MCP, in Cursor:
 
 ```
-User: Help me analyze the impact scope of UserService
+User: Help me analyze dependencies of UserService
 
-AI: (auto-invokes search_entities + get_dependency_chain)
+AI: (auto-invokes search_entities + knowledge://relations)
    
-   Found UserService, it is depended on by:
-   - UserController (uses)
-   - ArticleService (uses)
-   
-   Observation: ⚠️ "findOne method has no cache, may have performance issues under high concurrency"
+   Lists the uses/depends_on graph so you can immediately see the impacted components.
 ```
-
-#### Iteration Plan
-
-- ✅ Phase 1: Core server & data access (done)
-- ✅ Phase 2: First resource/tool release (done)
-- 🔄 Phase 3: Expand resource/tool coverage (search, dependency, exports...)
-- 🔄 Phase 4: Enhanced prompts, playbooks, and more MCP recipes
 
 > 📘 **Usage Guide**: see [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot configuration details
 

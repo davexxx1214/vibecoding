@@ -103,11 +103,11 @@ VibeKnowledge 已完成完整的多语言支持系统：
 - ✅ 扩展激活和错误提示
 - ✅ 进度提示和成功消息
 
-### 🔌 MCP Server（进行中）🆕
+### 🔌 MCP Server（已完成）🆕
 
 > **Model Context Protocol (MCP)** 是一个开放协议，让 AI 模型能够安全地访问外部工具和数据源。
 
-我们已经实现了首个独立的 MCP Server，可让 **Cursor** 和 **GitHub Copilot** 直接调用知识图谱与 RAG 能力。当前版本已经在生产中使用，正持续扩展功能。
+我们已经实现了首个独立的 MCP Server，可让 **Cursor** 和 **GitHub Copilot** 直接调用知识图谱与 RAG 能力，并在生产环境稳定运行。
 
 #### 当前能力
 - ✅ 独立部署：`npx @vibeknowledge/mcp-server --workspace <project>` 即可启动
@@ -118,13 +118,7 @@ VibeKnowledge 已完成完整的多语言支持系统：
 - ✅ 工具接口：`ask_question`（自动根据 `rag.mode` 选择 cloud/local RAG，返回引用）
 - ✅ 文档化：详见《[MCP 使用指南](./MCP_USAGE.md)》，包含 Cursor/GitHub Copilot 配置示例
 
-#### 设计目标（进行中）
-- 🎯 扩展更多 Resource（entities / relations / observations / 文件上下文）
-- 🎯 增加更多 Tool（搜实体、依赖链分析、导出图谱等）
-- 🎯 更完整的 Prompts/Instructions 支持，方便 AI 在不同场景调用
-- 🔒 保持只读优先，写操作仍由 VS Code 插件负责，确保安全
-
-#### 架构设计（已实现）
+#### 架构设计
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -144,54 +138,32 @@ VibeKnowledge 已完成完整的多语言支持系统：
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Resources（已上线 / 规划中）
-
-> 目前已提供概览资源 `knowledge://overview`，其余实体/关系资源仍在迭代中，可结合搜索工具使用。
+#### Resources（已上线）
 
 | Resource URI | 说明 |
 |--------------|------|
-| `knowledge://overview` | 项目知识图谱概览（实体数、关系数、技术栈等） |
-| `knowledge://entities` | 所有实体列表 |
-| `knowledge://entities/{id}` | 单个实体详情（含观察记录和关联关系） |
-| `knowledge://relations` | 所有关系列表 |
-| `knowledge://observations` | 所有观察记录 |
-| `knowledge://files/{path}` | 指定文件的知识上下文 |
+| `knowledge://overview` | 项目知识图谱概览（实体数、关系数、观察记录统计等） |
 
-#### Tools（已上线 / 规划中）
+#### Tools（已上线）
 
 | Tool 名称 | 说明 | 参数 |
 |-----------|------|------|
 | `search_entities` | 模糊搜索实体 | `query?: string, type?: string, filePath?: string, limit?: number` |
 | `search_observations` | 查询观察记录 | `query?: string, entityId?: string, limit?: number` |
 | `knowledge://relations` | 列出关系记录 | `verb?: string, source?: string, target?: string, limit?: number` |
-| `get_dependency_chain` | 获取依赖链分析 | `entityId: string, depth?: number` |
 | `ask_question` | RAG 智能问答 | `question: string` |
-| `get_entity_context` | 获取实体完整上下文 | `entityId: string` |
-| `export_graph` | 导出知识图谱 | `format: 'markdown' \| 'json'` |
-| `detect_circular_deps` | 检测循环依赖 | - |
 
 #### 使用场景示例（现状）
 
 配置好 MCP 后，在 Cursor 中：
 
 ```
-用户：帮我分析 UserService 的影响范围
+用户：帮我分析 UserService 的依赖
 
-AI：(自动调用 search_entities + get_dependency_chain)
+AI：(自动调用 search_entities + knowledge://relations)
    
-   找到 UserService，它被以下组件依赖：
-   - UserController (uses)
-   - ArticleService (uses)
-   
-   观察记录：⚠️ "findOne 方法没有缓存，高并发可能有性能问题"
+   找到 UserService，并列出 uses/depends_on 关系链，帮助快速定位受影响的组件。
 ```
-
-#### 持续迭代计划
-
-- ✅ Phase 1：基础框架搭建（已完成）
-- ✅ Phase 2：首批 Resource/Tool 上线（已完成）
-- 🔄 Phase 3：更多 Resource/Tool（search_entities、get_dependency_chain 等）
-- 🔄 Phase 4：增强 Prompts/文档、更多示例脚本
 
 > 📘 **使用说明**：详见《[MCP 使用指南](./MCP_USAGE.md)》，包含 Cursor / GitHub Copilot 配置与常见问题
 
