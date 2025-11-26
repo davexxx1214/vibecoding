@@ -316,7 +316,7 @@ This modular design ensures that the plugin is stable, scalable, and easy to mai
 "Before we wrap up, slide eleven is a brand-new page dedicated to MCP integration.
 
 For every pillar you just saw, we now have a matching MCP surface:
-- The Knowledge Graph can now be queried via tools like `search_entities` and `search_observations`.
+- The Knowledge Graph can now be queried via tools like `search_entities`, `search_observations`, the relation tool `knowledge://relations`, and the overview resource `knowledge://overview`.
 - AI Collaboration scenarios are now tools that Cursor / Copilot can call on demand.
 - And our RAG pipelines are exposed through `ask_question`, giving AI the same trusted answers you just saw.
 

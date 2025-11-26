@@ -32,6 +32,20 @@ export interface ObservationRecord {
   updatedAt: number;
 }
 
+export interface RelationRecord {
+  id: string;
+  verb: string;
+  createdAt: number;
+  sourceEntityId: string;
+  sourceName: string;
+  sourceType: string;
+  sourceFilePath: string;
+  targetEntityId: string;
+  targetName: string;
+  targetType: string;
+  targetFilePath: string;
+}
+
 export interface SearchEntitiesParams {
   query?: string;
   type?: string;
@@ -42,6 +56,13 @@ export interface SearchEntitiesParams {
 export interface SearchObservationsParams {
   query?: string;
   entityId?: string;
+  limit?: number;
+}
+
+export interface SearchRelationsParams {
+  verb?: string;
+  source?: string;
+  target?: string;
   limit?: number;
 }
 
@@ -74,6 +95,20 @@ type ObservationRow = {
   entity_name: string;
   entity_type: string;
   file_path: string;
+};
+
+type RelationRow = {
+  id: string;
+  source_entity_id: string;
+  target_entity_id: string;
+  verb: string;
+  created_at: number;
+  source_name: string;
+  source_type: string;
+  source_file_path: string;
+  target_name: string;
+  target_type: string;
+  target_file_path: string;
 };
 
 export class GraphDatabase {
@@ -242,6 +277,72 @@ export class GraphDatabase {
       content: row.content,
       createdAt: row.created_at,
       updatedAt: row.updated_at
+    }));
+  }
+
+  searchRelations(params: SearchRelationsParams = {}): RelationRecord[] {
+    const { verb, source, target, limit } = params;
+    const clauses: string[] = [];
+    const values: (string | number)[] = [];
+
+    if (verb?.trim()) {
+      clauses.push('r.verb = ?');
+      values.push(verb.trim());
+    }
+
+    if (source?.trim()) {
+      const like = `%${source.trim()}%`;
+      clauses.push('s.name LIKE ?');
+      values.push(like);
+    }
+
+    if (target?.trim()) {
+      const like = `%${target.trim()}%`;
+      clauses.push('t.name LIKE ?');
+      values.push(like);
+    }
+
+    const whereClause =
+      clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+    const safeLimit = this.clampLimit(limit);
+
+    const rows = this.ensureDb()
+      .prepare(
+        `
+        SELECT
+          r.id,
+          r.source_entity_id,
+          r.target_entity_id,
+          r.verb,
+          r.created_at,
+          s.name AS source_name,
+          s.type AS source_type,
+          s.file_path AS source_file_path,
+          t.name AS target_name,
+          t.type AS target_type,
+          t.file_path AS target_file_path
+        FROM relations r
+        INNER JOIN entities s ON s.id = r.source_entity_id
+        INNER JOIN entities t ON t.id = r.target_entity_id
+        ${whereClause}
+        ORDER BY r.created_at DESC
+        LIMIT ?
+      `
+      )
+      .all(...values, safeLimit) as RelationRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      verb: row.verb,
+      createdAt: row.created_at,
+      sourceEntityId: row.source_entity_id,
+      sourceName: row.source_name,
+      sourceType: row.source_type,
+      sourceFilePath: row.source_file_path,
+      targetEntityId: row.target_entity_id,
+      targetName: row.target_name,
+      targetType: row.target_type,
+      targetFilePath: row.target_file_path
     }));
   }
 

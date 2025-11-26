@@ -80,8 +80,10 @@
 
 5. 保存后，Cursor 会自动以子进程方式启动该 server，并在日志面板提示连接结果。
 6. 测试：
+   - 项目概览：`@mcp vibeknowledge resource knowledge://overview`
    - 查询实体：`@mcp vibeknowledge tool search_entities {"query": "UserService"}`
    - 查询观察记录：`@mcp vibeknowledge tool search_observations {"limit": 5}`
+   - 查询关系：`@mcp vibeknowledge tool knowledge://relations {"verb": "uses", "limit": 5}`
    - RAG 问答：`@mcp vibeknowledge tool ask_question {"question": "项目的数据库连接数是多少？"}`
 
 ---
@@ -124,12 +126,14 @@
 
 ---
 
-## 5. MCP 提供的工具
+## 5. MCP 提供的接口
 
 | 类型 | 名称 | 说明 |
 |------|------|------|
+| Resource | `knowledge://overview` | 返回实体/关系/观察记录统计及最后更新时间 |
 | Tool | `search_entities` | 根据名称、类型、文件路径模糊搜索实体 |
 | Tool | `search_observations` | 检索观察记录，可按关键字或实体 ID 过滤 |
+| Tool | `knowledge://relations` | 列出实体之间的关系，可按动词、源/目标实体筛选 |
 | Prompt | `get_observations` | 引导 AI 调用 `search_observations` 工具 |
 | Tool | `ask_question` | 自动根据 `rag.mode` 调用本地或云端 RAG，并附带引用文件 |
 

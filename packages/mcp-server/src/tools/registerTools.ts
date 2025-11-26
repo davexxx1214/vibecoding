@@ -5,7 +5,8 @@ import type { Logger } from '../server.js';
 import type {
   GraphDatabase,
   EntityRecord,
-  ObservationRecord
+  ObservationRecord,
+  RelationRecord
 } from '../database.js';
 
 const DEFAULT_LIMIT = 20;
@@ -18,6 +19,7 @@ export function registerTools(
 ): void {
   registerSearchEntitiesTool(server, db, logger);
   registerSearchObservationsTool(server, db, logger);
+  registerRelationsTool(server, db, logger);
 
   if (ragEngine) {
     registerAskQuestionTool(server, ragEngine, logger);
@@ -159,6 +161,71 @@ function registerSearchObservationsTool(
   );
 }
 
+function registerRelationsTool(
+  server: McpServer,
+  db: GraphDatabase,
+  logger: Logger
+): void {
+  const inputSchema = z.object({
+    verb: z.string().describe('关系动词（如 uses/depends_on）').optional(),
+    source: z.string().describe('源实体名称关键字').optional(),
+    target: z.string().describe('目标实体名称关键字').optional(),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .describe('最多返回的关系数量，默认 20')
+      .optional()
+  });
+
+  server.registerTool(
+    'knowledge://relations',
+    {
+      title: 'List Relations',
+      description:
+        '列出知识图谱中的关系记录，可按动词、源实体、目标实体筛选。',
+      inputSchema
+    },
+    async ({ verb, source, target, limit = DEFAULT_LIMIT }) => {
+      try {
+        logger.debug?.(
+          `[knowledge://relations] verb=${verb ?? 'all'}, source=${source ?? 'any'}, target=${target ?? 'any'}, limit=${limit}`
+        );
+        const results = db.searchRelations({
+          verb,
+          source,
+          target,
+          limit
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: formatRelationResults(results)
+            }
+          ]
+        };
+      } catch (error) {
+        logger.error('[knowledge://relations] failed:', error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : '未知错误，无法获取关系记录';
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `knowledge://relations 执行失败：${message}`
+            }
+          ],
+          isError: true
+        };
+      }
+    }
+  );
+}
+
 function registerAskQuestionTool(
   server: McpServer,
   ragEngine: RagEngine,
@@ -240,6 +307,19 @@ function formatObservationResults(results: ObservationRecord[]): string {
     .map((item, index) => {
       const updatedAt = new Date(item.updatedAt).toISOString();
       return `${index + 1}. ${item.content}\n    实体：${item.entityName} [${item.entityType}]\n    路径：${item.filePath}\n    更新时间：${updatedAt}`;
+    })
+    .join('\n\n');
+}
+
+function formatRelationResults(results: RelationRecord[]): string {
+  if (results.length === 0) {
+    return '未找到匹配的关系记录。';
+  }
+
+  return results
+    .map((relation, index) => {
+      const createdAt = new Date(relation.createdAt).toISOString();
+      return `${index + 1}. ${relation.sourceName} [${relation.sourceType}] --${relation.verb}--> ${relation.targetName} [${relation.targetType}]\n    Source: ${relation.sourceFilePath}\n    Target: ${relation.targetFilePath}\n    Created At: ${createdAt}`;
     })
     .join('\n\n');
 }

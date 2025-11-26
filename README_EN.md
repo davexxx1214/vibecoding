@@ -113,6 +113,8 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 - ✅ Standalone deployment via `npx @vibeknowledge/mcp-server --workspace <project>`
 - ✅ Reuse project data: reads `.vscode/.knowledge/graph.sqlite` and cloud/local RAG indexes
 - ✅ Graph query tools: `search_entities` (entities) & `search_observations` (observations)
+- ✅ Relation query tool: `knowledge://relations` (filter by verb / source / target)
+- ✅ Overview resource: `knowledge://overview` for instant entity/relation/observation stats
 - ✅ Tool: `ask_question` (automatically chooses cloud/local RAG, returns referenced documents)
 - ✅ Documentation: see the [MCP Usage Guide](./MCP_USAGE.md) for Cursor / Copilot setup
 
@@ -142,9 +144,9 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### Resources (Planned)
+#### Resources (Shipped / Planned)
 
-> Resource endpoints are still in progress; today the recommended approach is to use the search tools for entities / observations.
+> The first resource `knowledge://overview` is live today; additional entity / relation resources are still under active development and can be complemented with the search tools.
 
 | Resource URI | Description |
 |--------------|-------------|
@@ -161,6 +163,7 @@ We already ship a standalone MCP Server so **Cursor** and **GitHub Copilot** can
 |-----------|-------------|------------|
 | `search_entities` | Fuzzy search entities | `query?: string, type?: string, filePath?: string, limit?: number` |
 | `search_observations` | Query observation notes | `query?: string, entityId?: string, limit?: number` |
+| `knowledge://relations` | List relations | `verb?: string, source?: string, target?: string, limit?: number` |
 | `get_dependency_chain` | Get dependency chain analysis | `entityId: string, depth?: number` |
 | `ask_question` | RAG intelligent Q&A | `question: string` |
 | `get_entity_context` | Get complete entity context | `entityId: string` |

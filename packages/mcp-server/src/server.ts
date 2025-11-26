@@ -6,6 +6,7 @@ import { registerTools } from './tools/registerTools.js';
 import { registerPrompts } from './prompts/registerPrompts.js';
 import { createRagEngine } from './rag/ragEngineFactory.js';
 import type { RagEngine } from './rag/ragEngine.js';
+import { registerBaseResources } from './resources/registerResources.js';
 
 export type Logger = {
   debug: (...args: unknown[]) => void;
@@ -23,6 +24,8 @@ export async function startMcpServer(
     name: 'VibeKnowledge MCP',
     version: config.serverVersion
   });
+
+  registerBaseResources(server, db);
 
   const ragEngine: RagEngine | null = await createRagEngine(
     config,
