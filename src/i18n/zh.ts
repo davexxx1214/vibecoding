@@ -437,6 +437,9 @@ export const zh = {
         multiFormat: '- ✅ 支持 100+ 种文件格式',
         noLocalProcessing: '- ✅ 无需本地处理',
         tip: '\n💡 **提示**: 本地仅保存元数据，实际文档和索引都在云端。'
+      },
+      storeStatus: {
+        cannotGetCloudInfo: '⚠️ **无法获取云端信息** (网络问题或 Store 不存在)'
       }
     }
   },

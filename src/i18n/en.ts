@@ -438,6 +438,9 @@ export const en = {
         multiFormat: '- ✅ Supports 100+ file formats',
         noLocalProcessing: '- ✅ No local processing required',
         tip: '\n💡 **Tip**: Only metadata is saved locally, actual documents and indexes are in cloud.'
+      },
+      storeStatus: {
+        cannotGetCloudInfo: '⚠️ **Cannot get cloud info** (network issue or Store does not exist)'
       }
     }
   },

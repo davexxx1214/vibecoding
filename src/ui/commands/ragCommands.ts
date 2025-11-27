@@ -475,6 +475,8 @@ export class RAGCommands {
    */
   public async viewStoreInfo(): Promise<void> {
     const translations = t().rag.viewStoreInfo;
+    const mode = this.ragService.getMode();
+    const isCloudMode = mode === 'cloud';
 
     await vscode.window.withProgress(
       {
@@ -489,25 +491,33 @@ export class RAGCommands {
           return;
         }
 
-        // 从云端获取实时信息
-        const cloudInfo = await this.ragService.getStoreInfoFromCloud();
+        // 仅云模式下获取实时信息
+        const cloudInfo = isCloudMode ? await this.ragService.getStoreInfoFromCloud() : null;
 
         // 构建信息文本
-        const infoLines = [
+        const infoLines: string[] = [
           translations.document.title,
           `**${translations.document.projectName(storeInfo.projectName)}`,
           `**${translations.document.storeName(storeInfo.storeName)}`,
           `**${translations.document.displayName(cloudInfo?.displayName || 'N/A')}`,
-          `**${translations.document.workspacePath(storeInfo.workspaceRoot)}`,
-          `\n${translations.stats.title}`,
-          cloudInfo
-            ? [
-                `- **${translations.stats.active(cloudInfo.activeDocumentsCount)}`,
-                `- **${translations.stats.pending(cloudInfo.pendingDocumentsCount)}`,
-                `- **${translations.stats.failed(cloudInfo.failedDocumentsCount)}`,
-                `- **${translations.stats.total(cloudInfo.activeDocumentsCount + cloudInfo.pendingDocumentsCount + cloudInfo.failedDocumentsCount)}`,
-              ].join('\n')
-            : translations.storeStatus.cannotGetCloudInfo,
+          `**${translations.document.workspacePath(storeInfo.workspaceRoot)}`
+        ];
+
+        if (isCloudMode) {
+          infoLines.push(
+            `\n${translations.stats.title}`,
+            cloudInfo
+              ? [
+                  `- **${translations.stats.active(cloudInfo.activeDocumentsCount)}`,
+                  `- **${translations.stats.pending(cloudInfo.pendingDocumentsCount)}`,
+                  `- **${translations.stats.failed(cloudInfo.failedDocumentsCount)}`,
+                  `- **${translations.stats.total(cloudInfo.activeDocumentsCount + cloudInfo.pendingDocumentsCount + cloudInfo.failedDocumentsCount)}`,
+                ].join('\n')
+              : translations.storeStatus.cannotGetCloudInfo
+          );
+        }
+
+        infoLines.push(
           `\n${translations.local.title}`,
           `- **${translations.local.fileCount(storeInfo.fileCount)}`,
           `- **${translations.local.createdAt(new Date(storeInfo.createdAt).toLocaleString(getLocale()))}`,
@@ -519,18 +529,25 @@ export class RAGCommands {
           translations.isolation.description1,
           translations.isolation.description2,
           translations.isolation.description3,
-          `\n${translations.cloud.title}`,
-          translations.cloud.description,
-          translations.cloud.vectorSearch,
-          translations.cloud.autoChunking,
-          translations.cloud.multiFormat,
-          translations.cloud.noLocalProcessing,
-          translations.cloud.tip,
-        ].filter(Boolean).join('\n');
+        );
+
+        if (isCloudMode) {
+          infoLines.push(
+            `\n${translations.cloud.title}`,
+            translations.cloud.description,
+            translations.cloud.vectorSearch,
+            translations.cloud.autoChunking,
+            translations.cloud.multiFormat,
+            translations.cloud.noLocalProcessing,
+            translations.cloud.tip,
+          );
+        }
+
+        const content = infoLines.filter(Boolean).join('\n');
 
         // 显示在新标签页
         const doc = await vscode.workspace.openTextDocument({
-          content: infoLines,
+          content,
           language: 'markdown',
         });
 

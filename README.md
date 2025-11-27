@@ -359,6 +359,7 @@ vibecoding/
    - ✅ **数据隐私**：所有文档和向量数据仅存储在本地 SQLite，不上传云端
    - ✅ **模型灵活**：支持 Ollama、LocalAI、vLLM 等任何 OpenAI 兼容接口
    - ✅ **自定义配置**：可自定义 Embedding 模型和 Inference 推理模型
+   - ✅ **多格式解析**：除纯文本外，内置 PDF / DOC / DOCX 解析，自动抽取正文参与本地索引
    - ✅ **轻量级实现**：
      - 采用 **SQLite (持久化) + 内存 (计算)** 架构，跨 Win/macOS/Linux 无额外依赖
      - 启动时加载向量到内存，用余弦相似度暴力检索，满足 VS Code 内常见的中小规模数据
@@ -375,7 +376,7 @@ vibecoding/
 - ✅ **项目隔离**：每个项目独立的 File Search Store，多项目完全隔离
 - ✅ **API Key 配置**：通过 VS Code 设置管理 Gemini API Key
 - ✅ **自动重连**：API Key 更新后自动重新初始化
-- ✅ **Store 信息查看**：实时查看云端和本地的文档统计
+- ✅ **Store 信息查看**：云模式展示实时云端统计；本地模式自动隐藏云端提示，仅显示本地元数据
 - ✅ **索引重建**：Rebuild RAG Index 命令，完全同步本地和云端
 
 #### 侧边栏管理

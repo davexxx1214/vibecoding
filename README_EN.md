@@ -338,6 +338,7 @@ Project Root/
 #### Local RAG (Custom Vector Store)
 - ✅ **Privacy-first**: Documents and vectors only exist in local SQLite database, never leave the machine
 - ✅ **Zero dependency**: Built with sql.js (WebAssembly SQLite) + in-memory cache, works on Win/macOS/Linux without Docker or native modules
+- ✅ **Multi-format ingestion**: Beyond plain text, built-in extractors parse PDF / DOC / DOCX and feed the body text into the local index automatically
 - ✅ **Lightweight & maintainable**: Simple cosine similarity retrieval fits VS Code scenarios and is easy to debug
 - ✅ **Portable data**: All vectors stored in `.vscode/.knowledge/graph.sqlite`, easy to back up or review with the project
 
@@ -351,7 +352,7 @@ Project Root/
 - ✅ **Project Isolation**: Each project has independent File Search Store, completely isolated
 - ✅ **API Key Configuration**: Manage Gemini API Key through VS Code settings
 - ✅ **Auto-reconnect**: Auto re-initialize when API Key is updated
-- ✅ **View Store Info**: Real-time view of cloud and local document statistics
+- ✅ **View Store Info**: Cloud mode shows live cloud stats, while local mode automatically hides cloud notices and focuses on local metadata
 - ✅ **Index Rebuild**: Rebuild RAG Index command for complete sync between local and cloud
 
 #### Sidebar Management
