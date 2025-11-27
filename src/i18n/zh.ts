@@ -26,7 +26,8 @@ export const zh = {
         success: (fileName: string) => `✅ 成功索引: ${fileName}`,
         successLocal: (fileName: string) => `✅ 本地索引成功: ${fileName}`,
         uploadTimeout: (fileName: string) => `上传超时: ${fileName}`,
-        embeddingFailed: (fileName: string) => `嵌入失败: ${fileName}`
+        embeddingFailed: (fileName: string) => `嵌入失败: ${fileName}`,
+        parseFailed: (fileName: string) => `解析文本失败: ${fileName}`
       },
       removeFile: {
         success: (fileName: string) => `✅ 已从索引中删除: ${fileName}`,

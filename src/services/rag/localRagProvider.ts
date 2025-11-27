@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import mammoth from 'mammoth';
+import WordExtractor from 'word-extractor';
 import { t } from '../../i18n/i18nService';
 import { DatabaseService } from '../database';
 import { IRAGProvider } from './ragProvider';
@@ -22,6 +25,9 @@ export class LocalRAGProvider implements IRAGProvider {
         '.m', '.mm', '.sh', '.bash', '.zsh', '.ps1', '.psm1', '.csh', '.sql',
         '.yml', '.yaml', '.toml', '.ini', '.cfg', '.conf', '.log'
     ]);
+    private static readonly SUPPORTED_BINARY_EXTENSIONS = new Set<string>([
+        '.pdf', '.doc', '.docx'
+    ]);
     private dbService: DatabaseService;
     private workspaceRoot: string = '';
     private projectName: string = '';
@@ -33,6 +39,7 @@ export class LocalRAGProvider implements IRAGProvider {
     
     // Cache for vectors to avoid DB reads on every search
     private vectorCache: Map<string, Chunk[]> = new Map(); // filePath -> Chunks
+    private readonly wordExtractor = new WordExtractor();
 
     constructor(dbService: DatabaseService) {
         this.dbService = dbService;
@@ -195,7 +202,8 @@ export class LocalRAGProvider implements IRAGProvider {
 
     public isFileSupported(filePath: string): boolean {
         const ext = path.extname(filePath).toLowerCase();
-        return LocalRAGProvider.SUPPORTED_TEXT_EXTENSIONS.has(ext);
+        return LocalRAGProvider.SUPPORTED_TEXT_EXTENSIONS.has(ext)
+            || LocalRAGProvider.SUPPORTED_BINARY_EXTENSIONS.has(ext);
     }
 
     public async indexFile(filePath: string, workspaceRoot: string): Promise<void> {
@@ -204,10 +212,24 @@ export class LocalRAGProvider implements IRAGProvider {
             return;
         }
         if (!fs.existsSync(filePath)) return;
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
         const fileName = path.basename(filePath);
+        const ext = path.extname(filePath).toLowerCase();
+        let rawContent: string;
+        try {
+            rawContent = await this.extractTextFromFile(filePath, ext);
+        } catch (error) {
+            console.error(`[LocalRAG] Failed to extract text from ${filePath}:`, error);
+            vscode.window.showErrorMessage(t().extension.rag.indexFile.parseFailed(fileName));
+            return;
+        }
+        const content = rawContent.replace(/\r\n/g, '\n').trim();
+        if (!content) {
+            console.warn(`[LocalRAG] Extracted content is empty, skip indexing: ${fileName}`);
+            return;
+        }
+        const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, '/');
         const stats = fs.statSync(filePath);
+        const mimeType = this.getMimeTypeForExtension(ext);
 
         // 1. Chunking
         const chunks = this.chunkText(content, 1000, 100); // 1000 chars, 100 overlap
@@ -257,7 +279,7 @@ export class LocalRAGProvider implements IRAGProvider {
         db.run(
             `INSERT OR REPLACE INTO indexed_files (id, file_path, file_name, file_size, mime_type, indexed_at, gemini_file_uri, store_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [fileId, relativePath, fileName, stats.size, 'text/plain', now, 'local', this.storeId]
+            [fileId, relativePath, fileName, stats.size, mimeType, now, 'local', this.storeId]
         );
         
         db.run("COMMIT");
@@ -308,6 +330,43 @@ export class LocalRAGProvider implements IRAGProvider {
             }
         }
         return chunks;
+    }
+
+    private async extractTextFromFile(filePath: string, ext: string): Promise<string> {
+        if (LocalRAGProvider.SUPPORTED_TEXT_EXTENSIONS.has(ext)) {
+            return fs.promises.readFile(filePath, 'utf-8');
+        }
+
+        if (ext === '.pdf') {
+            const buffer = await fs.promises.readFile(filePath);
+            const parsed = await pdfParse(buffer);
+            return parsed.text ?? '';
+        }
+
+        if (ext === '.docx') {
+            const result = await mammoth.extractRawText({ path: filePath });
+            return result.value ?? '';
+        }
+
+        if (ext === '.doc') {
+            const document = await this.wordExtractor.extract(filePath);
+            return document.getBody() ?? '';
+        }
+
+        throw new Error(`Unsupported file extension: ${ext}`);
+    }
+
+    private getMimeTypeForExtension(ext: string): string {
+        switch (ext) {
+            case '.pdf':
+                return 'application/pdf';
+            case '.doc':
+                return 'application/msword';
+            case '.docx':
+                return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            default:
+                return 'text/plain';
+        }
     }
 
     private async getEmbedding(text: string): Promise<number[]> {

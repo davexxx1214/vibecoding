@@ -27,7 +27,8 @@ export const en = {
         success: (fileName: string) => `✅ Indexed successfully: ${fileName}`,
         successLocal: (fileName: string) => `✅ Locally indexed: ${fileName}`,
         uploadTimeout: (fileName: string) => `Upload timeout for ${fileName}`,
-        embeddingFailed: (fileName: string) => `Embedding failed for ${fileName}`
+        embeddingFailed: (fileName: string) => `Embedding failed for ${fileName}`,
+        parseFailed: (fileName: string) => `Failed to extract text from ${fileName}`
       },
       removeFile: {
         success: (fileName: string) => `✅ Removed from index: ${fileName}`,

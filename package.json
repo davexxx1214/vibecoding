@@ -394,6 +394,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.0.0",
+    "@types/pdf-parse": "^1.1.5",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
@@ -403,8 +404,11 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
+    "mammoth": "^1.11.0",
     "mime-types": "^3.0.2",
+    "pdf-parse": "^1.1.1",
     "sql.js": "^1.13.0",
-    "vis-network": "^10.0.2"
+    "vis-network": "^10.0.2",
+    "word-extractor": "^1.0.4"
   }
 }
