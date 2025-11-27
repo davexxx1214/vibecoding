@@ -1,8 +1,9 @@
-node_modules/
-out/
-dist/
+node_modules
+out
+dist
 *.vsix
 .vscode-test/
 *.log
 .DS_Store
 
+*.ps1
