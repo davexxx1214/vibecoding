@@ -80,22 +80,28 @@ vibecoding/
 │
 ├── 📂 node_modules/                 # 📚 依赖包（自动生成）
 │
-├── 📂 packages/                     # 🔜 计划中的子包
-│   └── 📂 mcp-server/               # 🔌 MCP Server（计划中）
+├── 📂 packages/                     # ✅ 子包
+│   └── 📂 mcp-server/               # 🔌 MCP Server（独立工具）
 │       ├── 📄 package.json          # MCP Server 包配置
 │       ├── 📄 tsconfig.json         # TypeScript 配置
 │       ├── 📂 src/
-│       │   ├── 📄 index.ts          # MCP Server 入口
-│       │   ├── 📄 server.ts         # MCP 服务器实现
-│       │   ├── 📂 resources/        # Resources 实现
-│       │   ├── 📂 tools/            # Tools 实现
-│       │   └── 📂 shared/           # 共享的数据库读取逻辑
+│       │   ├── 📄 index.ts          # 命令行入口
+│       │   ├── 📄 server.ts         # MCP 服务器初始化
+│       │   ├── 📄 config.ts         # 配置解析
+│       │   ├── 📄 database.ts       # 读取 graph.sqlite
+│       │   ├── 📂 resources/        # Resource 注册（knowledge://overview）
+│       │   ├── 📂 tools/            # Tool 注册（search_entities 等）
+│       │   ├── 📂 prompts/          # Prompt 注册（get_observations）
+│       │   └── 📂 rag/              # RAG Engine（cloud/local）
 │       └── 📄 README.md             # MCP Server 文档
 │
 └── 📄 文档文件
-    ├── 📄 README.md                 # 📖 完整项目文档
-    ├── 📄 Demo.md                   # 🎬 演示指南
-    └── 📄 项目结构.md               # 📁 本文件（当前）
+    ├── 📄 README.md                 # 📖 完整项目文档（中文）
+    ├── 📄 README_EN.md              # 📖 完整项目文档（英文）
+    ├── 📄 Demo.md                   # 🎬 演示指南（中文）
+    ├── 📄 Demo_en.md                # 🎬 演示指南（英文）
+    ├── 📄 project_structure.md      # 📁 中文项目结构（本文件）
+    └── 📄 project_structure_en.md   # 📁 英文项目结构
 
 图例：
   ✅ 已实现
@@ -209,11 +215,16 @@ vibecoding/
 - ✅ 动态切换语言，无需重启
 - ✅ 所有界面、命令、提示全面国际化
 
-### 5️⃣ MCP Server（计划中）🆕
-- 🔜 独立 MCP Server 包（`@vibeknowledge/mcp-server`）
-- 🔜 Resources：知识图谱概览、实体、关系、观察记录
-- 🔜 Tools：搜索实体、依赖链分析、RAG 问答、导出图谱
-- 🔜 深度支持 Cursor 和 GitHub Copilot
+### 5️⃣ MCP Server（已完成）🆕
+- ✅ 独立 MCP Server 包（`@vibeknowledge/mcp-server`）
+- ✅ Resource：`knowledge://overview`（实体/关系/观察记录统计）
+- ✅ Tools：
+  - `search_entities`（实体模糊搜索）
+  - `search_observations`（观察记录查询）
+  - `knowledge://relations`（关系列表）
+  - `ask_question`（RAG 问答）
+- ✅ Prompt：`get_observations`（引导 AI 调用观察记录工具）
+- ✅ 深度支持 Cursor 和 GitHub Copilot（MCP 协议）
 
 ---
 
