@@ -4,6 +4,11 @@
 
 A VS Code extension based on Knowledge Graph and SQLite that helps developers understand and manage complex relationships in codebases, while providing persistent project context for AI programming.
 
+| Product Preview | Highlights |
+| --- | --- |
+| ![Cover slide: transform codebase into intelligent network](presentation/blue/1.png) | ![Feature overview: knowledge graph + AI collaboration + RAG](presentation/blue/2.png) |
+| ![Command palette integration screenshot](presentation/blue/10.png) | ![MCP service diagram showing deployment/protocol/data sharing](presentation/blue/11.png) |
+
 ## 📋 Table of Contents
 
 - [Core Philosophy](#core-philosophy)
