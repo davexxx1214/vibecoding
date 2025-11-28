@@ -22,15 +22,18 @@ export class ScenarioManager {
   private static instance: ScenarioManager;
   private readonly STATE_FILE = '.current-scenario';
   private extensionPath: string | undefined;
-  
+
+  private readonly _onDidChangeScenario = new vscode.EventEmitter<string>();
+  public readonly onDidChangeScenario = this._onDidChangeScenario.event;
+
   /**
    * 所有可用场景
    */
   private readonly scenarios: ScenarioDefinition[] = [
     {
-      id: 'base',
-      name: '基础规范',
-      nameEn: 'Base Guidelines',
+      id: 'customized_project_practice',
+      name: 'customized project practice',
+      nameEn: 'Customized Project Practice',
       icon: '🔹',
       description: '项目通用规范和最佳实践',
       descriptionEn: 'General project guidelines and best practices'
@@ -93,7 +96,7 @@ export class ScenarioManager {
     }
   ];
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): ScenarioManager {
     if (!ScenarioManager.instance) {
@@ -131,11 +134,11 @@ export class ScenarioManager {
     try {
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (!workspaceRoot) {
-        return 'base';
+        return 'customized_project_practice';
       }
 
       const stateFile = path.join(workspaceRoot, '.vscode', '.knowledge', this.STATE_FILE);
-      
+
       if (fs.existsSync(stateFile)) {
         const scenarioId = fs.readFileSync(stateFile, 'utf-8').trim();
         // 验证场景是否有效
@@ -145,10 +148,10 @@ export class ScenarioManager {
         }
       }
 
-      return 'base';
+      return 'customized_project_practice';
     } catch (error) {
       console.error('Failed to read current scenario:', error);
-      return 'base';
+      return 'customized_project_practice';
     }
   }
 
@@ -179,14 +182,17 @@ export class ScenarioManager {
       fs.writeFileSync(stateFile, scenarioId, 'utf-8');
 
       console.log(`✅ Switched to scenario: ${scenarioId}`);
-      
+
       const locale = getLocale();
       const scenarioName = locale === 'zh' ? scenario.name : scenario.nameEn;
-      const message = locale === 'zh' 
+      const message = locale === 'zh'
         ? `已切换到场景: ${scenario.icon} ${scenarioName}`
         : `Switched to scenario: ${scenario.icon} ${scenarioName}`;
-      
+
       vscode.window.showInformationMessage(message);
+
+      // 触发场景切换事件
+      this._onDidChangeScenario.fire(scenarioId);
     } catch (error) {
       console.error('Failed to switch scenario:', error);
       const locale = getLocale();
@@ -202,7 +208,7 @@ export class ScenarioManager {
    * 读取场景模板内容
    * 
    * 优先级：
-   * 1. base 场景：优先读取用户自定义的 .vscode/.knowledge/ai-template.md
+   * 1. customized_project_practice 场景：优先读取用户自定义的 .vscode/.knowledge/ai-template.md
    * 2. 其他场景：使用内置模板 resources/scenarios/{locale}/{scenarioId}.md
    * 
    * 根据当前语言设置自动选择中文或英文模板
@@ -213,11 +219,11 @@ export class ScenarioManager {
       // 标准化语言代码：en-US -> en, zh-CN -> zh
       const locale = rawLocale.startsWith('zh') ? 'zh' : 'en';
       console.log(`🔍 Reading template for scenario: ${scenarioId} (locale: ${rawLocale} -> ${locale})`);
-      
+
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-      // base 场景特殊处理：优先读取用户自定义模板
-      if (scenarioId === 'base' && workspaceRoot) {
+      // customized_project_practice 场景特殊处理：优先读取用户自定义模板
+      if (scenarioId === 'customized_project_practice' && workspaceRoot) {
         const customTemplatePath = path.join(workspaceRoot, '.vscode', '.knowledge', 'ai-template.md');
         if (fs.existsSync(customTemplatePath)) {
           const content = fs.readFileSync(customTemplatePath, 'utf-8').trim();
@@ -235,18 +241,18 @@ export class ScenarioManager {
         this.extensionPath = path.join(__dirname, '..', '..');
         console.log(`⚠️ Using fallback path: ${this.extensionPath}`);
       }
-      
+
       // 根据语言选择模板目录: resources/scenarios/zh/ 或 resources/scenarios/en/
       const builtInTemplatePath = path.join(
-        this.extensionPath, 
-        'resources', 
-        'scenarios', 
+        this.extensionPath,
+        'resources',
+        'scenarios',
         locale,  // 'zh' or 'en'
         `${scenarioId}.md`
       );
-      
+
       console.log(`🔍 Looking for template at: ${builtInTemplatePath}`);
-      
+
       if (fs.existsSync(builtInTemplatePath)) {
         const content = fs.readFileSync(builtInTemplatePath, 'utf-8').trim();
         console.log(`✅ Using built-in ${locale} template: ${builtInTemplatePath}`);
@@ -256,15 +262,15 @@ export class ScenarioManager {
       // 如果没找到对应语言的模板，尝试使用英文作为后备
       if (locale !== 'en') {
         const fallbackPath = path.join(
-          this.extensionPath, 
-          'resources', 
-          'scenarios', 
+          this.extensionPath,
+          'resources',
+          'scenarios',
           'en',
           `${scenarioId}.md`
         );
-        
+
         console.log(`🔍 Trying fallback English template at: ${fallbackPath}`);
-        
+
         if (fs.existsSync(fallbackPath)) {
           const content = fs.readFileSync(fallbackPath, 'utf-8').trim();
           console.log(`⚠️ Fallback to English template: ${fallbackPath}`);
@@ -289,10 +295,9 @@ export class ScenarioManager {
     if (!scenario) {
       return scenarioId;
     }
-    
+
     const locale = getLocale();
     const name = locale === 'zh' ? scenario.name : scenario.nameEn;
     return `${scenario.icon} ${name}`;
   }
 }
-
