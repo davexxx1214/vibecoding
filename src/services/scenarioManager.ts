@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getLocale } from '../i18n';
+import { getLocale, currentLang } from '../i18n';
 
 /**
  * 场景定义
@@ -32,7 +32,7 @@ export class ScenarioManager {
   private readonly scenarios: ScenarioDefinition[] = [
     {
       id: 'customized_project_practice',
-      name: 'customized project practice',
+      name: '定制化项目实践',
       nameEn: 'Customized Project Practice',
       icon: '🔹',
       description: '项目通用规范和最佳实践',
@@ -183,7 +183,7 @@ export class ScenarioManager {
 
       console.log(`✅ Switched to scenario: ${scenarioId}`);
 
-      const locale = getLocale();
+      const locale = currentLang();
       const scenarioName = locale === 'zh' ? scenario.name : scenario.nameEn;
       const message = locale === 'zh'
         ? `已切换到场景: ${scenario.icon} ${scenarioName}`
@@ -195,7 +195,7 @@ export class ScenarioManager {
       this._onDidChangeScenario.fire(scenarioId);
     } catch (error) {
       console.error('Failed to switch scenario:', error);
-      const locale = getLocale();
+      const locale = currentLang();
       const message = locale === 'zh'
         ? `切换场景失败: ${error}`
         : `Failed to switch scenario: ${error}`;
@@ -215,10 +215,8 @@ export class ScenarioManager {
    */
   public getScenarioTemplate(scenarioId: string): string | null {
     try {
-      const rawLocale = getLocale();
-      // 标准化语言代码：en-US -> en, zh-CN -> zh
-      const locale = rawLocale.startsWith('zh') ? 'zh' : 'en';
-      console.log(`🔍 Reading template for scenario: ${scenarioId} (locale: ${rawLocale} -> ${locale})`);
+      const locale = currentLang();
+      console.log(`🔍 Reading template for scenario: ${scenarioId} (locale: ${locale})`);
 
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
@@ -296,7 +294,7 @@ export class ScenarioManager {
       return scenarioId;
     }
 
-    const locale = getLocale();
+    const locale = currentLang();
     const name = locale === 'zh' ? scenario.name : scenario.nameEn;
     return `${scenario.icon} ${name}`;
   }

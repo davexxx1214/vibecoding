@@ -14,7 +14,8 @@ import { RAGCommands } from './ui/commands/ragCommands';
 import { registerScenarioCommands } from './commands/scenarioCommands';
 import { ScenarioManager } from './services/scenarioManager';
 import { GraphView } from './ui/webview/graphView';
-import { I18nService, getLocale } from './i18n/i18nService';
+import { I18nService, currentLang } from './i18n/i18nService';
+import { Language } from './i18n/types';
 import { t } from './i18n/i18nService';
 
 /**
@@ -649,45 +650,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // 创建状态栏显示当前场景
     const scenarioStatusBar = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      100
-    );
-    scenarioStatusBar.command = 'knowledge.switchAIScenario';
-    scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
-    scenarioStatusBar.tooltip = getLocale() === 'zh'
-      ? '点击切换 AI 场景'
-      : 'Click to switch AI scenario';
-    scenarioStatusBar.show();
-    context.subscriptions.push(scenarioStatusBar);
-
-    // 监听场景切换，更新状态栏
-    context.subscriptions.push(
-      scenarioManager.onDidChangeScenario(() => {
-        scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
-        scenarioStatusBar.tooltip = getLocale() === 'zh'
-          ? '点击切换 AI 场景'
-          : 'Click to switch AI scenario';
-      })
-    );
-
-    // 监听语言切换，更新状态栏和重新加载场景模板
-    context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(async (e) => {
-        if (e.affectsConfiguration('knowledgeGraph.language')) {
-          // 语言变化时更新状态栏文本
-          scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
-          scenarioStatusBar.tooltip = getLocale() === 'zh'
-            ? '点击切换 AI 场景'
-            : 'Click to switch AI scenario';
-
-          // 提示用户场景模板语言已切换
-          const locale = getLocale();
-          const message = locale === 'zh'
-            ? '语言已切换，场景模板将使用中文版本'
-            : 'Language switched, scenario templates will use English version';
-          vscode.window.showInformationMessage(message);
-        }
-      })
     );
 
     // 切换语言命令
