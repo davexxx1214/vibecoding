@@ -68,32 +68,53 @@ export class CloudRagEngine implements RagEngine {
       throw new Error('云端 RAG Store 未初始化。');
     }
 
-    const response = await this.client.models.generateContent({
-      model: this.settings.model || 'gemini-2.5-flash',
-      contents: question,
-      config: {
-        tools: [{ fileSearch: { fileSearchStoreNames: [this.storeName] } }]
-      }
-    } as any);
-
+    this.logger.info(
+      `[CloudRagEngine] ask() called. storeName=${this.storeName}, model=${this.settings.model || 'gemini-2.5-flash'}`
+    );
     this.logger.debug?.(
-      '[CloudRagEngine] raw response snippet:',
-      safelyStringify(response)
+      `[CloudRagEngine] Environment: HTTP_PROXY=${process.env.HTTP_PROXY ?? 'unset'}, HTTPS_PROXY=${process.env.HTTPS_PROXY ?? 'unset'}`
     );
 
-    const answer =
-      (response as any).candidates?.[0]?.content?.parts?.[0]?.text ??
-      (response as any).text ??
-      '未能从云端知识库中获取答案。';
-    const sources = this.extractSources(response);
+    try {
+      const response = await this.client.models.generateContent({
+        model: this.settings.model || 'gemini-2.5-flash',
+        contents: question,
+        config: {
+          tools: [{ fileSearch: { fileSearchStoreNames: [this.storeName] } }]
+        }
+      } as any);
 
-    const answerWithStore =
-      `${answer.trim()}\n\n(storeId: ${this.storeId})`;
+      this.logger.debug?.(
+        '[CloudRagEngine] raw response snippet:',
+        safelyStringify(response)
+      );
 
-    return {
-      answer: answerWithStore,
-      sources
-    };
+      const answer =
+        (response as any).candidates?.[0]?.content?.parts?.[0]?.text ??
+        (response as any).text ??
+        '未能从云端知识库中获取答案。';
+      const sources = this.extractSources(response);
+
+      const answerWithStore =
+        `${answer.trim()}\n\n(storeId: ${this.storeId})`;
+
+      return {
+        answer: answerWithStore,
+        sources
+      };
+    } catch (error) {
+      const normalized = toError(error);
+      this.logger.error(
+        '[CloudRagEngine] Gemini request failed:',
+        normalized.message,
+        normalized.stack
+      );
+      // 返回友好提示而非抛出异常，避免 MCP 工具层再次 catch
+      return {
+        answer: `无法连接到云端 RAG（${normalized.message}）。\n\n可能原因：\n1. MCP Server 进程未配置代理（HTTP_PROXY/HTTPS_PROXY）\n2. Gemini API Key 无效或过期\n3. 网络防火墙阻止了请求\n\n请在 mcp.json 的 env 字段中配置代理，或检查 API Key。`,
+        sources: []
+      };
+    }
   }
 
   private loadStoreInfo(): void {
@@ -198,6 +219,20 @@ function safelyStringify(value: unknown): string {
     return text.length > 2000 ? `${text.slice(0, 2000)}...` : text;
   } catch (error) {
     return `[unserializable: ${error}]`;
+  }
+}
+
+function toError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return new Error(value);
+  }
+  try {
+    return new Error(JSON.stringify(value));
+  } catch {
+    return new Error('unknown error');
   }
 }
 
