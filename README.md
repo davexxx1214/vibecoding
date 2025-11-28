@@ -2,11 +2,11 @@
 
 > Transform your codebase into an intelligent knowledge network for more efficient AI programming.
 
-![Cover slide: transform codebase into intelligent network](presentation/blue/1.png)
+![Cover slide: transform codebase into intelligent network](cover.png)
 
 ## # Theme
 
-**Vibe Coding: Intelligent Context Middleware**
+**Vibe Coding for Vibe Coding: Intelligent Context Middleware**
 
 VibeKnowledge focuses on turning AI pair programming into a reliable "super middleware" that bridges human intent and model capabilities. By transforming codebases into structured knowledge graphs, we create a persistent memory layer that allows AI to "vibe" with your project's specific context, architectural decisions, and constraints, rather than just reading raw text files.
 
