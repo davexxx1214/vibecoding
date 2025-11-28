@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
  * 实体管理服务
  */
 export class EntityService {
-  constructor(private dbService: DatabaseService) {}
+  constructor(private dbService: DatabaseService) { }
 
   /**
    * 创建实体
@@ -20,7 +20,16 @@ export class EntityService {
   ): Entity {
     const db = this.dbService.getDatabase();
     const now = Date.now();
-    
+
+    // Check for duplicate entity name
+    const checkStmt = db.prepare('SELECT id FROM entities WHERE name = ?');
+    checkStmt.bind([name]);
+    if (checkStmt.step()) {
+      checkStmt.free();
+      throw new Error(`Entity with name "${name}" already exists`);
+    }
+    checkStmt.free();
+
     const entity: Entity = {
       id: this.generateId(),
       name,
@@ -56,11 +65,11 @@ export class EntityService {
 
     console.log('Entity created in database:', entity.name);
     this.dbService.save(); // 保存到文件
-    
+
     // 验证是否成功保存
     const count = this.getEntityCount();
     console.log('Total entities in database:', count);
-    
+
     return entity;
   }
 
@@ -70,7 +79,7 @@ export class EntityService {
   public updateEntity(entityId: string, updates: Partial<Entity>): Entity | null {
     const db = this.dbService.getDatabase();
     const existing = this.getEntity(entityId);
-    
+
     if (!existing) {
       return null;
     }
@@ -123,13 +132,13 @@ export class EntityService {
     const db = this.dbService.getDatabase();
     const stmt = db.prepare('SELECT * FROM entities WHERE id = ?');
     stmt.bind([entityId]);
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject();
       stmt.free();
       return this.rowToEntity(row);
     }
-    
+
     stmt.free();
     return null;
   }
@@ -162,13 +171,13 @@ export class EntityService {
     console.log('Querying entities with filters:', filters);
     const stmt = db.prepare(query);
     stmt.bind(params);
-    
+
     const rows: any[] = [];
     while (stmt.step()) {
       rows.push(stmt.getAsObject());
     }
     stmt.free();
-    
+
     console.log('Found entities:', rows.length);
     return rows.map(row => this.rowToEntity(row));
   }
@@ -200,15 +209,15 @@ export class EntityService {
       ORDER BY (end_line - start_line) ASC
       LIMIT 1
     `);
-    
+
     stmt.bind([filePath, line, line]);
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject();
       stmt.free();
       return this.rowToEntity(row);
     }
-    
+
     stmt.free();
     return null;
   }
@@ -219,13 +228,13 @@ export class EntityService {
   public getEntityCount(): number {
     const db = this.dbService.getDatabase();
     const stmt = db.prepare('SELECT COUNT(*) as count FROM entities');
-    
+
     if (stmt.step()) {
       const result = stmt.getAsObject() as any;
       stmt.free();
       return result.count;
     }
-    
+
     stmt.free();
     return 0;
   }
