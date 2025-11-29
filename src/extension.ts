@@ -14,7 +14,8 @@ import { RAGCommands } from './ui/commands/ragCommands';
 import { registerScenarioCommands } from './commands/scenarioCommands';
 import { ScenarioManager } from './services/scenarioManager';
 import { GraphView } from './ui/webview/graphView';
-import { I18nService, getLocale } from './i18n/i18nService';
+import { I18nService, currentLang } from './i18n/i18nService';
+import { Language } from './i18n/types';
 import { t } from './i18n/i18nService';
 
 /**
@@ -62,7 +63,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let ragInitialized = false;
     try {
       // 先尝试初始化 Gemini，无论是否使用
-      const geminiInitialized = await geminiClient.initialize(true); 
+      const geminiInitialized = await geminiClient.initialize(true);
       console.log(`Gemini client initialized: ${geminiInitialized}`);
 
       // 获取 RAG 模式
@@ -72,32 +73,32 @@ export async function activate(context: vscode.ExtensionContext) {
       // 决定是否初始化 RAG Service
       let shouldInitRAG = false;
       if (mode === 'local') {
-          shouldInitRAG = true;
+        shouldInitRAG = true;
       } else {
-          // Cloud 模式需要 Gemini 初始化成功
-          if (geminiInitialized) {
-              shouldInitRAG = true;
-          } else {
-               console.log('⚠️ Cloud RAG Service not initialized (Gemini API Key not configured)');
-                vscode.window.showWarningMessage(
-                t().extension.rag.notEnabled.title,
-                t().extension.rag.notEnabled.configure,
-                t().extension.rag.notEnabled.viewTutorial
-                ).then(action => {
-                if (action === t().extension.rag.notEnabled.configure) {
-                    vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
-                } else if (action === t().extension.rag.notEnabled.viewTutorial) {
-                    vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
-                }
-                });
-          }
+        // Cloud 模式需要 Gemini 初始化成功
+        if (geminiInitialized) {
+          shouldInitRAG = true;
+        } else {
+          console.log('⚠️ Cloud RAG Service not initialized (Gemini API Key not configured)');
+          vscode.window.showWarningMessage(
+            t().extension.rag.notEnabled.title,
+            t().extension.rag.notEnabled.configure,
+            t().extension.rag.notEnabled.viewTutorial
+          ).then(action => {
+            if (action === t().extension.rag.notEnabled.configure) {
+              vscode.commands.executeCommand('workbench.action.openSettings', 'knowledgeGraph.gemini.apiKey');
+            } else if (action === t().extension.rag.notEnabled.viewTutorial) {
+              vscode.env.openExternal(vscode.Uri.parse('https://makersuite.google.com/app/apikey'));
+            }
+          });
+        }
       }
-      
+
       if (shouldInitRAG) {
         await ragService.initialize(workspaceRoot);
         console.log('✅ RAG Service initialized successfully');
         ragInitialized = true;
-        
+
         // 显示初始化成功的弹窗
         vscode.window.showInformationMessage(
           t().extension.rag.enabled,
@@ -110,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     } catch (error) {
       console.error('⚠️ RAG Service initialization failed:', error);
-      
+
       // 显示详细的错误信息
       const errorMessage = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(
@@ -132,13 +133,13 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.workspace.onDidChangeConfiguration(async (e) => {
         if (e.affectsConfiguration('knowledgeGraph.gemini.apiKey')) {
           console.log('Gemini API Key changed, reinitializing...');
-          
+
           try {
             const success = await geminiClient.initialize(true);
             if (success) {
               // 重新初始化 RAG Service
               await ragService.initialize(workspaceRoot);
-              
+
               vscode.window.showInformationMessage(
                 t().extension.rag.reconnected,
                 t().extension.rag.viewStoreInfo
@@ -147,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
                   vscode.commands.executeCommand('knowledge.rag.viewStoreInfo');
                 }
               });
-              
+
               ragTreeDataProvider.refresh();
             } else {
               vscode.window.showWarningMessage(t().extension.rag.invalidKey);
@@ -649,35 +650,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // 创建状态栏显示当前场景
     const scenarioStatusBar = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      100
-    );
-    scenarioStatusBar.command = 'knowledge.switchAIScenario';
-    scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
-    scenarioStatusBar.tooltip = getLocale() === 'zh' 
-      ? '点击切换 AI 场景'
-      : 'Click to switch AI scenario';
-    scenarioStatusBar.show();
-    context.subscriptions.push(scenarioStatusBar);
-
-    // 监听语言切换，更新状态栏和重新加载场景模板
-    context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(async (e) => {
-        if (e.affectsConfiguration('knowledgeGraph.language')) {
-          // 语言变化时更新状态栏文本
-          scenarioStatusBar.text = `$(file-code) ${scenarioManager.getCurrentScenarioDisplayName()}`;
-          scenarioStatusBar.tooltip = getLocale() === 'zh' 
-            ? '点击切换 AI 场景'
-            : 'Click to switch AI scenario';
-          
-          // 提示用户场景模板语言已切换
-          const locale = getLocale();
-          const message = locale === 'zh'
-            ? '语言已切换，场景模板将使用中文版本'
-            : 'Language switched, scenario templates will use English version';
-          vscode.window.showInformationMessage(message);
-        }
-      })
     );
 
     // 切换语言命令
@@ -743,7 +715,7 @@ export async function activate(context: vscode.ExtensionContext) {
  * 注册占位命令
  */
 function registerPlaceholderCommands(context: vscode.ExtensionContext) {
-    const placeholderCommands = [
+  const placeholderCommands = [
     'knowledge.createEntity',
     'knowledge.addObservation',
     'knowledge.addRelation',

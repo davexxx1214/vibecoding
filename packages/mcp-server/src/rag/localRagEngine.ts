@@ -85,18 +85,34 @@ export class LocalRagEngine implements RagEngine {
   }
 
   public async ask(question: string): Promise<RagAnswer> {
-    if (!this.settings.apiBase || !this.settings.apiKey) {
-      throw new Error(
-        'RAG API 未配置。请通过 VS Code 设置或 CLI 参数提供 apiBase 和 apiKey。'
-      );
-    }
-
     if (this.chunks.length === 0) {
       throw new Error('当前项目没有可用的 RAG 文档，请先在 VS Code 中索引。');
     }
 
-    const queryVector = await this.getEmbedding(question);
-    const topSources = this.selectTopChunks(queryVector);
+    const hasApiConfig = Boolean(this.settings.apiBase && this.settings.apiKey);
+    let queryVector: number[] | null = null;
+    let ragError: Error | null = null;
+
+    if (hasApiConfig) {
+      try {
+        queryVector = await this.getEmbedding(question);
+      } catch (error) {
+        ragError = toError(error);
+        this.logger.warn?.(
+          '[LocalRagEngine] getEmbedding failed, falling back to keyword search',
+          ragError
+        );
+      }
+    } else {
+      ragError = new Error(
+        '尚未配置本地 RAG API（apiBase/apiKey），自动降级到关键字匹配模式。'
+      );
+      this.logger.warn?.('[LocalRagEngine] RAG API not configured, using keyword fallback');
+    }
+
+    const topSources = queryVector
+      ? this.selectTopChunksByVector(queryVector)
+      : this.selectTopChunksByKeyword(question);
 
     if (topSources.length === 0) {
       return {
@@ -105,19 +121,33 @@ export class LocalRagEngine implements RagEngine {
       };
     }
 
-    const context = topSources
-      .map(
-        (source, index) =>
-          `# Source ${index + 1}: ${source.relativePath}\n${source.snippet}`
-      )
-      .join('\n\n');
+    if (queryVector && hasApiConfig) {
+      const context = topSources
+        .map(
+          (source, index) =>
+            `# Source ${index + 1}: ${source.relativePath}\n${source.snippet}`
+        )
+        .join('\n\n');
 
-    const prompt = `你是一个帮助开发者回答项目问题的助手。请只根据提供的上下文作答，如果上下文中没有答案，请明确说明不知道。\n\n上下文：\n${context}\n\n问题：${question}\n\n答案：`;
+      const prompt = `你是一个帮助开发者回答项目问题的助手。请只根据提供的上下文作答，如果上下文中没有答案，请明确说明不知道。\n\n上下文：\n${context}\n\n问题：${question}\n\n答案：`;
 
-    const answer = await this.generateAnswer(prompt);
+      try {
+        const answer = await this.generateAnswer(prompt);
+        return {
+          answer,
+          sources: topSources
+        };
+      } catch (error) {
+        ragError = toError(error);
+        this.logger.warn?.(
+          '[LocalRagEngine] generateAnswer failed, falling back to snippets',
+          ragError
+        );
+      }
+    }
 
     return {
-      answer,
+      answer: this.buildFallbackAnswer(topSources, ragError),
       sources: topSources
     };
   }
@@ -153,7 +183,7 @@ export class LocalRagEngine implements RagEngine {
     return data.data[0].embedding;
   }
 
-  private selectTopChunks(queryVector: number[]): RagSource[] {
+  private selectTopChunksByVector(queryVector: number[]): RagSource[] {
     const scored = this.chunks
       .map((chunk) => ({
         chunk,
@@ -169,6 +199,56 @@ export class LocalRagEngine implements RagEngine {
       snippet: item.chunk.snippet,
       relevance: Number(item.score.toFixed(3))
     }));
+  }
+
+  private selectTopChunksByKeyword(question: string): RagSource[] {
+    const tokens = question
+      .toLowerCase()
+      .split(/[^a-z0-9_]+/i)
+      .filter((token) => token.length > 2);
+
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    const scored = this.chunks
+      .map((chunk) => {
+        const lower = chunk.snippet.toLowerCase();
+        const score = tokens.reduce(
+          (acc, token) => (lower.includes(token) ? acc + 1 : acc),
+          0
+        );
+        return { chunk, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+
+    return scored.map((item) => ({
+      filePath: item.chunk.filePath,
+      relativePath: item.chunk.relativePath,
+      snippet: item.chunk.snippet,
+      relevance: Number(item.score)
+    }));
+  }
+
+  private buildFallbackAnswer(
+    sources: RagSource[],
+    error: Error | null
+  ): string {
+    if (sources.length === 0) {
+      return '未能找到可供参考的文档片段。';
+    }
+
+    const reason = error?.message ?? '未知原因';
+    const previews = sources
+      .map((source, index) => {
+        const preview = truncate(source.snippet.trim().replace(/\s+/g, ' '), 400);
+        return `${index + 1}. ${source.relativePath}\n${preview}`;
+      })
+      .join('\n\n');
+
+    return `未能连接到本地 RAG 模型（${reason}）。以下为最相关的文档片段，请参考后再作答：\n\n${previews}`;
   }
 
   private async generateAnswer(prompt: string): Promise<string> {
@@ -232,5 +312,26 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
     return 0;
   }
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+function toError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    return new Error(value);
+  }
+  try {
+    return new Error(JSON.stringify(value));
+  } catch {
+    return new Error('Unknown error');
+  }
+}
+
+function truncate(text: string, maxLength = 400): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength)}…`;
 }
 
