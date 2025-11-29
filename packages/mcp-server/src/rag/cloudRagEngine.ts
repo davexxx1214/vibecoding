@@ -147,14 +147,54 @@ export class CloudRagEngine implements RagEngine {
   }
 
   private extractSources(response: unknown): RagSource[] {
-    const grounding =
-      (response as any)?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    const groundingMetadata = (response as any)?.candidates?.[0]?.groundingMetadata;
+    
+    // Debug: log the full grounding metadata structure
+    this.logger.debug?.(
+      '[CloudRagEngine] groundingMetadata:',
+      safelyStringify(groundingMetadata)
+    );
+    
+    const grounding = groundingMetadata?.groundingChunks;
     if (!Array.isArray(grounding)) {
+      this.logger.debug?.('[CloudRagEngine] No groundingChunks found');
       return [];
     }
+    
+    this.logger.debug?.(`[CloudRagEngine] Found ${grounding.length} groundingChunks`);
+
+    // Extract confidence scores from groundingSupports (available in Google Search grounding)
+    // Each support may reference multiple chunk indices with corresponding scores
+    const chunkScores = new Map<number, number>();
+    const groundingSupports = groundingMetadata?.groundingSupports;
+    
+    if (Array.isArray(groundingSupports)) {
+      for (const support of groundingSupports) {
+        const indices: number[] = support?.groundingChunkIndices ?? [];
+        const scores: number[] = support?.confidenceScores ?? [];
+        for (let i = 0; i < indices.length; i++) {
+          const chunkIndex = indices[i];
+          const score = scores[i] ?? 0;
+          // Keep the highest score if a chunk is referenced multiple times
+          if (!chunkScores.has(chunkIndex) || chunkScores.get(chunkIndex)! < score) {
+            chunkScores.set(chunkIndex, score);
+          }
+        }
+      }
+    }
+
+    // Check if we have any scores from groundingSupports
+    const hasExplicitScores = chunkScores.size > 0;
+    
+    this.logger.debug?.(
+      `[CloudRagEngine] hasExplicitScores: ${hasExplicitScores}, chunkScores: ${JSON.stringify(Array.from(chunkScores.entries()))}`
+    );
+
     const sources: RagSource[] = [];
 
-    for (const chunk of grounding) {
+    for (let chunkIndex = 0; chunkIndex < grounding.length; chunkIndex++) {
+      const chunk = grounding[chunkIndex];
+      
       const uri: string | undefined = chunk?.retrievedContext?.uri;
       const title: string | undefined = chunk?.retrievedContext?.title;
       const contentParts: Array<{ text?: string }> =
@@ -163,6 +203,27 @@ export class CloudRagEngine implements RagEngine {
         .map((part) => part.text || '')
         .join('\n')
         .trim();
+
+      // Get relevance score from multiple possible locations:
+      // 1. Direct score on chunk (chunk.score, chunk.relevanceScore, chunk.confidence)
+      // 2. From groundingSupports (Google Search grounding)
+      // 3. Fallback: use position-based implicit relevance (1.0, 0.9, 0.8, ...)
+      //    since Gemini returns results ordered by relevance
+      const chunkScore = chunk?.score ?? chunk?.relevanceScore ?? chunk?.confidence;
+      const supportScore = chunkScores.get(chunkIndex);
+      
+      let relevance: number;
+      // Only use explicit scores if they are actually meaningful (> 0)
+      // Otherwise fall back to position-based implicit relevance
+      if (typeof chunkScore === 'number' && chunkScore > 0) {
+        relevance = chunkScore;
+      } else if (typeof supportScore === 'number' && supportScore > 0) {
+        relevance = supportScore;
+      } else {
+        // Use position-based implicit relevance: first chunk gets highest score
+        // This assumes Gemini returns chunks ordered by relevance
+        relevance = Math.max(0.5, 1.0 - chunkIndex * 0.1);
+      }
 
       const matched =
         (uri && this.indexedByUri.get(uri)) ||
@@ -173,14 +234,14 @@ export class CloudRagEngine implements RagEngine {
           filePath: matched.file_path,
           relativePath: matched.file_path,
           snippet: snippet || '(来自云端文档)',
-          relevance: chunk.score ? Number(chunk.score) : 0
+          relevance: Number(relevance.toFixed(3))
         });
       } else if (title) {
         sources.push({
           filePath: title,
           relativePath: title,
           snippet: snippet || '(来自云端文档)',
-          relevance: chunk.score ? Number(chunk.score) : 0
+          relevance: Number(relevance.toFixed(3))
         });
       }
     }
@@ -203,20 +264,22 @@ function normalizeWorkspaceRootForHash(input: string): string {
 function dedupeSources(sources: RagSource[]): RagSource[] {
   const seen = new Map<string, RagSource>();
   for (const source of sources) {
-    if (!seen.has(source.relativePath)) {
+    const existing = seen.get(source.relativePath);
+    // Keep the source with the highest relevance score
+    if (!existing || source.relevance > existing.relevance) {
       seen.set(source.relativePath, source);
     }
   }
   return Array.from(seen.values());
 }
 
-function safelyStringify(value: unknown): string {
+function safelyStringify(value: unknown, maxLength = 5000): string {
   try {
-    const text = JSON.stringify(value);
+    const text = JSON.stringify(value, null, 2);
     if (!text) {
       return '[empty json]';
     }
-    return text.length > 2000 ? `${text.slice(0, 2000)}...` : text;
+    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
   } catch (error) {
     return `[unserializable: ${error}]`;
   }
