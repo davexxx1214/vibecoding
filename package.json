@@ -170,6 +170,26 @@
         "command": "knowledge.expandAll",
         "title": "Knowledge: Expand All",
         "icon": "$(expand-all)"
+      },
+      {
+        "command": "knowledge.autoGraph.analyzeWorkspace",
+        "title": "Knowledge: Analyze Workspace (Auto Graph)",
+        "icon": "$(symbol-namespace)"
+      },
+      {
+        "command": "knowledge.autoGraph.analyzeCurrentFile",
+        "title": "Knowledge: Analyze Current File (Auto Graph)",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "knowledge.autoGraph.clear",
+        "title": "Knowledge: Clear Auto Graph",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "knowledge.autoGraph.viewStats",
+        "title": "Knowledge: View Auto Graph Statistics",
+        "icon": "$(graph)"
       }
     ],
     "menus": {
@@ -353,6 +373,42 @@
           ],
           "description": "界面语言 / Display language",
           "order": 4
+        },
+        "knowledgeGraph.autoAnalyze.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用自动代码分析 / Enable automatic code analysis",
+          "order": 5
+        },
+        "knowledgeGraph.autoAnalyze.onSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "保存文件时自动分析 / Analyze file on save",
+          "order": 5.1
+        },
+        "knowledgeGraph.autoAnalyze.include": {
+          "type": "array",
+          "default": [
+            "**/*.ts",
+            "**/*.tsx",
+            "**/*.js",
+            "**/*.jsx"
+          ],
+          "description": "包含的文件模式 / Include file patterns",
+          "order": 5.2
+        },
+        "knowledgeGraph.autoAnalyze.exclude": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/*.d.ts",
+            "**/*.test.ts",
+            "**/*.spec.ts"
+          ],
+          "description": "排除的文件模式 / Exclude file patterns",
+          "order": 5.3
         }
       }
     },

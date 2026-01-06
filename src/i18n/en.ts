@@ -528,6 +528,49 @@ export const en = {
     cyclicDependency: 'Cyclic Dependency'
   },
 
+  autoGraph: {
+    title: 'Auto Dependency Graph',
+    commands: {
+      analyzeWorkspace: {
+        title: 'Analyzing workspace',
+        completed: (entities: number, relations: number, files: number) =>
+          `✅ Analysis complete: ${entities} entities, ${relations} relations, ${files} files`,
+        completedWithErrors: (entities: number, relations: number, errors: number) =>
+          `⚠️ Analysis complete (with errors): ${entities} entities, ${relations} relations, ${errors} errors`,
+        viewErrors: 'View Errors'
+      },
+      analyzeFile: {
+        title: (fileName: string) => `Analyzing file: ${fileName}`,
+        noActiveFile: 'Please open a file first',
+        unsupportedType: (fileName: string) => `Unsupported file type: ${fileName}`,
+        unchanged: (fileName: string) => `File unchanged: ${fileName}`,
+        completed: (fileName: string, entities: number, relations: number) =>
+          `✅ ${fileName}: ${entities} entities, ${relations} relations`,
+        error: (fileName: string, message: string) => `Analysis failed ${fileName}: ${message}`
+      },
+      clear: {
+        confirm: 'Are you sure you want to clear the auto graph? This will delete all auto-generated entities and relations.',
+        yes: 'Yes',
+        no: 'No',
+        completed: '✅ Auto graph cleared'
+      },
+      viewStats: {
+        title: 'View Auto Graph Stats'
+      }
+    },
+    treeView: {
+      manualGraph: 'Manual Graph',
+      autoGraph: 'Auto Graph',
+      entities: 'Entities',
+      relations: 'Relations'
+    },
+    graphView: {
+      manualGraph: 'Manual Graph',
+      autoGraph: 'Auto Graph',
+      mergedView: 'Merged View'
+    }
+  },
+
   export: {
     title: 'Knowledge Graph Export',
     exportedAt: 'Exported At',

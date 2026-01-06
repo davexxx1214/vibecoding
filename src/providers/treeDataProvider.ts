@@ -3,6 +3,8 @@ import { Entity, EntityType } from '../utils/types';
 import { EntityService } from '../services/entityService';
 import { RelationService } from '../services/relationService';
 import { ObservationService } from '../services/observationService';
+import { AutoGraphService, AutoEntity } from '../services/autoGraph';
+import { t } from '../i18n/i18nService';
 
 /**
  * 树视图项
@@ -11,16 +13,17 @@ export class KnowledgeTreeItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-    public readonly entity?: Entity,
-    public readonly type?: 'root' | 'category' | 'entity' | 'relation',
-    public readonly relationData?: any
+    public readonly entity?: Entity | AutoEntity,
+    public readonly type?: 'root' | 'graph-root' | 'category' | 'entity' | 'relation',
+    public readonly relationData?: any,
+    public readonly isAuto?: boolean
   ) {
     super(label, collapsibleState);
 
-    if (entity) {
-      this.tooltip = `${entity.name} (${entity.type})`;
+    if (entity && (type === 'entity' || !type)) {
+      this.tooltip = `${entity.name} (${entity.type})${isAuto ? ' [Auto]' : ''}`;
       this.description = `${entity.filePath}:${entity.startLine}`;
-      this.contextValue = 'entity';
+      this.contextValue = isAuto ? 'autoEntity' : 'entity';
       
       // 设置命令：点击时跳转到代码位置
       this.command = {
@@ -30,12 +33,12 @@ export class KnowledgeTreeItem extends vscode.TreeItem {
       };
 
       // 设置图标
-      this.iconPath = new vscode.ThemeIcon(this.getIconForType(entity.type));
+      this.iconPath = new vscode.ThemeIcon(this.getIconForType(entity.type as EntityType));
     } else if (type === 'relation' && relationData) {
       // 关系节点
-      this.tooltip = `${relationData.sourceName} ${relationData.verb} ${relationData.targetName}`;
+      this.tooltip = `${relationData.sourceName} ${relationData.verb} ${relationData.targetName}${isAuto ? ' [Auto]' : ''}`;
       this.description = relationData.verb;
-      this.contextValue = 'relation';
+      this.contextValue = isAuto ? 'autoRelation' : 'relation';
       this.iconPath = new vscode.ThemeIcon('arrow-right');
       
       // 设置命令：点击时跳转到源实体
@@ -46,11 +49,15 @@ export class KnowledgeTreeItem extends vscode.TreeItem {
           arguments: [relationData.sourceEntity],
         };
       }
+    } else if (type === 'graph-root') {
+      // 图谱根节点（手动/自动）
+      this.contextValue = 'graphRoot';
+      this.iconPath = new vscode.ThemeIcon(isAuto ? 'zap' : 'edit');
     } else if (type === 'root') {
-      // 根节点
+      // 分类根节点（Entities/Relations）
       this.contextValue = 'root';
       this.iconPath = new vscode.ThemeIcon(
-        label.startsWith('Entities') ? 'symbol-namespace' : 'references'
+        label.includes('Entities') || label.includes('实体') ? 'symbol-namespace' : 'references'
       );
     } else if (type === 'category') {
       this.contextValue = 'category';
@@ -92,12 +99,20 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
   private treeView?: vscode.TreeView<KnowledgeTreeItem>;
   private cachedRootNodes: KnowledgeTreeItem[] = [];
   private cachedCategoryNodes: Map<string, KnowledgeTreeItem> = new Map();
+  private autoGraphService?: AutoGraphService;
 
   constructor(
     private entityService: EntityService,
     private relationService: RelationService,
     private observationService: ObservationService
   ) {}
+
+  /**
+   * 设置自动图谱服务
+   */
+  public setAutoGraphService(service: AutoGraphService): void {
+    this.autoGraphService = service;
+  }
 
   public setTreeView(treeView: vscode.TreeView<KnowledgeTreeItem>): void {
     this.treeView = treeView;
@@ -177,75 +192,159 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
 
   getChildren(element?: KnowledgeTreeItem): Thenable<KnowledgeTreeItem[]> {
     if (!element) {
-      // 最顶层：显示 Entities 和 Relations 两个根节点
-      return Promise.resolve(this.getRootNodes());
+      // 最顶层：显示手动图谱和自动图谱两个根节点
+      return Promise.resolve(this.getGraphRootNodes());
+    } else if (element.type === 'graph-root') {
+      // 图谱根节点：显示 Entities 和 Relations
+      return Promise.resolve(this.getRootNodes(element.isAuto || false));
     } else if (element.type === 'root') {
       // 根节点：Entities 或 Relations
-      if (element.label.startsWith('Entities')) {
-        return Promise.resolve(this.getEntityCategories());
-      } else if (element.label.startsWith('Relations')) {
-        return Promise.resolve(this.getRelations());
+      const isAuto = element.isAuto || false;
+      if (element.label.includes('Entities') || element.label.includes('实体')) {
+        return Promise.resolve(this.getEntityCategories(isAuto));
+      } else if (element.label.includes('Relations') || element.label.includes('关系')) {
+        return Promise.resolve(this.getRelations(isAuto));
       }
     } else if (element.type === 'category' && element.entity) {
       // 类别节点：显示该类型的所有实体
-      const entityType = element.entity.type;
-      const entities = this.entityService.getEntitiesByType(entityType);
+      const entityType = element.entity.type as EntityType;
+      const isAuto = element.isAuto || false;
       
-      return Promise.resolve(
-        entities.map(entity => 
-          new KnowledgeTreeItem(
-            entity.name,
-            vscode.TreeItemCollapsibleState.None,
-            entity,
-            'entity'
+      if (isAuto && this.autoGraphService) {
+        const entities = this.autoGraphService.listEntities({ type: entityType });
+        return Promise.resolve(
+          entities.map(entity => 
+            new KnowledgeTreeItem(
+              entity.name,
+              vscode.TreeItemCollapsibleState.None,
+              entity,
+              'entity',
+              undefined,
+              true
+            )
           )
-        )
-      );
+        );
+      } else {
+        const entities = this.entityService.getEntitiesByType(entityType);
+        return Promise.resolve(
+          entities.map(entity => 
+            new KnowledgeTreeItem(
+              entity.name,
+              vscode.TreeItemCollapsibleState.None,
+              entity,
+              'entity',
+              undefined,
+              false
+            )
+          )
+        );
+      }
     }
 
     return Promise.resolve([]);
   }
 
   /**
-   * 获取根节点：Entities 和 Relations
+   * 获取图谱根节点：手动图谱和自动图谱
    */
-  private getRootNodes(): KnowledgeTreeItem[] {
-    const entities = this.entityService.listEntities();
-    const relations = this.getAllRelations();
+  private getGraphRootNodes(): KnowledgeTreeItem[] {
+    const translations = t().autoGraph?.treeView || {
+      manualGraph: 'Manual Graph',
+      autoGraph: 'Auto Graph'
+    };
+    
+    const manualEntities = this.entityService.listEntities();
+    const manualRelations = this.getAllRelations(false);
+    
+    const autoEntities = this.autoGraphService?.listEntities() || [];
+    const autoRelations = this.autoGraphService?.listRelations() || [];
     
     const nodes = [
       new KnowledgeTreeItem(
-        `Entities (${entities.length})`,
+        `📝 ${translations.manualGraph} (${manualEntities.length} / ${manualRelations.length})`,
         vscode.TreeItemCollapsibleState.Expanded,
         undefined,
-        'root'
+        'graph-root',
+        undefined,
+        false
       ),
       new KnowledgeTreeItem(
-        `Relations (${relations.length})`,
-        this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+        `⚡ ${translations.autoGraph} (${autoEntities.length} / ${autoRelations.length})`,
+        this.autoGraphService ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
         undefined,
-        'root'
+        'graph-root',
+        undefined,
+        true
       )
     ];
     
-    // 缓存根节点
     this.cachedRootNodes = nodes;
+    return nodes;
+  }
+
+  /**
+   * 获取根节点：Entities 和 Relations
+   */
+  private getRootNodes(isAuto: boolean): KnowledgeTreeItem[] {
+    const translations = t().autoGraph?.treeView || {
+      entities: 'Entities',
+      relations: 'Relations'
+    };
+    
+    let entityCount: number;
+    let relationCount: number;
+    
+    if (isAuto && this.autoGraphService) {
+      entityCount = this.autoGraphService.listEntities().length;
+      relationCount = this.autoGraphService.listRelations().length;
+    } else {
+      entityCount = this.entityService.listEntities().length;
+      relationCount = this.getAllRelations(false).length;
+    }
+    
+    const nodes = [
+      new KnowledgeTreeItem(
+        `${translations.entities} (${entityCount})`,
+        vscode.TreeItemCollapsibleState.Expanded,
+        undefined,
+        'root',
+        undefined,
+        isAuto
+      ),
+      new KnowledgeTreeItem(
+        `${translations.relations} (${relationCount})`,
+        this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+        undefined,
+        'root',
+        undefined,
+        isAuto
+      )
+    ];
+    
     return nodes;
   }
 
   /**
    * 获取实体分类
    */
-  private getEntityCategories(): KnowledgeTreeItem[] {
-    const entities = this.searchQuery 
-      ? this.entityService.listEntities({ name: this.searchQuery })
-      : this.entityService.listEntities();
+  private getEntityCategories(isAuto: boolean): KnowledgeTreeItem[] {
+    let entities: (Entity | AutoEntity)[];
+    
+    if (isAuto && this.autoGraphService) {
+      entities = this.searchQuery 
+        ? this.autoGraphService.listEntities({ name: this.searchQuery })
+        : this.autoGraphService.listEntities();
+    } else {
+      entities = this.searchQuery 
+        ? this.entityService.listEntities({ name: this.searchQuery })
+        : this.entityService.listEntities();
+    }
 
     // 按类型分组
     const groupedByType = new Map<EntityType, number>();
     entities.forEach(entity => {
-      const count = groupedByType.get(entity.type) || 0;
-      groupedByType.set(entity.type, count + 1);
+      const count = groupedByType.get(entity.type as EntityType) || 0;
+      groupedByType.set(entity.type as EntityType, count + 1);
     });
 
     // 创建类别节点
@@ -254,7 +353,7 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
       const label = `${this.capitalizeFirst(type)} (${count})`;
       // 创建一个临时实体对象来存储类型信息
       const categoryEntity: Entity = {
-        id: `category-${type}`,
+        id: `category-${type}${isAuto ? '-auto' : ''}`,
         name: label,
         type: type,
         filePath: '',
@@ -268,11 +367,13 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
         label,
         this.expandAllState ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
         categoryEntity,
-        'category'
+        'category',
+        undefined,
+        isAuto
       );
       
       // 缓存分类节点
-      this.cachedCategoryNodes.set(type, categoryNode);
+      this.cachedCategoryNodes.set(`${type}${isAuto ? '-auto' : ''}`, categoryNode);
       categories.push(categoryNode);
     });
 
@@ -282,37 +383,65 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
   /**
    * 获取所有关系
    */
-  private getAllRelations(): any[] {
-    const entities = this.entityService.listEntities();
-    const relations: any[] = [];
-    
-    entities.forEach(entity => {
-      const outgoingRelations = this.relationService.getRelations(entity.id, 'outgoing');
-      outgoingRelations.forEach(relation => {
-        const targetEntity = this.entityService.getEntity(relation.targetEntityId);
-        if (targetEntity) {
-          relations.push({
-            id: relation.id,
-            sourceId: entity.id,
-            sourceName: entity.name,
-            sourceEntity: entity,
-            verb: relation.verb,
-            targetId: targetEntity.id,
-            targetName: targetEntity.name,
-            targetEntity: targetEntity
-          });
-        }
+  private getAllRelations(isAuto: boolean): any[] {
+    if (isAuto && this.autoGraphService) {
+      const entities = this.autoGraphService.listEntities();
+      const relations: any[] = [];
+      
+      entities.forEach(entity => {
+        const outgoingRelations = this.autoGraphService!.getRelationsByEntity(entity.id, 'outgoing');
+        outgoingRelations.forEach(relation => {
+          const targetEntity = this.autoGraphService!.getEntity(relation.targetEntityId);
+          if (targetEntity) {
+            relations.push({
+              id: relation.id,
+              sourceId: entity.id,
+              sourceName: entity.name,
+              sourceEntity: entity,
+              verb: relation.verb,
+              targetId: targetEntity.id,
+              targetName: targetEntity.name,
+              targetEntity: targetEntity,
+              isAuto: true
+            });
+          }
+        });
       });
-    });
-    
-    return relations;
+      
+      return relations;
+    } else {
+      const entities = this.entityService.listEntities();
+      const relations: any[] = [];
+      
+      entities.forEach(entity => {
+        const outgoingRelations = this.relationService.getRelations(entity.id, 'outgoing');
+        outgoingRelations.forEach(relation => {
+          const targetEntity = this.entityService.getEntity(relation.targetEntityId);
+          if (targetEntity) {
+            relations.push({
+              id: relation.id,
+              sourceId: entity.id,
+              sourceName: entity.name,
+              sourceEntity: entity,
+              verb: relation.verb,
+              targetId: targetEntity.id,
+              targetName: targetEntity.name,
+              targetEntity: targetEntity,
+              isAuto: false
+            });
+          }
+        });
+      });
+      
+      return relations;
+    }
   }
 
   /**
    * 获取关系列表
    */
-  private getRelations(): KnowledgeTreeItem[] {
-    const relations = this.getAllRelations();
+  private getRelations(isAuto: boolean): KnowledgeTreeItem[] {
+    const relations = this.getAllRelations(isAuto);
     
     return relations.map(relation => 
       new KnowledgeTreeItem(
@@ -320,7 +449,8 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
         vscode.TreeItemCollapsibleState.None,
         undefined,
         'relation',
-        relation
+        relation,
+        isAuto
       )
     );
   }
