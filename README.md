@@ -76,10 +76,12 @@ VibeKnowledge 是一个功能完整的 VS Code 知识图谱插件，包含四大
 - ✅ **依赖注入检测**：构造函数参数、@Inject 装饰器、成员变量类型
 - ✅ **方法签名分析**：返回类型、参数类型、泛型参数
 - ✅ **接口属性分析**：接口内属性类型依赖
-- ✅ **外部模块识别**：自动创建外部依赖节点（灰色显示）
+- ✅ **函数内部依赖**：检测函数体内的类实例化、静态方法调用
+- ✅ **NestJS 装饰器**：@Module 装饰器的 imports/controllers/providers 分析
+- ✅ **TypeORM 关系**：@ManyToOne/@OneToMany 等装饰器的实体引用
 - ✅ **双图谱架构**：手动图谱与自动图谱完全隔离，互不干扰
 - ✅ **视图切换**：一键切换手动图谱 / 自动图谱 / 合并视图
-- ✅ **增量分析**：基于文件哈希缓存，仅分析变更文件
+- ✅ **自动清理**：每次分析工作区时自动清除旧数据，确保结果最新
 
 ### 3️⃣ AI 协同功能
 - ✅ Cursor 和 GitHub Copilot 深度集成
@@ -356,7 +358,8 @@ vibecoding/
 | `interface` | 接口定义 | `interface UserData {}` |
 | `function` | 函数定义 | `function createUser() {}` |
 | `variable` | 导出变量 | `export const config = {}` |
-| `external` | 外部依赖 | `NestModule`（来自 @nestjs） |
+
+> 💡 **注意**：只分析工作区内的代码，外部依赖（如 @nestjs、typeorm）不会生成节点
 
 #### 自动识别的关系类型
 
@@ -371,10 +374,10 @@ vibecoding/
 
 ```typescript
 // ✅ 类继承
-class ArticleService extends BaseService {}
+class UserController extends BaseController {}
 
-// ✅ 接口实现
-class ProfileModule implements NestModule {}
+// ✅ 接口实现（仅工作区内的接口）
+class ProfileModule implements LocalInterface {}
 
 // ✅ 构造函数依赖注入
 class ArticleController {
@@ -394,6 +397,24 @@ interface ArticleData {
 
 // ✅ @Inject 装饰器
 @Inject(ConfigService) private config: ConfigService
+
+// ✅ @Module 装饰器（NestJS）
+@Module({
+  imports: [UserModule, ArticleModule],  // --uses--> UserModule, ArticleModule
+  controllers: [AppController],
+  providers: [AppService],
+})
+class ApplicationModule {}
+
+// ✅ TypeORM 关系装饰器
+@ManyToOne(type => UserEntity, user => user.articles)
+author: UserEntity;  // --uses--> UserEntity
+
+// ✅ 函数内部依赖（new 实例化、静态方法调用）
+async function bootstrap() {
+  const app = await NestFactory.create(ApplicationModule);  // --uses--> ApplicationModule
+  const builder = new DocumentBuilder();  // --uses--> DocumentBuilder（如果在工作区内）
+}
 ```
 
 #### 使用方法
@@ -420,6 +441,8 @@ interface ArticleData {
 | 创建方式 | 用户手动创建 | 静态分析自动生成 |
 | 观察记录 | ✅ 支持 | ❌ 不支持 |
 | 数据隔离 | `entities` 表 | `auto_entities` 表 |
+| 数据更新 | 手动增删改 | 每次分析自动清除重建 |
+| 外部依赖 | 可手动添加 | 仅工作区内代码 |
 | 适用场景 | 记录设计决策、重构笔记 | 快速理解代码依赖 |
 
 ---
@@ -563,8 +586,8 @@ CREATE TABLE observations (
 CREATE TABLE auto_entities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT NOT NULL,           -- class/interface/function/variable/external
-    file_path TEXT NOT NULL,      -- '@external' 表示外部模块
+    type TEXT NOT NULL,           -- class/interface/function/variable
+    file_path TEXT NOT NULL,
     start_line INTEGER NOT NULL,
     end_line INTEGER NOT NULL,
     description TEXT,
