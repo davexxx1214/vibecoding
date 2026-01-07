@@ -180,6 +180,9 @@ export class GraphView {
             const autoEntities = GraphView._autoGraphService.listEntities();
             
             for (const entity of autoEntities) {
+                // 获取自动图谱实体的观察记录
+                const autoObservations = GraphView._autoGraphService.getObservationsByEntity(entity.id);
+                
                 entities.push({
                     id: entity.id,
                     name: entity.name,
@@ -189,8 +192,13 @@ export class GraphView {
                     endLine: entity.endLine,
                     description: entity.description,
                     isAuto: true,
-                    observations: [],
-                    observationCount: 0,
+                    observations: autoObservations.map(o => ({
+                        id: o.id,
+                        content: o.content,
+                        createdAt: o.createdAt,
+                        updatedAt: o.updatedAt,
+                    })),
+                    observationCount: autoObservations.length,
                 });
             }
 

@@ -14,13 +14,20 @@ export class KnowledgeTreeItem extends vscode.TreeItem {
     public readonly label: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly entity?: Entity | AutoEntity,
-    public readonly type?: 'root' | 'graph-root' | 'category' | 'entity' | 'relation',
+    public readonly type?: 'root' | 'graph-root' | 'category' | 'entity' | 'relation' | 'observation',
     public readonly relationData?: any,
-    public readonly isAuto?: boolean
+    public readonly isAuto?: boolean,
+    public readonly observationData?: { id: string; content: string; entityId: string }
   ) {
     super(label, collapsibleState);
 
-    if (entity && (type === 'entity' || !type)) {
+    if (type === 'observation' && observationData) {
+      // 观察记录节点
+      this.tooltip = observationData.content;
+      this.description = '';
+      this.contextValue = isAuto ? 'autoObservation' : 'observation';
+      this.iconPath = new vscode.ThemeIcon('note');
+    } else if (entity && (type === 'entity' || !type)) {
       this.tooltip = `${entity.name} (${entity.type})${isAuto ? ' [Auto]' : ''}`;
       this.description = `${entity.filePath}:${entity.startLine}`;
       this.contextValue = isAuto ? 'autoEntity' : 'entity';
@@ -205,6 +212,41 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
       } else if (element.label.includes('Relations') || element.label.includes('关系')) {
         return Promise.resolve(this.getRelations(isAuto));
       }
+    } else if (element.type === 'entity' && element.entity) {
+      // 实体节点：显示观察记录
+      const isAuto = element.isAuto || false;
+      
+      if (isAuto && this.autoGraphService) {
+        const observations = this.autoGraphService.getObservationsByEntity(element.entity.id);
+        return Promise.resolve(
+          observations.map(obs => 
+            new KnowledgeTreeItem(
+              obs.content.length > 50 ? obs.content.substring(0, 50) + '...' : obs.content,
+              vscode.TreeItemCollapsibleState.None,
+              element.entity,
+              'observation',
+              undefined,
+              true,
+              { id: obs.id, content: obs.content, entityId: obs.entityId }
+            )
+          )
+        );
+      } else {
+        const observations = this.observationService.getObservations(element.entity.id);
+        return Promise.resolve(
+          observations.map(obs => 
+            new KnowledgeTreeItem(
+              obs.content.length > 50 ? obs.content.substring(0, 50) + '...' : obs.content,
+              vscode.TreeItemCollapsibleState.None,
+              element.entity,
+              'observation',
+              undefined,
+              false,
+              { id: obs.id, content: obs.content, entityId: obs.entityId }
+            )
+          )
+        );
+      }
     } else if (element.type === 'category' && element.entity) {
       // 类别节点：显示该类型的所有实体
       const entityType = element.entity.type as EntityType;
@@ -213,16 +255,20 @@ export class KnowledgeTreeDataProvider implements vscode.TreeDataProvider<Knowle
       if (isAuto && this.autoGraphService) {
         const entities = this.autoGraphService.listEntities({ type: entityType });
         return Promise.resolve(
-          entities.map(entity => 
-            new KnowledgeTreeItem(
-              entity.name,
-              vscode.TreeItemCollapsibleState.None,
+          entities.map(entity => {
+            // 检查是否有观察记录
+            const observations = this.autoGraphService!.getObservationsByEntity(entity.id);
+            const hasObservations = observations.length > 0;
+            
+            return new KnowledgeTreeItem(
+              hasObservations ? `${entity.name} (${observations.length})` : entity.name,
+              hasObservations ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
               entity,
               'entity',
               undefined,
               true
-            )
-          )
+            );
+          })
         );
       } else {
         const entities = this.entityService.getEntitiesByType(entityType);

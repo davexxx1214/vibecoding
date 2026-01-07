@@ -79,9 +79,10 @@ VibeKnowledge 是一个功能完整的 VS Code 知识图谱插件，包含四大
 - ✅ **函数内部依赖**：检测函数体内的类实例化、静态方法调用
 - ✅ **NestJS 装饰器**：@Module 装饰器的 imports/controllers/providers 分析
 - ✅ **TypeORM 关系**：@ManyToOne/@OneToMany 等装饰器的实体引用
+- ✅ **观察记录支持**：自动图谱实体也可添加观察记录，重新分析时保留
 - ✅ **双图谱架构**：手动图谱与自动图谱完全隔离，互不干扰
 - ✅ **视图切换**：一键切换手动图谱 / 自动图谱 / 合并视图
-- ✅ **自动清理**：每次分析工作区时自动清除旧数据，确保结果最新
+- ✅ **自动清理**：每次分析工作区时自动清除旧数据（保留观察记录）
 
 ### 3️⃣ AI 协同功能
 - ✅ Cursor 和 GitHub Copilot 深度集成
@@ -424,6 +425,9 @@ async function bootstrap() {
 3. **查看统计**：命令面板 → `Knowledge: View Auto Graph Statistics`
 4. **清空自动图谱**：命令面板 → `Knowledge: Clear Auto Graph`
 5. **切换视图**：在图谱可视化界面点击顶部按钮切换 📝手动 / ⚡自动 / 🔗合并
+6. **添加观察记录**：在侧边栏 Explorer 中右键自动图谱实体 → `Add Observation`
+7. **编辑观察记录**：右键观察记录 → `Edit Observation`（支持多行编辑）
+8. **删除观察记录**：右键观察记录 → `Delete Observation`
 
 #### 配置选项
 
@@ -439,11 +443,11 @@ async function bootstrap() {
 | 特性 | 手动图谱 | 自动图谱 |
 |------|----------|----------|
 | 创建方式 | 用户手动创建 | 静态分析自动生成 |
-| 观察记录 | ✅ 支持 | ❌ 不支持 |
-| 数据隔离 | `entities` 表 | `auto_entities` 表 |
-| 数据更新 | 手动增删改 | 每次分析自动清除重建 |
+| 观察记录 | ✅ 支持 | ✅ 支持（重新分析时保留） |
+| 数据隔离 | `entities` / `observations` 表 | `auto_entities` / `auto_observations` 表 |
+| 数据更新 | 手动增删改 | 每次分析清除实体和关系，保留观察记录 |
 | 外部依赖 | 可手动添加 | 仅工作区内代码 |
-| 适用场景 | 记录设计决策、重构笔记 | 快速理解代码依赖 |
+| 适用场景 | 记录设计决策、重构笔记 | 快速理解代码依赖 + 标注关键节点 |
 
 ---
 
@@ -615,6 +619,16 @@ CREATE TABLE auto_file_cache (
     analyzed_at INTEGER NOT NULL
 );
 
+-- 自动图谱观察记录表 🆕
+CREATE TABLE auto_observations (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+);
+
 -- 索引优化
 CREATE INDEX idx_entities_type ON entities(type);
 CREATE INDEX idx_entities_file_path ON entities(file_path);
@@ -624,6 +638,7 @@ CREATE INDEX idx_auto_entities_file_path ON auto_entities(file_path);
 CREATE INDEX idx_auto_entities_name ON auto_entities(name);
 CREATE INDEX idx_auto_relations_source ON auto_relations(source_entity_id);
 CREATE INDEX idx_auto_relations_target ON auto_relations(target_entity_id);
+CREATE INDEX idx_auto_observations_entity ON auto_observations(entity_id);
 ```
 
 ---

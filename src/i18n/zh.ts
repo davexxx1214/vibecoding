@@ -555,6 +555,29 @@ export const zh = {
       },
       viewStats: {
         title: '查看自动图谱统计'
+      },
+      addObservation: {
+        noEntities: '自动图谱中没有实体，请先运行分析',
+        selectEntity: '选择要添加观察记录的实体',
+        entityNotFound: '实体不存在',
+        prompt: (entityName: string) => `为 "${entityName}" 添加观察记录`,
+        placeholder: '输入观察记录内容...',
+        validateEmpty: '观察记录不能为空',
+        success: (entityName: string) => `✅ 已为 "${entityName}" 添加观察记录`,
+        error: '添加观察记录失败',
+        errorDetail: (message: string) => `添加观察记录失败: ${message}`
+      },
+      editObservation: {
+        notFound: '观察记录不存在',
+        prompt: '编辑观察记录',
+        success: '✅ 观察记录已更新',
+        error: (message: string) => `更新观察记录失败: ${message}`
+      },
+      deleteObservation: {
+        confirm: '确定要删除这条观察记录吗？',
+        yes: '确定',
+        no: '取消',
+        success: '✅ 观察记录已删除'
       }
     },
     treeView: {

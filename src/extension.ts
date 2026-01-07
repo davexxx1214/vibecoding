@@ -705,6 +705,57 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 自动图谱观察记录命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.addObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取实体 ID
+          const entityId = treeItem?.entity?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          await autoGraphCommands.addObservationToAutoEntity(entityId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.addObservation:', error);
+          vscode.window.showErrorMessage(`Error adding observation: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.editObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取观察记录 ID
+          const observationId = treeItem?.observationData?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          if (!observationId) {
+            vscode.window.showWarningMessage('No observation selected');
+            return;
+          }
+          await autoGraphCommands.editAutoObservation(observationId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.editObservation:', error);
+          vscode.window.showErrorMessage(`Error editing observation: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.deleteObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取观察记录 ID
+          const observationId = treeItem?.observationData?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          if (!observationId) {
+            vscode.window.showWarningMessage('No observation selected');
+            return;
+          }
+          await autoGraphCommands.deleteAutoObservation(observationId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.deleteObservation:', error);
+          vscode.window.showErrorMessage(`Error deleting observation: ${error}`);
+        }
+      })
+    );
+
     // 监听文件保存事件，自动分析
     const autoAnalyzeConfig = vscode.workspace.getConfiguration('knowledgeGraph.autoAnalyze');
     if (autoAnalyzeConfig.get<boolean>('enabled') && autoAnalyzeConfig.get<boolean>('onSave')) {

@@ -170,6 +170,19 @@ export class DatabaseService {
       )
     `);
 
+    // 创建 auto_observations 表（自动图谱的观察记录）
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS auto_observations (
+        id TEXT PRIMARY KEY,
+        entity_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+      )
+    `);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_auto_observations_entity ON auto_observations(entity_id)');
+
     // 保存数据库到文件
     this.save();
   }

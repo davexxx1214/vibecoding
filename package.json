@@ -190,6 +190,21 @@
         "command": "knowledge.autoGraph.viewStats",
         "title": "Knowledge: View Auto Graph Statistics",
         "icon": "$(graph)"
+      },
+      {
+        "command": "knowledge.autoGraph.addObservation",
+        "title": "Knowledge: Add Observation (Auto Graph)",
+        "icon": "$(note)"
+      },
+      {
+        "command": "knowledge.autoGraph.editObservation",
+        "title": "Knowledge: Edit Observation (Auto Graph)",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "knowledge.autoGraph.deleteObservation",
+        "title": "Knowledge: Delete Observation (Auto Graph)",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -239,6 +254,21 @@
         {
           "command": "knowledge.deleteRelationFromTree",
           "when": "view == knowledgeGraphExplorer && viewItem == relation",
+          "group": "knowledge@1"
+        },
+        {
+          "command": "knowledge.autoGraph.addObservation",
+          "when": "view == knowledgeGraphExplorer && viewItem == autoEntity",
+          "group": "knowledge@0.8"
+        },
+        {
+          "command": "knowledge.autoGraph.editObservation",
+          "when": "view == knowledgeGraphExplorer && viewItem == autoObservation",
+          "group": "knowledge@0.9"
+        },
+        {
+          "command": "knowledge.autoGraph.deleteObservation",
+          "when": "view == knowledgeGraphExplorer && viewItem == autoObservation",
           "group": "knowledge@1"
         }
       ],

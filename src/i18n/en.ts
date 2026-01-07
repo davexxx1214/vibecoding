@@ -556,6 +556,29 @@ export const en = {
       },
       viewStats: {
         title: 'View Auto Graph Stats'
+      },
+      addObservation: {
+        noEntities: 'No entities in auto graph, please run analysis first',
+        selectEntity: 'Select entity to add observation',
+        entityNotFound: 'Entity not found',
+        prompt: (entityName: string) => `Add observation for "${entityName}"`,
+        placeholder: 'Enter observation content...',
+        validateEmpty: 'Observation cannot be empty',
+        success: (entityName: string) => `✅ Observation added for "${entityName}"`,
+        error: 'Failed to add observation',
+        errorDetail: (message: string) => `Failed to add observation: ${message}`
+      },
+      editObservation: {
+        notFound: 'Observation not found',
+        prompt: 'Edit observation',
+        success: '✅ Observation updated',
+        error: (message: string) => `Failed to update observation: ${message}`
+      },
+      deleteObservation: {
+        confirm: 'Are you sure you want to delete this observation?',
+        yes: 'Yes',
+        no: 'No',
+        success: '✅ Observation deleted'
       }
     },
     treeView: {

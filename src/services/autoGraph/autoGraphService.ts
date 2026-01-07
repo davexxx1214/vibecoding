@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import {
   AutoEntity,
   AutoRelation,
+  AutoObservation,
   FileCache,
   AutoEntityFilters,
   AutoRelationFilters,
@@ -385,6 +386,136 @@ export class AutoGraphService {
   }
 
   // ============================================================
+  // 观察记录操作
+  // ============================================================
+
+  /**
+   * 添加观察记录
+   */
+  public addObservation(entityId: string, content: string): AutoObservation | null {
+    const db = this.dbService.getDatabase();
+    const now = Date.now();
+
+    // 验证实体存在
+    const entity = this.getEntity(entityId);
+    if (!entity) {
+      console.warn(`Cannot add observation: entity not found. EntityId: ${entityId}`);
+      return null;
+    }
+
+    const observationId = this.generateId();
+
+    const stmt = db.prepare(`
+      INSERT INTO auto_observations (id, entity_id, content, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run([observationId, entityId, content, now, now]);
+
+    return {
+      id: observationId,
+      entityId,
+      content,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * 获取实体的所有观察记录
+   */
+  public getObservationsByEntity(entityId: string): AutoObservation[] {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare(
+      'SELECT * FROM auto_observations WHERE entity_id = ? ORDER BY created_at DESC'
+    );
+    stmt.bind([entityId]);
+
+    const rows: any[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+
+    return rows.map((row) => this.rowToObservation(row));
+  }
+
+  /**
+   * 获取单个观察记录
+   */
+  public getObservation(observationId: string): AutoObservation | null {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare('SELECT * FROM auto_observations WHERE id = ?');
+    stmt.bind([observationId]);
+
+    if (stmt.step()) {
+      const row = stmt.getAsObject();
+      stmt.free();
+      return this.rowToObservation(row);
+    }
+
+    stmt.free();
+    return null;
+  }
+
+  /**
+   * 更新观察记录
+   */
+  public updateObservation(observationId: string, content: string): AutoObservation | null {
+    const db = this.dbService.getDatabase();
+    const now = Date.now();
+
+    const existing = this.getObservation(observationId);
+    if (!existing) {
+      return null;
+    }
+
+    const stmt = db.prepare(`
+      UPDATE auto_observations SET content = ?, updated_at = ? WHERE id = ?
+    `);
+    stmt.run([content, now, observationId]);
+
+    return {
+      ...existing,
+      content,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * 删除观察记录
+   */
+  public deleteObservation(observationId: string): boolean {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare('DELETE FROM auto_observations WHERE id = ?');
+    stmt.run([observationId]);
+    return db.getRowsModified() > 0;
+  }
+
+  /**
+   * 获取所有观察记录
+   */
+  public listAllObservations(): AutoObservation[] {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare('SELECT * FROM auto_observations ORDER BY created_at DESC');
+
+    const rows: any[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+
+    return rows.map((row) => this.rowToObservation(row));
+  }
+
+  /**
+   * 清空所有观察记录
+   */
+  public clearAllObservations(): void {
+    const db = this.dbService.getDatabase();
+    db.run('DELETE FROM auto_observations');
+  }
+
+  // ============================================================
   // 文件缓存操作
   // ============================================================
 
@@ -512,10 +643,24 @@ export class AutoGraphService {
   }
 
   /**
-   * 清空整个自动图谱
+   * 清空整个自动图谱（保留观察记录）
    */
   public clearAll(): void {
     this.dbService.transaction(() => {
+      this.clearAllRelations();
+      this.clearAllEntities();
+      this.clearAllFileCache();
+      // 注意：不清除观察记录，因为它们是用户手动添加的
+    });
+    this.dbService.save();
+  }
+
+  /**
+   * 清空整个自动图谱（包括观察记录）
+   */
+  public clearAllIncludingObservations(): void {
+    this.dbService.transaction(() => {
+      this.clearAllObservations();
       this.clearAllRelations();
       this.clearAllEntities();
       this.clearAllFileCache();
@@ -564,6 +709,16 @@ export class AutoGraphService {
       verb: row.verb as RelationVerb,
       createdAt: row.created_at,
       metadata: row.metadata ? JSON.parse(row.metadata) : undefined,
+    };
+  }
+
+  private rowToObservation(row: any): AutoObservation {
+    return {
+      id: row.id,
+      entityId: row.entity_id,
+      content: row.content,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 

@@ -34,6 +34,17 @@ export interface AutoRelation {
 }
 
 /**
+ * 自动图谱的观察记录
+ */
+export interface AutoObservation {
+  id: string;
+  entityId: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
  * 文件分析缓存
  */
 export interface FileCache {
