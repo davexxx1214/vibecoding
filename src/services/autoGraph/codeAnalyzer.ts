@@ -64,6 +64,13 @@ export class CodeAnalyzer {
       errors: [],
     };
 
+    // 先清除旧数据
+    if (progress) {
+      progress.report({ message: 'Clearing old data...' });
+    }
+    this.autoGraphService.clearAll();
+    console.log('Cleared old auto graph data');
+
     // 查找所有匹配的文件
     if (progress) {
       progress.report({ message: 'Scanning files...' });
@@ -264,8 +271,8 @@ export class CodeAnalyzer {
     // 解析类
     this.extractClasses(lines, relativePath, symbols, relations);
 
-    // 解析函数
-    this.extractFunctions(lines, relativePath, symbols);
+    // 解析函数（包含函数内部依赖分析）
+    this.extractFunctions(lines, relativePath, symbols, relations);
 
     // 解析接口
     this.extractInterfaces(lines, relativePath, symbols, relations);
@@ -275,6 +282,9 @@ export class CodeAnalyzer {
 
     // 从 imports 创建关系
     this.createImportRelations(imports, relativePath, relations);
+
+    // 解析装饰器依赖（如 @Module, @Controller 等）
+    this.extractDecoratorDependencies(content, relativePath, relations);
 
     return {
       filePath: relativePath,
@@ -505,8 +515,10 @@ export class CodeAnalyzer {
     filePath: string,
     relations: ExtractedRelation[]
   ): void {
-    // 匹配成员变量声明: private someService: SomeService
-    const memberRegex = /^\s*(?:private|public|protected|readonly)\s+\w+\s*[?!]?\s*:\s*(\w+)/;
+    // 匹配带修饰符的成员变量: private someService: SomeService
+    const memberWithModifierRegex = /^\s*(?:private|public|protected|readonly)\s+\w+\s*[?!]?\s*:\s*(\w+)/;
+    // 匹配无修饰符的成员变量（TypeORM 风格）: article: ArticleEntity;
+    const memberNoModifierRegex = /^\s*(\w+)\s*[?!]?\s*:\s*([A-Z]\w*)\s*(?:\[\s*\])?\s*;/;
     // 匹配带有 new 的实例化
     const newInstanceRegex = /new\s+(\w+)\s*\(/g;
     // 匹配方法返回类型: async methodName(...): Promise<SomeType>
@@ -515,6 +527,10 @@ export class CodeAnalyzer {
     const methodParamRegex = /\w+\s*:\s*(\w+)(?:\s*[,)])/g;
     // 匹配泛型参数: Promise<SomeType>, Array<SomeType>, Observable<SomeType>
     const genericTypeRegex = /(?:Promise|Observable|Array|Set|Map|Subject|BehaviorSubject)\s*<\s*(\w+)/g;
+    // 匹配 TypeORM 关系装饰器: @ManyToOne(type => UserEntity, ...) @OneToMany(type => Comment, ...)
+    const typeormRelationRegex = /@(?:ManyToOne|OneToMany|ManyToMany|OneToOne)\s*\(\s*(?:type\s*=>|[^)]*,)\s*(\w+)/g;
+    // 匹配数组类型: comments: Comment[]
+    const arrayTypeRegex = /:\s*([A-Z]\w*)\s*\[\s*\]/g;
     
     const addedDeps = new Set<string>();
     
@@ -534,10 +550,32 @@ export class CodeAnalyzer {
       // 跳过构造函数行（已经处理过）
       if (line.includes('constructor')) continue;
       
-      // 检查成员变量类型
-      const memberMatch = line.match(memberRegex);
-      if (memberMatch) {
-        addDependency(memberMatch[1]);
+      // 检查带修饰符的成员变量类型
+      const memberWithModMatch = line.match(memberWithModifierRegex);
+      if (memberWithModMatch) {
+        addDependency(memberWithModMatch[1]);
+      }
+      
+      // 检查无修饰符的成员变量类型（TypeORM Entity 风格）
+      // 只在行首是标识符+冒号+类型的情况下匹配
+      const trimmedLine = line.trim();
+      if (!trimmedLine.startsWith('@') && !trimmedLine.startsWith('//') && !trimmedLine.includes('(')) {
+        const memberNoModMatch = trimmedLine.match(memberNoModifierRegex);
+        if (memberNoModMatch) {
+          addDependency(memberNoModMatch[2]);  // 第二个捕获组是类型名
+        }
+      }
+      
+      // 检查 TypeORM 关系装饰器
+      let typeormMatch;
+      while ((typeormMatch = typeormRelationRegex.exec(line)) !== null) {
+        addDependency(typeormMatch[1]);
+      }
+      
+      // 检查数组类型
+      let arrayMatch;
+      while ((arrayMatch = arrayTypeRegex.exec(line)) !== null) {
+        addDependency(arrayMatch[1]);
       }
       
       // 检查 new 实例化
@@ -575,14 +613,15 @@ export class CodeAnalyzer {
   private extractFunctions(
     lines: string[],
     filePath: string,
-    symbols: ExtractedSymbol[]
+    symbols: ExtractedSymbol[],
+    relations?: ExtractedRelation[]
   ): void {
     const functionRegex = /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/;
     const arrowFunctionRegex = /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[^=]+)?\s*=>/;
     const methodRegex = /^\s*(?:public|private|protected|static|async|\s)*(\w+)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/;
 
     let braceCount = 0;
-    let currentFunction: { name: string; startLine: number } | null = null;
+    let currentFunction: { name: string; startLine: number; content: string[] } | null = null;
     let inClass = false;
 
     for (let i = 0; i < lines.length; i++) {
@@ -595,13 +634,14 @@ export class CodeAnalyzer {
       }
 
       // 只在顶层提取函数
-      if (braceCount === 0) {
+      if (braceCount === 0 && !inClass) {
         // 普通函数
         let match = trimmedLine.match(functionRegex);
         if (match) {
           currentFunction = {
             name: match[1],
             startLine: i + 1,
+            content: [],
           };
         }
 
@@ -612,9 +652,15 @@ export class CodeAnalyzer {
             currentFunction = {
               name: match[1],
               startLine: i + 1,
+              content: [],
             };
           }
         }
+      }
+
+      // 记录函数内容
+      if (currentFunction) {
+        currentFunction.content.push(line);
       }
 
       // 计算花括号
@@ -632,6 +678,17 @@ export class CodeAnalyzer {
             startLine: currentFunction.startLine,
             endLine: i + 1,
           });
+          
+          // 分析函数内部的依赖
+          if (relations) {
+            this.extractFunctionDependencies(
+              currentFunction.name,
+              currentFunction.content,
+              filePath,
+              relations
+            );
+          }
+          
           currentFunction = null;
         }
       }
@@ -639,6 +696,73 @@ export class CodeAnalyzer {
       // 类结束
       if (inClass && braceCount === 0 && line.includes('}')) {
         inClass = false;
+      }
+    }
+  }
+
+  /**
+   * 提取函数内部的依赖
+   */
+  private extractFunctionDependencies(
+    functionName: string,
+    functionContent: string[],
+    filePath: string,
+    relations: ExtractedRelation[]
+  ): void {
+    const addedDeps = new Set<string>();
+    
+    const addDependency = (typeName: string) => {
+      if (!this.isPrimitiveType(typeName) && !addedDeps.has(typeName) && typeName !== functionName) {
+        addedDeps.add(typeName);
+        relations.push({
+          sourceName: functionName,
+          sourceFilePath: filePath,
+          targetName: typeName,
+          verb: 'uses',
+        });
+      }
+    };
+    
+    // 匹配函数调用中的类参数: SomeFactory.create(SomeModule)
+    const classAsArgRegex = /\.\w+\s*\(\s*([A-Z]\w*)\s*[,)]/g;
+    // 匹配 new 实例化: new SomeClass()
+    const newInstanceRegex = /new\s+([A-Z]\w*)\s*\(/g;
+    // 匹配静态方法调用: SomeClass.method()
+    const staticCallRegex = /([A-Z]\w*)\.\w+\s*\(/g;
+    // 匹配类型断言: as SomeType 或 <SomeType>
+    const typeAssertRegex = /(?:as\s+|<)([A-Z]\w*)(?:>|\s)/g;
+    // 匹配变量类型声明: const x: SomeType = ...
+    const varTypeRegex = /(?:const|let|var)\s+\w+\s*:\s*([A-Z]\w*)/g;
+    
+    for (const line of functionContent) {
+      // 跳过注释
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
+      
+      // 检查函数调用中的类参数
+      let match;
+      while ((match = classAsArgRegex.exec(line)) !== null) {
+        addDependency(match[1]);
+      }
+      
+      // 检查 new 实例化
+      while ((match = newInstanceRegex.exec(line)) !== null) {
+        addDependency(match[1]);
+      }
+      
+      // 检查静态方法调用
+      while ((match = staticCallRegex.exec(line)) !== null) {
+        addDependency(match[1]);
+      }
+      
+      // 检查类型断言
+      while ((match = typeAssertRegex.exec(line)) !== null) {
+        addDependency(match[1]);
+      }
+      
+      // 检查变量类型声明
+      while ((match = varTypeRegex.exec(line)) !== null) {
+        addDependency(match[1]);
       }
     }
   }
@@ -828,14 +952,13 @@ export class CodeAnalyzer {
 
   /**
    * 从分析结果创建关系
+   * 只在源实体和目标实体都存在于工作区时才创建关系
+   * 不创建外部依赖实体
    */
   private createRelationsFromAnalysis(
     fileResult: FileAnalysisResult,
     result: AnalysisResult
   ): void {
-    // 跟踪已创建的外部实体，避免重复创建
-    const createdExternalEntities = new Set<string>();
-
     for (const relation of fileResult.relations) {
       // 查找源实体（源实体总是在当前文件中）
       const sourceEntity = this.autoGraphService.findEntityByName(
@@ -863,30 +986,8 @@ export class CodeAnalyzer {
         targetEntity = this.autoGraphService.findEntityByName(relation.targetName);
       }
 
-      // 如果仍然找不到，且是 extends/implements/uses 关系，创建外部实体
-      if (!targetEntity && this.shouldCreateExternalEntity(relation.verb)) {
-        // 检查是否已经创建过
-        const externalKey = `external:${relation.targetName}`;
-        if (!createdExternalEntities.has(externalKey)) {
-          // 创建外部实体
-          targetEntity = this.autoGraphService.upsertEntity(
-            relation.targetName,
-            'external',
-            '@external',  // 特殊路径标识外部模块
-            0,
-            0,
-            `External type: ${relation.targetName}`,
-            { isExternal: true }
-          );
-          createdExternalEntities.add(externalKey);
-          result.entities.push(targetEntity);
-          console.log(`Created external entity: ${relation.targetName}`);
-        } else {
-          // 已创建过，直接查找
-          targetEntity = this.autoGraphService.findEntityByName(relation.targetName, '@external');
-        }
-      }
-
+      // 只有当目标实体存在于工作区时才创建关系
+      // 忽略外部依赖（如第三方库的类型）
       if (targetEntity) {
         const autoRelation = this.autoGraphService.upsertRelation(
           sourceEntity.id,
@@ -900,15 +1001,6 @@ export class CodeAnalyzer {
         }
       }
     }
-  }
-
-  /**
-   * 判断是否应该为缺失的目标创建外部实体
-   */
-  private shouldCreateExternalEntity(verb: string): boolean {
-    // extends 和 implements 的目标通常是重要的类型关系
-    // uses 可能会产生太多外部实体，可以选择是否包含
-    return ['extends', 'implements', 'uses'].includes(verb);
   }
 
   /**
@@ -958,6 +1050,105 @@ export class CodeAnalyzer {
     const uniqueFiles = [...new Map(files.map((f) => [f.fsPath, f])).values()];
 
     return uniqueFiles;
+  }
+
+  /**
+   * 提取装饰器中的依赖（如 @Module, @Controller 等）
+   * 支持 NestJS 风格的装饰器
+   */
+  private extractDecoratorDependencies(
+    content: string,
+    filePath: string,
+    relations: ExtractedRelation[]
+  ): void {
+    // 匹配 @Module/@Controller/@Injectable 等装饰器后跟的类
+    // 格式: @Module({ imports: [...], controllers: [...], providers: [...] })
+    //       export class SomeModule {}
+    
+    // 使用多行模式匹配装饰器和类
+    const decoratorClassRegex = /@(Module|Controller|Injectable|Component)\s*\(\s*(\{[\s\S]*?\})\s*\)\s*(?:export\s+)?class\s+(\w+)/g;
+    
+    let match;
+    while ((match = decoratorClassRegex.exec(content)) !== null) {
+      const decoratorType = match[1];
+      const decoratorContent = match[2];
+      const className = match[3];
+      
+      // 只处理 @Module 装饰器，因为它包含模块依赖信息
+      if (decoratorType === 'Module') {
+        this.parseModuleDecorator(className, decoratorContent, filePath, relations);
+      }
+    }
+  }
+
+  /**
+   * 解析 @Module 装饰器内容
+   */
+  private parseModuleDecorator(
+    className: string,
+    decoratorContent: string,
+    filePath: string,
+    relations: ExtractedRelation[]
+  ): void {
+    const addedDeps = new Set<string>();
+    
+    // 匹配各种数组属性: imports: [...], controllers: [...], providers: [...], exports: [...]
+    const arrayPropRegex = /(imports|controllers|providers|exports)\s*:\s*\[([^\]]*)\]/g;
+    
+    let propMatch;
+    while ((propMatch = arrayPropRegex.exec(decoratorContent)) !== null) {
+      const propName = propMatch[1];
+      const arrayContent = propMatch[2];
+      
+      // 提取数组中的标识符（忽略函数调用如 TypeOrmModule.forRoot()）
+      // 匹配简单标识符: ArticleModule, UserModule 等
+      const identifierRegex = /\b([A-Z][a-zA-Z0-9]*)\b(?!\s*\.)/g;
+      
+      let idMatch;
+      while ((idMatch = identifierRegex.exec(arrayContent)) !== null) {
+        const depName = idMatch[1];
+        
+        // 排除装饰器本身和一些常见的非实体名称
+        if (
+          !this.isPrimitiveType(depName) &&
+          !addedDeps.has(depName) &&
+          depName !== className &&
+          !this.isDecoratorOrBuiltin(depName)
+        ) {
+          addedDeps.add(depName);
+          relations.push({
+            sourceName: className,
+            sourceFilePath: filePath,
+            targetName: depName,
+            verb: 'uses',
+            metadata: { decoratorProp: propName },
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * 检查是否是装饰器或内置类型
+   */
+  private isDecoratorOrBuiltin(name: string): boolean {
+    const builtins = [
+      // NestJS 装饰器和工具
+      'Module', 'Controller', 'Injectable', 'Component',
+      'Get', 'Post', 'Put', 'Delete', 'Patch', 'Options', 'Head', 'All',
+      'Body', 'Param', 'Query', 'Headers', 'Req', 'Res', 'Next',
+      'UseGuards', 'UseInterceptors', 'UsePipes', 'UseFilters',
+      'Inject', 'Optional', 'Self', 'SkipSelf', 'Host',
+      // TypeORM
+      'Entity', 'Column', 'PrimaryColumn', 'PrimaryGeneratedColumn',
+      'ManyToOne', 'OneToMany', 'ManyToMany', 'OneToOne', 'JoinColumn', 'JoinTable',
+      'Repository', 'InjectRepository',
+      // 常见工具类
+      'Logger', 'ConfigService', 'Connection',
+      // Swagger
+      'ApiTags', 'ApiOperation', 'ApiResponse', 'ApiBearerAuth',
+    ];
+    return builtins.includes(name);
   }
 
   /**
