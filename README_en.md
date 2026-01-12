@@ -61,22 +61,38 @@ Notes and comments about entities - the core value of knowledge graph:
 
 **All core features completed!** 🎉
 
-VibeKnowledge is a fully functional VS Code knowledge graph extension with three core modules:
+VibeKnowledge is a fully functional VS Code knowledge graph extension with four core modules:
 
-### 1️⃣ Knowledge Graph Management
+### 1️⃣ Knowledge Graph Management (Manual)
 - ✅ Complete CRUD for entities, relations, and observations
 - ✅ SQLite local persistent storage
-- ✅ Interactive graph visualization (vis-network)
+- ✅ Interactive graph visualization (D3.js)
 - ✅ Full VS Code UI integration
 
-### 2️⃣ AI Collaboration Features
+### 2️⃣ Auto Graph Generation 🆕
+- ✅ **Static Code Analysis**: Regex-based TypeScript/JavaScript parsing, no AI required
+- ✅ **Auto Entity Extraction**: Class, Interface, Function, Variable
+- ✅ **Auto Relation Detection**: extends, implements, uses, imports
+- ✅ **Dependency Injection Detection**: Constructor parameters, @Inject decorator, member variable types
+- ✅ **Method Signature Analysis**: Return types, parameter types, generic parameters
+- ✅ **Interface Property Analysis**: Property type dependencies within interfaces
+- ✅ **Function Body Dependencies**: Detect class instantiation, static method calls inside function bodies
+- ✅ **NestJS Decorators**: @Module decorator imports/controllers/providers analysis
+- ✅ **TypeORM Relations**: @ManyToOne/@OneToMany decorator entity references
+- ✅ **Observation Support**: Auto graph entities support observations, preserved during re-analysis
+- ✅ **Dual Graph Architecture**: Manual and auto graphs completely isolated
+- ✅ **View Switching**: One-click switch between Manual / Auto / Merged views
+- ✅ **Incremental Updates**: Smart entity comparison during re-analysis, preserving observations for unchanged entities
+
+### 3️⃣ AI Collaboration Features
 - ✅ Deep integration with Cursor and GitHub Copilot
+- ✅ **Graph Source Selection**: Choose Manual/Auto/Merged graph when generating configs 🆕
 - ✅ Knowledge graph export (Markdown / JSON)
 - ✅ Dependency chain analysis and circular dependency detection
 - ✅ Automatic tech stack detection (JS/TS projects)
 - ✅ Quick context export
 
-### 3️⃣ Persistent Knowledge Base (RAG)
+### 4️⃣ Persistent Knowledge Base (RAG)
 - ✅ Google Gemini File Search cloud hosting
 - ✅ Automatic document indexing to cloud (incremental)
 - ✅ Intelligent Q&A (Ask Question)
@@ -214,6 +230,27 @@ npm run compile
    - `Local: Inference Model` (e.g., `gpt-4.1` or `llama3`)
 4. **Rebuild Index**: After switching configuration, run `Knowledge: Rebuild RAG Index`
 
+#### AI Scenario Switching 🆕
+The extension includes 8 different AI scenario templates for quick switching based on current work:
+
+| Scenario | When to Use | Content |
+|----------|-------------|---------|
+| 🔹 **Basic Standards** | Daily development (default) | Code standards, naming conventions, error handling, security |
+| 🎨 **Frontend Dev** | Frontend features | UI components, styling, state management, performance |
+| ⚙️ **Backend Dev** | Backend features | Database, middleware, service integration, security |
+| 🔌 **API Dev** | API focused | Route design, parameter validation, error handling, API docs |
+| 🧪 **Testing** | Writing tests | Test cases, TDD, coverage, mocking |
+| 🐛 **Debug & Optimize** | Fixing/optimizing | Error diagnosis, performance optimization, code review, refactoring |
+| 📚 **Documentation** | Writing docs | API docs, code comments, README |
+| 🚀 **DevOps** | Environment/deployment | Environment config, CI/CD, Docker, deployment |
+
+**Usage**:
+1. **Quick Switch**: Click scenario icon in status bar, or run `Knowledge: Switch AI Scenario`
+2. **View Current**: Run `Knowledge: Show Current AI Scenario`
+3. **Auto Apply**: After switching, prompted to regenerate AI config files
+4. **Customize**: Add project-specific rules in `.vscode/.knowledge/ai-template.md`
+5. **Bilingual**: Built-in Chinese & English templates (8 scenarios × 2 languages = 16 templates)
+
 ---
 
 ## 📁 Project Structure
@@ -224,27 +261,30 @@ vibecoding/
 │   ├── extension.ts                  # ✅ Extension entry point
 │   ├── services/                     # ✅ Core service layer
 │   │   ├── database.ts               # Database service
-│   │   ├── entityService.ts          # Entity management
-│   │   ├── relationService.ts        # Relation management
-│   │   └── observationService.ts     # Observation management
+│   │   ├── entityService.ts          # Entity management (manual graph)
+│   │   ├── relationService.ts        # Relation management (manual graph)
+│   │   ├── observationService.ts     # Observation management
+│   │   └── autoGraph/                # 🆕 Auto graph module
+│   │       ├── index.ts              # Module exports
+│   │       ├── types.ts              # Type definitions
+│   │       ├── autoGraphService.ts   # Auto graph data service
+│   │       └── codeAnalyzer.ts       # Static code analyzer
 │   ├── providers/                    # ✅ VS Code UI providers
 │   │   ├── hoverProvider.ts          # Hover provider
 │   │   ├── codeLensProvider.ts       # CodeLens
 │   │   └── treeDataProvider.ts       # Tree view
 │   ├── ui/                          # ✅ Command handlers
-│   │   └── commands/
-│   │       └── entityCommands.ts
-│   ├── i18n/                        # ✅ Internationalization
-│   │   ├── i18nService.ts           # i18n service
-│   │   ├── types.ts                 # Type definitions
-│   │   ├── zh.ts                    # Chinese
-│   │   └── en.ts                    # English
+│   │   ├── commands/
+│   │   │   ├── entityCommands.ts     # Entity commands
+│   │   │   └── autoGraphCommands.ts  # 🆕 Auto graph commands
+│   │   └── webview/
+│   │       └── graphView.ts          # Graph visualization (mode switching)
 │   └── utils/                       # ✅ Utilities
 │       └── types.ts                 # Type definitions
 ├── package.json                      # Extension configuration
 ├── tsconfig.json                     # TypeScript config
 ├── README.md                         # Project documentation (Chinese)
-├── README_EN.md                      # Project documentation (English)
+├── README_en.md                      # Project documentation (English)
 ├── Demo.md                           # Demo guide (Chinese)
 └── Demo_en.md                        # Demo guide (English)
 
@@ -294,13 +334,122 @@ Project Root/
 - ✅ **Command Palette**: Complete command set for quick access to all features
 
 #### Visualization
-- ✅ **Interactive Graph**: Graphical display based on vis-network
+- ✅ **Interactive Graph**: Force-directed graphical display based on D3.js
 - ✅ **Auto Layout**: Nodes automatically arranged to avoid overlap
 - ✅ **Multi-edge Separation**: Multiple relations in same direction automatically shown with different arcs
 - ✅ **Circular Dependency Detection**: Automatically identify and mark circular dependencies
 - ✅ **Double-click Navigation**: Double-click node to jump to code location
 - ✅ **Drag Interaction**: Support node dragging, zoom, pan
 - ✅ **Node Tooltip Details**: Hover tooltip shows observation previews with remaining-count indicator for quick risk scanning
+- ✅ **Graph Mode Switching**: One-click switch between Manual / Auto / Merged views
+
+---
+
+### ⚡ Auto Graph Generation 🆕
+
+Static code analysis to automatically generate dependency graphs, no AI required, deterministic analysis.
+
+#### Supported Languages
+- ✅ TypeScript (.ts, .tsx)
+- ✅ JavaScript (.js, .jsx)
+
+#### Auto-extracted Entity Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `class` | Class definition | `class UserService {}` |
+| `interface` | Interface definition | `interface UserData {}` |
+| `function` | Function definition | `function createUser() {}` |
+| `variable` | Exported variable | `export const config = {}` |
+
+> 💡 **Note**: Only analyzes code within workspace, external dependencies (e.g., @nestjs, typeorm) won't generate nodes
+
+#### Auto-detected Relation Types
+
+| Relation | Description | Example |
+|----------|-------------|---------|
+| `extends` | Class inheritance | `class A extends B` |
+| `implements` | Interface implementation | `class A implements B` |
+| `uses` | Dependency usage | Constructor injection, member variables, return types |
+| `imports` | Module import | `import { X } from './x'` |
+
+#### Dependency Detection Scenarios
+
+```typescript
+// ✅ Class inheritance
+class UserController extends BaseController {}
+
+// ✅ Interface implementation (workspace interfaces only)
+class ProfileModule implements LocalInterface {}
+
+// ✅ Constructor dependency injection
+class ArticleController {
+  constructor(private articleService: ArticleService) {}
+}
+
+// ✅ Method return type
+async getProfile(): Promise<ProfileRO> {}
+
+// ✅ Method parameter type
+createArticle(@Body() dto: CreateArticleDto) {}
+
+// ✅ Interface property type
+interface ArticleData {
+  author?: UserData;  // ArticleData --uses--> UserData
+}
+
+// ✅ @Inject decorator
+@Inject(ConfigService) private config: ConfigService
+
+// ✅ @Module decorator (NestJS)
+@Module({
+  imports: [UserModule, ArticleModule],  // --uses--> UserModule, ArticleModule
+  controllers: [AppController],
+  providers: [AppService],
+})
+class ApplicationModule {}
+
+// ✅ TypeORM relation decorators
+@ManyToOne(type => UserEntity, user => user.articles)
+author: UserEntity;  // --uses--> UserEntity
+
+// ✅ Function body dependencies (new instantiation, static method calls)
+async function bootstrap() {
+  const app = await NestFactory.create(ApplicationModule);  // --uses--> ApplicationModule
+  const builder = new DocumentBuilder();  // --uses--> DocumentBuilder (if in workspace)
+}
+```
+
+#### Usage
+
+1. **Analyze Entire Workspace**: Command Palette → `Knowledge: Analyze Workspace (Auto Graph)`
+2. **Analyze Current File**: Command Palette → `Knowledge: Analyze Current File (Auto Graph)`
+3. **View Statistics**: Command Palette → `Knowledge: View Auto Graph Statistics`
+4. **Clear Auto Graph**: Command Palette → `Knowledge: Clear Auto Graph`
+5. **Switch View**: Click top buttons in graph view to switch 📝Manual / ⚡Auto / 🔗Merged
+6. **Add Observation**: Right-click auto graph entity in Explorer sidebar → `Add Observation`
+7. **Edit Observation**: Right-click observation → `Edit Observation` (multi-line editor)
+8. **Delete Observation**: Right-click observation → `Delete Observation`
+
+#### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `knowledgeGraph.autoAnalyze.enabled` | Enable auto analysis | `true` |
+| `knowledgeGraph.autoAnalyze.onSave` | Auto analyze on save | `false` |
+| `knowledgeGraph.autoAnalyze.include` | Include file patterns | `["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]` |
+| `knowledgeGraph.autoAnalyze.exclude` | Exclude file patterns | `["**/node_modules/**", "**/dist/**", "**/*.d.ts", "**/*.test.ts"]` |
+
+#### Manual vs Auto Graph Comparison
+
+| Feature | Manual Graph | Auto Graph |
+|---------|--------------|------------|
+| Creation | User manually creates | Static analysis auto-generates |
+| Observations | ✅ Supported | ✅ Supported (preserved during re-analysis) |
+| Data Isolation | `entities` / `observations` tables | `auto_entities` / `auto_observations` tables |
+| Data Updates | Manual CRUD | Incremental: deleted entities removed, preserved entities keep observations |
+| External Dependencies | Can add manually | Workspace code only |
+| Use Cases | Design decisions, refactoring notes | Quick dependency understanding + key node annotation |
 
 ---
 
@@ -315,7 +464,15 @@ Project Root/
 #### AI Tool Integration
 - ✅ **Cursor Integration**: Auto-generate `.cursorrules` configuration file
 - ✅ **GitHub Copilot Integration**: Auto-generate `.github/copilot-instructions.md`
-- ✅ **Tech Stack Detection**: Automatically extract dependency info from `package.json` (supports JS/TS projects)
+- ✅ **Graph Source Selection** 🆕: Choose data source when generating AI configs
+  - 📝 **Manual Graph**: Design decisions, observations, manually maintained relations
+  - ⚡ **Auto Graph**: Static analysis generated code structure and dependencies
+  - 🔗 **Merged Graph**: Manual + Auto, most complete context
+- ✅ **Tech Stack Detection**: Automatically extract dependency info
+  - JavaScript/TypeScript projects (`package.json`)
+  - Java Maven projects (`pom.xml`)
+  - Python projects (`requirements.txt`, `pyproject.toml`, `setup.py`)
+- ✅ **Scenario Switching**: 8 built-in scenario templates for different development tasks (frontend/backend/testing/debugging etc.)
 - ✅ **One-click Generation**: Generate all AI config files at once
 - ✅ **Smart Categorization**: Automatically categorize warnings, TODOs, known issues
 
@@ -328,19 +485,24 @@ Project Root/
 
 ### ☁️ Persistent Knowledge Base (RAG)
 
-#### Cloud RAG System
-- ✅ **Google Gemini File Search**: Use Gemini's hosted vector search service
-- ✅ **Auto-indexing**: Monitor `Knowledge/` folder, auto-upload new documents to cloud
-- ✅ **Incremental Indexing**: Already indexed documents won't be re-uploaded, fast startup
-- ✅ **Multi-format Support**: Native support for PDF, TXT, MD, DOCX, JSON, code, etc. (100+ formats)
-- ✅ **Semantic Search**: Gemini automatically chunks, embeds, and retrieves
+#### RAG Modes
+The extension supports two RAG modes for flexible privacy control:
 
-#### Local RAG (Custom Vector Store)
-- ✅ **Privacy-first**: Documents and vectors only exist in local SQLite database, never leave the machine
-- ✅ **Zero dependency**: Built with sql.js (WebAssembly SQLite) + in-memory cache, works on Win/macOS/Linux without Docker or native modules
-- ✅ **Multi-format ingestion**: Beyond plain text, built-in extractors parse PDF / DOC / DOCX and feed the body text into the local index automatically
-- ✅ **Lightweight & maintainable**: Simple cosine similarity retrieval fits VS Code scenarios and is easy to debug
-- ✅ **Portable data**: All vectors stored in `.vscode/.knowledge/graph.sqlite`, easy to back up or review with the project
+1. **Cloud RAG (Google Gemini)**
+   - ✅ **Managed Service**: Use Gemini File Search API, no local compute required
+   - ✅ **Multi-format Support**: Native support for PDF, Word, code, etc. (100+ formats)
+   - ✅ **Semantic Search**: Gemini automatically chunks and retrieves
+
+2. **Local RAG (Local Mode)** 🆕
+   - ✅ **Data Privacy**: All documents and vectors stored locally in SQLite only, never uploaded
+   - ✅ **Flexible Models**: Supports Ollama, LocalAI, vLLM, or any OpenAI-compatible endpoint
+   - ✅ **Custom Configuration**: Customizable Embedding and Inference models
+   - ✅ **Multi-format Parsing**: Beyond plain text, built-in PDF / DOC / DOCX parsing
+   - ✅ **Lightweight Implementation**:
+     - **SQLite (persistence) + Memory (compute)** architecture, no extra dependencies across Win/macOS/Linux
+     - Vectors loaded to memory at startup, cosine similarity brute-force search for typical VS Code scale
+     - No Docker, Python/Rust dependencies, or extra services needed - works out of box
+     - Data stored with project in `.vscode/.knowledge/graph.sqlite`, easy to backup and audit
 
 #### Intelligent Q&A
 - ✅ **Ask Question**: Intelligent Q&A based on document content
@@ -352,7 +514,7 @@ Project Root/
 - ✅ **Project Isolation**: Each project has independent File Search Store, completely isolated
 - ✅ **API Key Configuration**: Manage Gemini API Key through VS Code settings
 - ✅ **Auto-reconnect**: Auto re-initialize when API Key is updated
-- ✅ **View Store Info**: Cloud mode shows live cloud stats, while local mode automatically hides cloud notices and focuses on local metadata
+- ✅ **View Store Info**: Cloud mode shows live cloud stats; local mode hides cloud notices, shows local metadata only
 - ✅ **Index Rebuild**: Rebuild RAG Index command for complete sync between local and cloud
 
 #### Sidebar Management
@@ -373,9 +535,8 @@ Project Root/
 | **Database** | sql.js | WebAssembly SQLite, cross-platform compatible |
 | **Search** | LIKE fuzzy query | Simple and efficient, suitable for small/medium projects |
 | **Visualization** | vis-network | Interactive graph visualization |
-| **Document Conversion** | MarkItDown (Python CLI) | Stage 2, multi-format support |
-| **RAG System** | Google Gemini File Search API | Stage 2, managed RAG |
-| **Code Parsing** | TypeScript Compiler API | Used in Stage 3 |
+| **RAG System** | Google Gemini File Search API | Managed vector search and intelligent Q&A |
+| **Code Parsing** | Regex + XML parsing | Support multiple project config files |
 
 ### Core Data Flow
 
@@ -396,7 +557,9 @@ Stored in .vscode/.knowledge/graph.sqlite
 ### Database Schema
 
 ```sql
--- Entities table
+-- ========== Manual Graph Tables ==========
+
+-- Entities table (manual)
 CREATE TABLE entities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -409,7 +572,7 @@ CREATE TABLE entities (
     updated_at INTEGER NOT NULL
 );
 
--- Relations table
+-- Relations table (manual)
 CREATE TABLE relations (
     id TEXT PRIMARY KEY,
     source_entity_id TEXT NOT NULL,
@@ -427,10 +590,61 @@ CREATE TABLE observations (
     updated_at INTEGER NOT NULL
 );
 
+-- ========== Auto Graph Tables 🆕 ==========
+
+-- Auto-generated entities table
+CREATE TABLE auto_entities (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,           -- class/interface/function/variable
+    file_path TEXT NOT NULL,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL,
+    description TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    metadata TEXT                 -- JSON format extra info
+);
+
+-- Auto-generated relations table
+CREATE TABLE auto_relations (
+    id TEXT PRIMARY KEY,
+    source_entity_id TEXT NOT NULL,
+    target_entity_id TEXT NOT NULL,
+    verb TEXT NOT NULL,           -- extends/implements/uses/imports
+    created_at INTEGER NOT NULL,
+    metadata TEXT,
+    FOREIGN KEY (source_entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+);
+
+-- File analysis cache table (for incremental analysis)
+CREATE TABLE auto_file_cache (
+    file_path TEXT PRIMARY KEY,
+    content_hash TEXT NOT NULL,   -- MD5 hash
+    analyzed_at INTEGER NOT NULL
+);
+
+-- Auto graph observations table 🆕
+CREATE TABLE auto_observations (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+);
+
 -- Index optimization
 CREATE INDEX idx_entities_type ON entities(type);
 CREATE INDEX idx_entities_file_path ON entities(file_path);
 CREATE INDEX idx_entities_name ON entities(name);
+CREATE INDEX idx_auto_entities_type ON auto_entities(type);
+CREATE INDEX idx_auto_entities_file_path ON auto_entities(file_path);
+CREATE INDEX idx_auto_entities_name ON auto_entities(name);
+CREATE INDEX idx_auto_relations_source ON auto_relations(source_entity_id);
+CREATE INDEX idx_auto_relations_target ON auto_relations(target_entity_id);
+CREATE INDEX idx_auto_observations_entity ON auto_observations(entity_id);
 ```
 
 ---
@@ -505,4 +719,3 @@ For detailed demo guide and usage scenarios, see:
 - [vis-network Documentation](https://visjs.github.io/vis-network/)
 - [TypeScript Compiler API](https://github.com/Microsoft/TypeScript/wiki/Using-the-Compiler-API)
 - [Google File Search Tool](https://ai.google.dev/gemini-api/docs/file-search)
-
