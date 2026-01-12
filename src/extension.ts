@@ -5,12 +5,14 @@ import { RelationService } from './services/relationService';
 import { ObservationService } from './services/observationService';
 import { GeminiClient } from './services/geminiClient';
 import { RAGService } from './services/ragService';
+import { AutoGraphService, CodeAnalyzer } from './services/autoGraph';
 import { KnowledgeHoverProvider } from './providers/hoverProvider';
 import { KnowledgeCodeLensProvider } from './providers/codeLensProvider';
 import { KnowledgeTreeDataProvider } from './providers/treeDataProvider';
 import { RAGTreeDataProvider } from './providers/ragTreeDataProvider';
 import { EntityCommands } from './ui/commands/entityCommands';
 import { RAGCommands } from './ui/commands/ragCommands';
+import { AutoGraphCommands } from './ui/commands/autoGraphCommands';
 import { registerScenarioCommands } from './commands/scenarioCommands';
 import { ScenarioManager } from './services/scenarioManager';
 import { GraphView } from './ui/webview/graphView';
@@ -161,11 +163,21 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 初始化自动图谱服务（需要在 EntityCommands 之前初始化）
+    const autoGraphService = new AutoGraphService(dbService);
+    const codeAnalyzer = new CodeAnalyzer(autoGraphService);
+    codeAnalyzer.initialize(workspaceRoot);
+    const autoGraphCommands = new AutoGraphCommands(autoGraphService, codeAnalyzer);
+    
+    // 设置 AutoGraphService 到 GraphView 以支持视图切换
+    GraphView.setAutoGraphService(autoGraphService);
+
     // 初始化命令处理器
     const entityCommands = new EntityCommands(
       entityService,
       relationService,
-      observationService
+      observationService,
+      autoGraphService
     );
 
     const ragCommands = new RAGCommands(ragService, geminiClient);
@@ -176,6 +188,7 @@ export async function activate(context: vscode.ExtensionContext) {
       relationService,
       observationService
     );
+    treeDataProvider.setAutoGraphService(autoGraphService);
     const treeView = vscode.window.createTreeView('knowledgeGraphExplorer', {
       treeDataProvider,
       showCollapseAll: true,
@@ -645,6 +658,125 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
+    // 自动图谱命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.analyzeWorkspace', async () => {
+        try {
+          await autoGraphCommands.analyzeWorkspace();
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in analyzeWorkspace:', error);
+          vscode.window.showErrorMessage(`Error analyzing workspace: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.analyzeCurrentFile', async () => {
+        try {
+          await autoGraphCommands.analyzeCurrentFile();
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in analyzeCurrentFile:', error);
+          vscode.window.showErrorMessage(`Error analyzing file: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.clear', async () => {
+        try {
+          await autoGraphCommands.clearAutoGraph();
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in clearAutoGraph:', error);
+          vscode.window.showErrorMessage(`Error clearing auto graph: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.viewStats', async () => {
+        try {
+          await autoGraphCommands.viewAutoGraphStats();
+        } catch (error) {
+          console.error('Error in viewAutoGraphStats:', error);
+          vscode.window.showErrorMessage(`Error viewing stats: ${error}`);
+        }
+      })
+    );
+
+    // 自动图谱观察记录命令
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.addObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取实体 ID
+          const entityId = treeItem?.entity?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          await autoGraphCommands.addObservationToAutoEntity(entityId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.addObservation:', error);
+          vscode.window.showErrorMessage(`Error adding observation: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.editObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取观察记录 ID
+          const observationId = treeItem?.observationData?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          if (!observationId) {
+            vscode.window.showWarningMessage('No observation selected');
+            return;
+          }
+          await autoGraphCommands.editAutoObservation(observationId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.editObservation:', error);
+          vscode.window.showErrorMessage(`Error editing observation: ${error}`);
+        }
+      })
+    );
+
+    context.subscriptions.push(
+      vscode.commands.registerCommand('knowledge.autoGraph.deleteObservation', async (treeItem?: any) => {
+        try {
+          // 从树视图项获取观察记录 ID
+          const observationId = treeItem?.observationData?.id || (typeof treeItem === 'string' ? treeItem : undefined);
+          if (!observationId) {
+            vscode.window.showWarningMessage('No observation selected');
+            return;
+          }
+          await autoGraphCommands.deleteAutoObservation(observationId);
+          treeDataProvider.refresh();
+        } catch (error) {
+          console.error('Error in autoGraph.deleteObservation:', error);
+          vscode.window.showErrorMessage(`Error deleting observation: ${error}`);
+        }
+      })
+    );
+
+    // 监听文件保存事件，自动分析
+    const autoAnalyzeConfig = vscode.workspace.getConfiguration('knowledgeGraph.autoAnalyze');
+    if (autoAnalyzeConfig.get<boolean>('enabled') && autoAnalyzeConfig.get<boolean>('onSave')) {
+      context.subscriptions.push(
+        vscode.workspace.onDidSaveTextDocument(async (document) => {
+          const filePath = document.uri.fsPath;
+          if (codeAnalyzer['isAnalyzableFile'] && 
+              (filePath.endsWith('.ts') || filePath.endsWith('.tsx') || 
+               filePath.endsWith('.js') || filePath.endsWith('.jsx'))) {
+            try {
+              await codeAnalyzer.analyzeFile(document.uri);
+              treeDataProvider.refresh();
+            } catch (error) {
+              console.error('Auto-analyze on save failed:', error);
+            }
+          }
+        })
+      );
+    }
+
     // 场景切换命令
     registerScenarioCommands(context);
 
@@ -749,6 +881,10 @@ function registerPlaceholderCommands(context: vscode.ExtensionContext) {
     'knowledge.expandAll',
     'knowledge.switchAIScenario',
     'knowledge.showCurrentScenario',
+    'knowledge.autoGraph.analyzeWorkspace',
+    'knowledge.autoGraph.analyzeCurrentFile',
+    'knowledge.autoGraph.clear',
+    'knowledge.autoGraph.viewStats',
   ];
 
   placeholderCommands.forEach(commandId => {

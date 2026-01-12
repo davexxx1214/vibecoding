@@ -2,13 +2,20 @@ import * as vscode from 'vscode';
 import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
+import { AutoGraphService } from '../../services/autoGraph';
 import { t } from '../../i18n/i18nService';
+
+/**
+ * 图谱视图模式
+ */
+export type GraphViewMode = 'manual' | 'auto' | 'merged';
 
 /**
  * 图谱可视化 Webview
  */
 export class GraphView {
     public static currentPanel: GraphView | undefined;
+    private static _autoGraphService: AutoGraphService | undefined;
 
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
@@ -16,6 +23,14 @@ export class GraphView {
     private readonly _relationService: RelationService;
     private readonly _observationService: ObservationService;
     private _disposables: vscode.Disposable[] = [];
+    private _currentMode: GraphViewMode = 'manual';
+
+    /**
+     * 设置自动图谱服务（用于 merged/auto 视图）
+     */
+    public static setAutoGraphService(service: AutoGraphService): void {
+        GraphView._autoGraphService = service;
+    }
 
     private constructor(
         panel: vscode.WebviewPanel,
@@ -106,62 +121,125 @@ export class GraphView {
                 break;
             case 'jumpToEntity':
                 // 跳转到实体位置
-                this._jumpToEntity(message.entityId);
+                this._jumpToEntity(message.entityId, message.isAuto);
                 break;
             case 'refresh':
                 // 刷新图谱数据
+                this._sendGraphData();
+                break;
+            case 'switchMode':
+                // 切换视图模式
+                this._currentMode = message.mode as GraphViewMode;
                 this._sendGraphData();
                 break;
         }
     }
 
     private _sendGraphData() {
-        // 获取所有实体和关系
-        const entities = this._entityService.listEntities();
-        const allRelations: any[] = [];
+        let entities: any[] = [];
+        let allRelations: any[] = [];
 
-        // 收集所有关系
-        for (const entity of entities) {
-            const relations = this._relationService.getRelations(entity.id, 'outgoing');
-            allRelations.push(...relations);
+        // 根据模式获取数据
+        if (this._currentMode === 'manual' || this._currentMode === 'merged') {
+            // 获取手动图谱数据
+            const manualEntities = this._entityService.listEntities();
+            
+            for (const entity of manualEntities) {
+                const observations = this._observationService.getObservations(entity.id);
+                entities.push({
+                    id: entity.id,
+                    name: entity.name,
+                    type: entity.type,
+                    filePath: entity.filePath,
+                    startLine: entity.startLine,
+                    endLine: entity.endLine,
+                    description: entity.description,
+                    isAuto: false,
+                    observations: observations.map(o => ({
+                        id: o.id,
+                        content: o.content,
+                        createdAt: o.createdAt,
+                        updatedAt: o.updatedAt,
+                    })),
+                    observationCount: observations.length,
+                });
+
+                const relations = this._relationService.getRelations(entity.id, 'outgoing');
+                allRelations.push(...relations.map(r => ({
+                    id: r.id,
+                    sourceId: r.sourceEntityId,
+                    targetId: r.targetEntityId,
+                    verb: r.verb,
+                    isAuto: false,
+                })));
+            }
+        }
+
+        if ((this._currentMode === 'auto' || this._currentMode === 'merged') && GraphView._autoGraphService) {
+            // 获取自动图谱数据
+            const autoEntities = GraphView._autoGraphService.listEntities();
+            
+            for (const entity of autoEntities) {
+                // 获取自动图谱实体的观察记录
+                const autoObservations = GraphView._autoGraphService.getObservationsByEntity(entity.id);
+                
+                entities.push({
+                    id: entity.id,
+                    name: entity.name,
+                    type: entity.type,
+                    filePath: entity.filePath,
+                    startLine: entity.startLine,
+                    endLine: entity.endLine,
+                    description: entity.description,
+                    isAuto: true,
+                    observations: autoObservations.map(o => ({
+                        id: o.id,
+                        content: o.content,
+                        createdAt: o.createdAt,
+                        updatedAt: o.updatedAt,
+                    })),
+                    observationCount: autoObservations.length,
+                });
+            }
+
+            const autoRelations = GraphView._autoGraphService.listRelations();
+            allRelations.push(...autoRelations.map(r => ({
+                id: r.id,
+                sourceId: r.sourceEntityId,
+                targetId: r.targetEntityId,
+                verb: r.verb,
+                isAuto: true,
+            })));
         }
 
         // 发送数据到 webview
         this._panel.webview.postMessage({
             type: 'graphData',
             data: {
-                entities: entities.map(e => {
-                    const observations = this._observationService.getObservations(e.id);
-                    return {
-                    id: e.id,
-                    name: e.name,
-                    type: e.type,
-                    filePath: e.filePath,
-                    startLine: e.startLine,
-                    endLine: e.endLine,
-                    description: e.description,
-                        observations: observations.map(o => ({
-                            id: o.id,
-                            content: o.content,
-                            createdAt: o.createdAt,
-                            updatedAt: o.updatedAt,
-                        })),
-                        observationCount: observations.length,
-                    };
-                }),
-                relations: allRelations.map(r => ({
-                    id: r.id,
-                    sourceId: r.sourceEntityId,
-                    targetId: r.targetEntityId,
-                    verb: r.verb,
-                })),
+                entities,
+                relations: allRelations,
+                mode: this._currentMode,
             },
         });
     }
 
-    private async _jumpToEntity(entityId: string) {
-        const entity = this._entityService.getEntity(entityId);
+    private async _jumpToEntity(entityId: string, isAuto: boolean = false) {
+        let entity;
+        if (isAuto && GraphView._autoGraphService) {
+            entity = GraphView._autoGraphService.getEntity(entityId);
+        } else {
+            entity = this._entityService.getEntity(entityId);
+        }
+        
         if (!entity) {
+            return;
+        }
+
+        // 外部实体不能跳转到文件
+        if (entity.filePath === '@external' || entity.type === 'external') {
+            vscode.window.showInformationMessage(
+                `"${entity.name}" is an external type from a third-party module.`
+            );
             return;
         }
 
@@ -193,6 +271,11 @@ export class GraphView {
 
     private _getHtmlForWebview(webview: vscode.Webview) {
         const translations = t().graphView;
+        const autoGraphTranslations = t().autoGraph?.graphView || {
+            manualGraph: 'Manual Graph',
+            autoGraph: 'Auto Graph',
+            mergedView: 'Merged View'
+        };
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -222,6 +305,43 @@ export class GraphView {
             gap: 8px;
         }
         
+        #mode-switcher {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 4px;
+            background-color: rgba(30, 30, 30, 0.9);
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid var(--vscode-panel-border);
+        }
+        
+        .mode-btn {
+            background-color: transparent;
+            color: var(--vscode-foreground);
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            width: auto;
+            height: auto;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .mode-btn.active {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+        
         button {
             background-color: rgba(30, 30, 30, 0.8);
             color: var(--vscode-foreground);
@@ -241,6 +361,17 @@ export class GraphView {
             background-color: rgba(50, 50, 50, 0.9);
             transform: scale(1.05);
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 自动图谱节点样式 */
+        .node-auto circle {
+            stroke-dasharray: 4, 2;
+            opacity: 0.85;
+        }
+        
+        .link-auto {
+            stroke-dasharray: 8, 4 !important;
+            opacity: 0.6;
         }
         
         #graph-container {
@@ -377,6 +508,12 @@ export class GraphView {
     </style>
 </head>
 <body>
+    <div id="mode-switcher">
+        <button class="mode-btn active" data-mode="manual" onclick="switchMode('manual')" title="${autoGraphTranslations.manualGraph}">📝 ${autoGraphTranslations.manualGraph}</button>
+        <button class="mode-btn" data-mode="auto" onclick="switchMode('auto')" title="${autoGraphTranslations.autoGraph}">⚡ ${autoGraphTranslations.autoGraph}</button>
+        <button class="mode-btn" data-mode="merged" onclick="switchMode('merged')" title="${autoGraphTranslations.mergedView}">🔗 ${autoGraphTranslations.mergedView}</button>
+    </div>
+    
     <div id="toolbar">
         <button onclick="fitGraph()" title="${translations.toolbar.fit}">⛶</button>
         <button onclick="refreshGraph()" title="${translations.toolbar.refresh}">↻</button>
@@ -422,6 +559,7 @@ export class GraphView {
             'service': '#56B6C2',
             'api': '#D19A66',
             'config': '#ABB2BF',
+            'external': '#888888',  // 外部模块使用灰色
             'other': '#5C6370'
         };
 
@@ -738,7 +876,8 @@ export class GraphView {
                 .on('dblclick', (event, d) => {
                     vscode.postMessage({
                         type: 'jumpToEntity',
-                        entityId: d.id
+                        entityId: d.id,
+                        isAuto: d.isAuto || false
                     });
                 });
 
@@ -898,6 +1037,7 @@ export class GraphView {
                 'service': 'S',
                 'api': 'A',
                 'config': '⚙',
+                'external': '📦',  // 外部模块图标
                 'other': '?'
             };
             return icons[type] || '?';
@@ -998,6 +1138,28 @@ export class GraphView {
         function refreshGraph() {
             document.getElementById('loading').classList.remove('hidden');
             vscode.postMessage({ type: 'refresh' });
+        }
+        
+        let currentMode = 'manual';
+        
+        function switchMode(mode) {
+            if (mode === currentMode) return;
+            
+            currentMode = mode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // 显示加载状态
+            document.getElementById('loading').classList.remove('hidden');
+            
+            // 通知后端切换模式
+            vscode.postMessage({ type: 'switchMode', mode: mode });
         }
     </script>
 </body>

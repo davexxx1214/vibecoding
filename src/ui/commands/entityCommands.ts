@@ -4,9 +4,13 @@ import { EntityService } from '../../services/entityService';
 import { RelationService } from '../../services/relationService';
 import { ObservationService } from '../../services/observationService';
 import { ExportService } from '../../services/exportService';
-import { AIIntegrationService } from '../../services/aiIntegrationService';
-import { Entity, EntityType, Observation } from '../../utils/types';
+import { AIIntegrationService, GraphData } from '../../services/aiIntegrationService';
+import { AutoGraphService } from '../../services/autoGraph';
+import { Entity, EntityType, Observation, Relation } from '../../utils/types';
 import { t } from '../../i18n/i18nService';
+
+/** 图谱数据源类型 */
+export type GraphSourceType = 'manual' | 'auto' | 'merged';
 
 /**
  * 实体相关的命令处理器
@@ -14,12 +18,15 @@ import { t } from '../../i18n/i18nService';
 export class EntityCommands {
   private exportService: ExportService;
   private aiIntegrationService: AIIntegrationService;
+  private autoGraphService?: AutoGraphService;
 
   constructor(
     private entityService: EntityService,
     private relationService: RelationService,
-    private observationService: ObservationService
+    private observationService: ObservationService,
+    autoGraphService?: AutoGraphService
   ) {
+    this.autoGraphService = autoGraphService;
     this.exportService = new ExportService(
       entityService,
       relationService,
@@ -30,6 +37,194 @@ export class EntityCommands {
       relationService,
       observationService
     );
+  }
+
+  /**
+   * 选择图谱数据源
+   */
+  private async selectGraphSource(): Promise<GraphSourceType | undefined> {
+    const translations = t().commands.selectGraphSource;
+    
+    const options: (vscode.QuickPickItem & { value: GraphSourceType })[] = [
+      {
+        label: translations.manual.label,
+        description: translations.manual.description,
+        value: 'manual'
+      },
+      {
+        label: translations.auto.label,
+        description: translations.auto.description,
+        value: 'auto'
+      },
+      {
+        label: translations.merged.label,
+        description: translations.merged.description,
+        value: 'merged'
+      }
+    ];
+
+    const selected = await vscode.window.showQuickPick(options, {
+      placeHolder: translations.title
+    });
+
+    return selected?.value;
+  }
+
+  /**
+   * 根据选择的数据源获取图谱数据
+   */
+  private getGraphData(sourceType: GraphSourceType): GraphData {
+    if (sourceType === 'manual') {
+      // 手动图谱数据
+      const entities = this.entityService.listEntities({});
+      const relations = this.relationService.getAllRelations();
+      const observations: Array<{ entityId: string; entityName: string; content: string }> = [];
+      
+      for (const entity of entities) {
+        const entityObservations = this.observationService.getObservations(entity.id);
+        for (const obs of entityObservations) {
+          observations.push({
+            entityId: entity.id,
+            entityName: entity.name,
+            content: obs.content
+          });
+        }
+      }
+      
+      return { entities, relations, observations, sourceType: 'manual' };
+    } else if (sourceType === 'auto' && this.autoGraphService) {
+      // 自动图谱数据
+      const autoEntities = this.autoGraphService.listEntities();
+      const autoRelations = this.autoGraphService.listRelations();
+      
+      // 转换为通用格式
+      const entities: Entity[] = autoEntities.map(e => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        filePath: e.filePath,
+        startLine: e.startLine,
+        endLine: e.endLine,
+        description: e.description,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt
+      }));
+      
+      const relations: Relation[] = autoRelations.map(r => ({
+        id: r.id,
+        sourceEntityId: r.sourceEntityId,
+        targetEntityId: r.targetEntityId,
+        verb: r.verb,
+        createdAt: r.createdAt
+      }));
+      
+      // 获取自动图谱的观察记录
+      const observations: Array<{ entityId: string; entityName: string; content: string }> = [];
+      for (const entity of autoEntities) {
+        const entityObservations = this.autoGraphService.getObservationsByEntity(entity.id);
+        for (const obs of entityObservations) {
+          observations.push({
+            entityId: entity.id,
+            entityName: entity.name,
+            content: obs.content
+          });
+        }
+      }
+      
+      return { entities, relations, observations, sourceType: 'auto' };
+    } else if (sourceType === 'merged' && this.autoGraphService) {
+      // 合并图谱数据
+      const manualEntities = this.entityService.listEntities({});
+      const manualRelations = this.relationService.getAllRelations();
+      const autoEntities = this.autoGraphService.listEntities();
+      const autoRelations = this.autoGraphService.listRelations();
+      
+      // 合并实体（按名称去重，手动优先）
+      const entityMap = new Map<string, Entity>();
+      
+      // 先添加自动实体
+      for (const e of autoEntities) {
+        const key = `${e.name}::${e.filePath}`;
+        entityMap.set(key, {
+          id: e.id,
+          name: e.name,
+          type: e.type,
+          filePath: e.filePath,
+          startLine: e.startLine,
+          endLine: e.endLine,
+          description: e.description,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt
+        });
+      }
+      
+      // 再添加手动实体（覆盖同名自动实体）
+      for (const e of manualEntities) {
+        const key = `${e.name}::${e.filePath}`;
+        entityMap.set(key, e);
+      }
+      
+      const entities = Array.from(entityMap.values());
+      
+      // 合并关系（需要映射 ID）
+      const relations: Relation[] = [
+        ...manualRelations,
+        ...autoRelations.map(r => ({
+          id: r.id,
+          sourceEntityId: r.sourceEntityId,
+          targetEntityId: r.targetEntityId,
+          verb: r.verb,
+          createdAt: r.createdAt
+        }))
+      ];
+      
+      // 合并观察记录
+      const observations: Array<{ entityId: string; entityName: string; content: string }> = [];
+      
+      // 手动图谱的观察记录
+      for (const entity of manualEntities) {
+        const entityObservations = this.observationService.getObservations(entity.id);
+        for (const obs of entityObservations) {
+          observations.push({
+            entityId: entity.id,
+            entityName: entity.name,
+            content: obs.content
+          });
+        }
+      }
+      
+      // 自动图谱的观察记录
+      for (const entity of autoEntities) {
+        const entityObservations = this.autoGraphService.getObservationsByEntity(entity.id);
+        for (const obs of entityObservations) {
+          observations.push({
+            entityId: entity.id,
+            entityName: entity.name,
+            content: obs.content
+          });
+        }
+      }
+      
+      return { entities, relations, observations, sourceType: 'merged' };
+    }
+    
+    // 默认返回手动图谱
+    const entities = this.entityService.listEntities({});
+    const relations = this.relationService.getAllRelations();
+    const observations: Array<{ entityId: string; entityName: string; content: string }> = [];
+    
+    for (const entity of entities) {
+      const entityObservations = this.observationService.getObservations(entity.id);
+      for (const obs of entityObservations) {
+        observations.push({
+          entityId: entity.id,
+          entityName: entity.name,
+          content: obs.content
+        });
+      }
+    }
+    
+    return { entities, relations, observations, sourceType: 'manual' };
   }
 
   /**
@@ -1129,29 +1324,38 @@ export class EntityCommands {
   public async generateCursorRules(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage('请先打开一个工作区');
+      vscode.window.showErrorMessage(t().commands.generateCursorRules.noWorkspace);
       return;
     }
 
+    // 选择图谱数据源
+    const sourceType = await this.selectGraphSource();
+    if (!sourceType) {
+      return; // 用户取消
+    }
+
     try {
+      const graphData = this.getGraphData(sourceType);
       const filePath = await this.aiIntegrationService.generateCursorRules(
-        workspaceFolder.uri.fsPath
+        workspaceFolder.uri.fsPath,
+        graphData
       );
 
+      const translations = t().commands.generateCursorRules;
       const action = await vscode.window.showInformationMessage(
-        `✅ Cursor Rules 已生成：${path.basename(filePath)}`,
-        '打开文件',
-        '在文件夹中显示'
+        translations.success(path.basename(filePath)),
+        translations.openFile,
+        translations.showInFolder
       );
 
-      if (action === '打开文件') {
+      if (action === translations.openFile) {
         const doc = await vscode.workspace.openTextDocument(filePath);
         await vscode.window.showTextDocument(doc);
-      } else if (action === '在文件夹中显示') {
+      } else if (action === translations.showInFolder) {
         await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`生成 Cursor Rules 失败: ${error}`);
+      vscode.window.showErrorMessage(t().commands.generateCursorRules.error(String(error)));
     }
   }
 
@@ -1161,29 +1365,38 @@ export class EntityCommands {
   public async generateCopilotInstructions(): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage('请先打开一个工作区');
+      vscode.window.showErrorMessage(t().commands.generateCopilotInstructions.noWorkspace);
       return;
     }
 
+    // 选择图谱数据源
+    const sourceType = await this.selectGraphSource();
+    if (!sourceType) {
+      return; // 用户取消
+    }
+
     try {
+      const graphData = this.getGraphData(sourceType);
       const filePath = await this.aiIntegrationService.generateCopilotInstructions(
-        workspaceFolder.uri.fsPath
+        workspaceFolder.uri.fsPath,
+        graphData
       );
 
+      const translations = t().commands.generateCopilotInstructions;
       const action = await vscode.window.showInformationMessage(
-        `✅ Copilot Instructions 已生成：.github/${path.basename(filePath)}`,
-        '打开文件',
-        '在文件夹中显示'
+        translations.success(`.github/${path.basename(filePath)}`),
+        translations.openFile,
+        translations.showInFolder
       );
 
-      if (action === '打开文件') {
+      if (action === translations.openFile) {
         const doc = await vscode.workspace.openTextDocument(filePath);
         await vscode.window.showTextDocument(doc);
-      } else if (action === '在文件夹中显示') {
+      } else if (action === translations.showInFolder) {
         await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`生成 Copilot Instructions 失败: ${error}`);
+      vscode.window.showErrorMessage(t().commands.generateCopilotInstructions.error(String(error)));
     }
   }
 
@@ -1197,7 +1410,15 @@ export class EntityCommands {
       return;
     }
 
+    // 选择图谱数据源
+    const sourceType = await this.selectGraphSource();
+    if (!sourceType) {
+      return; // 用户取消
+    }
+
     try {
+      const graphData = this.getGraphData(sourceType);
+      
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -1206,10 +1427,10 @@ export class EntityCommands {
         },
         async (progress) => {
           progress.report({ increment: 0, message: t().commands.generateCursorRules.title });
-          await this.aiIntegrationService.generateCursorRules(workspaceFolder.uri.fsPath);
+          await this.aiIntegrationService.generateCursorRules(workspaceFolder.uri.fsPath, graphData);
 
           progress.report({ increment: 50, message: t().commands.generateCopilotInstructions.title });
-          await this.aiIntegrationService.generateCopilotInstructions(workspaceFolder.uri.fsPath);
+          await this.aiIntegrationService.generateCopilotInstructions(workspaceFolder.uri.fsPath, graphData);
 
           progress.report({ increment: 100, message: '✅' });
         }

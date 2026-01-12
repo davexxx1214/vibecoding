@@ -139,6 +139,21 @@ export interface LanguagePack {
       openFile: string;
       showInFolder: string;
     };
+    selectGraphSource: {
+      title: string;
+      manual: {
+        label: string;
+        description: string;
+      };
+      auto: {
+        label: string;
+        description: string;
+      };
+      merged: {
+        label: string;
+        description: string;
+      };
+    };
     generateCopilotInstructions: CommandTranslations & {
       success: (fileName: string) => string;
       error: (error: string) => string;

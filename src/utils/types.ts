@@ -22,6 +22,7 @@ export type EntityType =
   | 'database'
   | 'service'
   | 'component'
+  | 'external'  // 外部模块的类/接口
   | 'other';
 
 /**

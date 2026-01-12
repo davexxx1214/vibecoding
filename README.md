@@ -61,22 +61,38 @@ VibeKnowledge 将 VS Code 工作区本身变成一个**智能知识图谱**，�
 
 **项目已完成所有核心功能！** 🎉
 
-VibeKnowledge 是一个功能完整的 VS Code 知识图谱插件，包含三大核心模块：
+VibeKnowledge 是一个功能完整的 VS Code 知识图谱插件，包含四大核心模块：
 
-### 1️⃣ 知识图谱管理
+### 1️⃣ 知识图谱管理（手动）
 - ✅ 实体、关系、观察记录的完整 CRUD
 - ✅ SQLite 本地持久化存储
-- ✅ 交互式可视化图谱（vis-network）
+- ✅ 交互式可视化图谱（D3.js）
 - ✅ 完整的 VS Code UI 集成
 
-### 2️⃣ AI 协同功能
+### 2️⃣ 自动图谱生成 🆕
+- ✅ **静态代码分析**：基于 TypeScript/JavaScript 正则解析，无需 AI
+- ✅ **自动提取实体**：Class、Interface、Function、Variable
+- ✅ **自动识别关系**：extends、implements、uses、imports
+- ✅ **依赖注入检测**：构造函数参数、@Inject 装饰器、成员变量类型
+- ✅ **方法签名分析**：返回类型、参数类型、泛型参数
+- ✅ **接口属性分析**：接口内属性类型依赖
+- ✅ **函数内部依赖**：检测函数体内的类实例化、静态方法调用
+- ✅ **NestJS 装饰器**：@Module 装饰器的 imports/controllers/providers 分析
+- ✅ **TypeORM 关系**：@ManyToOne/@OneToMany 等装饰器的实体引用
+- ✅ **观察记录支持**：自动图谱实体也可添加观察记录，重新分析时保留
+- ✅ **双图谱架构**：手动图谱与自动图谱完全隔离，互不干扰
+- ✅ **视图切换**：一键切换手动图谱 / 自动图谱 / 合并视图
+- ✅ **增量更新**：重新分析时智能对比新旧实体，自动保留未变更实体的观察记录
+
+### 3️⃣ AI 协同功能
 - ✅ Cursor 和 GitHub Copilot 深度集成
+- ✅ **图谱源选择**：生成配置时可选手动/自动/合并图谱 🆕
 - ✅ 知识图谱导出（Markdown / JSON）
 - ✅ 依赖链分析和循环依赖检测
 - ✅ 技术栈自动检测（JS/TS 项目）
 - ✅ 快速上下文导出
 
-### 3️⃣ 持久知识库（RAG）
+### 4️⃣ 持久知识库（RAG）
 - ✅ Google Gemini File Search 云端托管
 - ✅ 自动索引文档到云端（增量）
 - ✅ 智能问答（Ask Question）
@@ -245,16 +261,24 @@ vibecoding/
 │   ├── extension.ts                  # ✅ 插件入口
 │   ├── services/                     # ✅ 核心服务层
 │   │   ├── database.ts               # 数据库服务
-│   │   ├── entityService.ts          # 实体管理
-│   │   ├── relationService.ts        # 关系管理
-│   │   └── observationService.ts     # 观察记录管理
+│   │   ├── entityService.ts          # 实体管理（手动图谱）
+│   │   ├── relationService.ts        # 关系管理（手动图谱）
+│   │   ├── observationService.ts     # 观察记录管理
+│   │   └── autoGraph/                # 🆕 自动图谱模块
+│   │       ├── index.ts              # 模块导出
+│   │       ├── types.ts              # 类型定义
+│   │       ├── autoGraphService.ts   # 自动图谱数据服务
+│   │       └── codeAnalyzer.ts       # 代码静态分析器
 │   ├── providers/                    # ✅ VS Code UI 提供者
 │   │   ├── hoverProvider.ts          # 悬浮提示
 │   │   ├── codeLensProvider.ts       # CodeLens
 │   │   └── treeDataProvider.ts       # 树视图
 │   ├── ui/                          # ✅ 命令处理器
-│   │   └── commands/
-│   │       └── entityCommands.ts
+│   │   ├── commands/
+│   │   │   ├── entityCommands.ts     # 实体命令
+│   │   │   └── autoGraphCommands.ts  # 🆕 自动图谱命令
+│   │   └── webview/
+│   │       └── graphView.ts          # 图谱可视化（支持模式切换）
 │   └── utils/                       # ✅ 工具函数
 │       └── types.ts                 # 类型定义
 ├── package.json                      # 插件配置
@@ -309,13 +333,122 @@ vibecoding/
 - ✅ **命令面板**：完整的命令集合，快速访问所有功能
 
 #### 可视化
-- ✅ **交互式图谱**：基于 vis-network 的图形化展示
+- ✅ **交互式图谱**：基于 D3.js 的力导向图形化展示
 - ✅ **自动布局**：节点自动排列，避免重叠
 - ✅ **多重边分离**：同方向的多条关系自动以不同弧线显示
 - ✅ **循环依赖检测**：自动识别并标记循环依赖
 - ✅ **双击跳转**：双击节点直接跳转到代码位置
 - ✅ **拖拽交互**：支持节点拖拽、缩放、平移
 - ✅ **节点悬浮详情**：Tooltip 自动展示观察记录摘要及剩余条数，快速掌握风险与 TODO
+- ✅ **图谱模式切换**：手动图谱 / 自动图谱 / 合并视图 一键切换
+
+---
+
+### ⚡ 自动图谱生成 🆕
+
+基于静态代码分析自动生成依赖关系图谱，无需 AI，确定性分析。
+
+#### 支持的语言
+- ✅ TypeScript (.ts, .tsx)
+- ✅ JavaScript (.js, .jsx)
+
+#### 自动提取的实体类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `class` | 类定义 | `class UserService {}` |
+| `interface` | 接口定义 | `interface UserData {}` |
+| `function` | 函数定义 | `function createUser() {}` |
+| `variable` | 导出变量 | `export const config = {}` |
+
+> 💡 **注意**：只分析工作区内的代码，外部依赖（如 @nestjs、typeorm）不会生成节点
+
+#### 自动识别的关系类型
+
+| 关系 | 说明 | 示例 |
+|------|------|------|
+| `extends` | 类继承 | `class A extends B` |
+| `implements` | 接口实现 | `class A implements B` |
+| `uses` | 依赖使用 | 构造函数注入、成员变量、返回类型 |
+| `imports` | 模块导入 | `import { X } from './x'` |
+
+#### 依赖检测场景
+
+```typescript
+// ✅ 类继承
+class UserController extends BaseController {}
+
+// ✅ 接口实现（仅工作区内的接口）
+class ProfileModule implements LocalInterface {}
+
+// ✅ 构造函数依赖注入
+class ArticleController {
+  constructor(private articleService: ArticleService) {}
+}
+
+// ✅ 方法返回类型
+async getProfile(): Promise<ProfileRO> {}
+
+// ✅ 方法参数类型
+createArticle(@Body() dto: CreateArticleDto) {}
+
+// ✅ 接口属性类型
+interface ArticleData {
+  author?: UserData;  // ArticleData --uses--> UserData
+}
+
+// ✅ @Inject 装饰器
+@Inject(ConfigService) private config: ConfigService
+
+// ✅ @Module 装饰器（NestJS）
+@Module({
+  imports: [UserModule, ArticleModule],  // --uses--> UserModule, ArticleModule
+  controllers: [AppController],
+  providers: [AppService],
+})
+class ApplicationModule {}
+
+// ✅ TypeORM 关系装饰器
+@ManyToOne(type => UserEntity, user => user.articles)
+author: UserEntity;  // --uses--> UserEntity
+
+// ✅ 函数内部依赖（new 实例化、静态方法调用）
+async function bootstrap() {
+  const app = await NestFactory.create(ApplicationModule);  // --uses--> ApplicationModule
+  const builder = new DocumentBuilder();  // --uses--> DocumentBuilder（如果在工作区内）
+}
+```
+
+#### 使用方法
+
+1. **分析整个工作区**：命令面板 → `Knowledge: Analyze Workspace (Auto Graph)`
+2. **分析当前文件**：命令面板 → `Knowledge: Analyze Current File (Auto Graph)`
+3. **查看统计**：命令面板 → `Knowledge: View Auto Graph Statistics`
+4. **清空自动图谱**：命令面板 → `Knowledge: Clear Auto Graph`
+5. **切换视图**：在图谱可视化界面点击顶部按钮切换 📝手动 / ⚡自动 / 🔗合并
+6. **添加观察记录**：在侧边栏 Explorer 中右键自动图谱实体 → `Add Observation`
+7. **编辑观察记录**：右键观察记录 → `Edit Observation`（支持多行编辑）
+8. **删除观察记录**：右键观察记录 → `Delete Observation`
+
+#### 配置选项
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `knowledgeGraph.autoAnalyze.enabled` | 启用自动分析 | `true` |
+| `knowledgeGraph.autoAnalyze.onSave` | 保存时自动分析 | `false` |
+| `knowledgeGraph.autoAnalyze.include` | 包含的文件模式 | `["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]` |
+| `knowledgeGraph.autoAnalyze.exclude` | 排除的文件模式 | `["**/node_modules/**", "**/dist/**", "**/*.d.ts", "**/*.test.ts"]` |
+
+#### 与手动图谱的区别
+
+| 特性 | 手动图谱 | 自动图谱 |
+|------|----------|----------|
+| 创建方式 | 用户手动创建 | 静态分析自动生成 |
+| 观察记录 | ✅ 支持 | ✅ 支持（重新分析时保留） |
+| 数据隔离 | `entities` / `observations` 表 | `auto_entities` / `auto_observations` 表 |
+| 数据更新 | 手动增删改 | 增量更新：删除的实体会移除，保留的实体保持观察记录 |
+| 外部依赖 | 可手动添加 | 仅工作区内代码 |
+| 适用场景 | 记录设计决策、重构笔记 | 快速理解代码依赖 + 标注关键节点 |
 
 ---
 
@@ -330,6 +463,10 @@ vibecoding/
 #### AI 工具集成
 - ✅ **Cursor 集成**：自动生成 `.cursorrules` 配置文件
 - ✅ **GitHub Copilot 集成**：自动生成 `.github/copilot-instructions.md`
+- ✅ **图谱源选择** 🆕：生成 AI 配置时可选择数据源
+  - 📝 **手动图谱**：设计决策、观察记录、手动维护的关系
+  - ⚡ **自动图谱**：静态分析生成的代码结构和依赖关系
+  - 🔗 **合并图谱**：手动 + 自动，最完整的上下文
 - ✅ **技术栈检测**：自动提取依赖信息
   - JavaScript/TypeScript 项目（`package.json`）
   - Java Maven 项目（`pom.xml`）
@@ -419,7 +556,9 @@ Database (database.ts → SQLite)
 ### 数据库 Schema
 
 ```sql
--- 实体表
+-- ========== 手动图谱表 ==========
+
+-- 实体表（手动）
 CREATE TABLE entities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -432,7 +571,7 @@ CREATE TABLE entities (
     updated_at INTEGER NOT NULL
 );
 
--- 关系表
+-- 关系表（手动）
 CREATE TABLE relations (
     id TEXT PRIMARY KEY,
     source_entity_id TEXT NOT NULL,
@@ -450,10 +589,61 @@ CREATE TABLE observations (
     updated_at INTEGER NOT NULL
 );
 
+-- ========== 自动图谱表 🆕 ==========
+
+-- 自动生成的实体表
+CREATE TABLE auto_entities (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,           -- class/interface/function/variable
+    file_path TEXT NOT NULL,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL,
+    description TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    metadata TEXT                 -- JSON 格式的额外信息
+);
+
+-- 自动生成的关系表
+CREATE TABLE auto_relations (
+    id TEXT PRIMARY KEY,
+    source_entity_id TEXT NOT NULL,
+    target_entity_id TEXT NOT NULL,
+    verb TEXT NOT NULL,           -- extends/implements/uses/imports
+    created_at INTEGER NOT NULL,
+    metadata TEXT,
+    FOREIGN KEY (source_entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+);
+
+-- 文件分析缓存表（增量分析用）
+CREATE TABLE auto_file_cache (
+    file_path TEXT PRIMARY KEY,
+    content_hash TEXT NOT NULL,   -- MD5 哈希
+    analyzed_at INTEGER NOT NULL
+);
+
+-- 自动图谱观察记录表 🆕
+CREATE TABLE auto_observations (
+    id TEXT PRIMARY KEY,
+    entity_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (entity_id) REFERENCES auto_entities(id) ON DELETE CASCADE
+);
+
 -- 索引优化
 CREATE INDEX idx_entities_type ON entities(type);
 CREATE INDEX idx_entities_file_path ON entities(file_path);
 CREATE INDEX idx_entities_name ON entities(name);
+CREATE INDEX idx_auto_entities_type ON auto_entities(type);
+CREATE INDEX idx_auto_entities_file_path ON auto_entities(file_path);
+CREATE INDEX idx_auto_entities_name ON auto_entities(name);
+CREATE INDEX idx_auto_relations_source ON auto_relations(source_entity_id);
+CREATE INDEX idx_auto_relations_target ON auto_relations(target_entity_id);
+CREATE INDEX idx_auto_observations_entity ON auto_observations(entity_id);
 ```
 
 ---
