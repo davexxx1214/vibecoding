@@ -52,7 +52,7 @@ export class CodeAnalyzer {
   }
 
   /**
-   * 分析整个工作区
+   * 分析整个工作区（增量更新，保留观察记录）
    */
   public async analyzeWorkspace(
     progress?: vscode.Progress<{ message?: string; increment?: number }>
@@ -64,12 +64,19 @@ export class CodeAnalyzer {
       errors: [],
     };
 
-    // 先清除旧数据
+    // 获取旧实体映射（用于增量更新）
     if (progress) {
-      progress.report({ message: 'Clearing old data...' });
+      progress.report({ message: 'Loading existing entities...' });
     }
-    this.autoGraphService.clearAll();
-    console.log('Cleared old auto graph data');
+    const oldEntitiesMap = this.autoGraphService.getAllEntitiesMap();
+    console.log(`Found ${oldEntitiesMap.size} existing entities`);
+
+    // 清除旧的关系和文件缓存（但保留实体和观察记录）
+    if (progress) {
+      progress.report({ message: 'Clearing old relations...' });
+    }
+    this.autoGraphService.clearAllRelations();
+    this.autoGraphService.clearAllFileCache();
 
     // 查找所有匹配的文件
     if (progress) {
@@ -82,61 +89,107 @@ export class CodeAnalyzer {
     console.log(`Found ${totalFiles} files to analyze`);
 
     if (totalFiles === 0) {
+      // 如果没有文件，删除所有旧实体
+      this.autoGraphService.transaction(() => {
+        for (const [, oldEntity] of oldEntitiesMap) {
+          this.autoGraphService.deleteEntityById(oldEntity.id);
+        }
+      });
+      this.autoGraphService.save();
       return result;
     }
 
     const incrementPerFile = 80 / totalFiles; // 80% 用于文件分析
 
+    // 用于追踪新分析出的实体
+    const newEntitiesMap = new Map<string, { symbol: ExtractedSymbol; entity?: AutoEntity }>();
+
     // 第一遍：提取实体
     if (progress) {
-      progress.report({ message: `Phase 1/2: Extracting entities from ${totalFiles} files...`, increment: 5 });
+      progress.report({ message: `Phase 1/3: Extracting entities from ${totalFiles} files...`, increment: 5 });
     }
 
-    // 使用事务批量处理
-    this.autoGraphService.transaction(() => {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const relativePath = path.relative(this.workspaceRoot, file.fsPath);
+    // 收集所有新实体信息
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const relativePath = path.relative(this.workspaceRoot, file.fsPath);
 
-        if (progress) {
-          progress.report({
-            message: `[${i + 1}/${totalFiles}] ${relativePath}`,
-            increment: incrementPerFile * 0.6, // 60% 用于实体提取
-          });
-        }
+      if (progress) {
+        progress.report({
+          message: `[${i + 1}/${totalFiles}] ${relativePath}`,
+          increment: incrementPerFile * 0.4, // 40% 用于实体提取
+        });
+      }
 
-        try {
-          const fileResult = this.analyzeFileSync(file.fsPath);
+      try {
+        const fileResult = this.analyzeFileSync(file.fsPath);
 
-          if (fileResult) {
-            // 创建实体
-            for (const symbol of fileResult.symbols) {
-              const entity = this.autoGraphService.upsertEntity(
-                symbol.name,
-                symbol.type,
-                symbol.filePath,
-                symbol.startLine,
-                symbol.endLine,
-                symbol.description,
-                symbol.metadata
-              );
-              result.entities.push(entity);
-            }
-
-            result.filesCached++;
+        if (fileResult) {
+          for (const symbol of fileResult.symbols) {
+            const key = AutoGraphService.generateEntityKey(symbol.name, symbol.type, symbol.filePath);
+            newEntitiesMap.set(key, { symbol });
           }
-        } catch (error) {
-          result.errors.push({
-            filePath: relativePath,
-            message: error instanceof Error ? error.message : String(error),
-          });
+          result.filesCached++;
+        }
+      } catch (error) {
+        result.errors.push({
+          filePath: relativePath,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // 第二遍：增量更新实体
+    if (progress) {
+      progress.report({ message: `Phase 2/3: Updating entities...`, increment: 5 });
+    }
+
+    this.autoGraphService.transaction(() => {
+      // 1. 删除不再存在的实体（观察记录会级联删除）
+      for (const [key, oldEntity] of oldEntitiesMap) {
+        if (!newEntitiesMap.has(key)) {
+          console.log(`Deleting removed entity: ${oldEntity.name} (${oldEntity.filePath})`);
+          this.autoGraphService.deleteEntityById(oldEntity.id);
+        }
+      }
+
+      // 2. 创建或更新实体
+      for (const [key, { symbol }] of newEntitiesMap) {
+        const oldEntity = oldEntitiesMap.get(key);
+        
+        if (oldEntity) {
+          // 实体已存在，更新信息但保留 ID（观察记录关联到 ID）
+          const entity = this.autoGraphService.upsertEntity(
+            symbol.name,
+            symbol.type,
+            symbol.filePath,
+            symbol.startLine,
+            symbol.endLine,
+            symbol.description,
+            symbol.metadata
+          );
+          newEntitiesMap.set(key, { symbol, entity });
+          result.entities.push(entity);
+        } else {
+          // 新实体，创建
+          const entity = this.autoGraphService.upsertEntity(
+            symbol.name,
+            symbol.type,
+            symbol.filePath,
+            symbol.startLine,
+            symbol.endLine,
+            symbol.description,
+            symbol.metadata
+          );
+          newEntitiesMap.set(key, { symbol, entity });
+          result.entities.push(entity);
         }
       }
     });
 
-    // 第二遍：建立关系（需要所有实体都已创建）
+    // 第三遍：建立关系（需要所有实体都已创建）
     if (progress) {
-      progress.report({ message: `Phase 2/2: Building relationships...`, increment: 5 });
+      progress.report({ message: `Phase 3/3: Building relationships...`, increment: 5 });
     }
 
     this.autoGraphService.transaction(() => {

@@ -232,6 +232,48 @@ export class AutoGraphService {
   }
 
   /**
+   * 删除单个实体
+   */
+  public deleteEntityById(entityId: string): boolean {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare('DELETE FROM auto_entities WHERE id = ?');
+    stmt.run([entityId]);
+    return db.getRowsModified() > 0;
+  }
+
+  /**
+   * 生成实体唯一键（用于增量更新比较）
+   */
+  public static generateEntityKey(name: string, type: EntityType, filePath: string): string {
+    return `${filePath}::${type}::${name}`;
+  }
+
+  /**
+   * 获取所有实体的 Map（按唯一键索引）
+   */
+  public getAllEntitiesMap(): Map<string, AutoEntity> {
+    const entities = this.listEntities();
+    const map = new Map<string, AutoEntity>();
+    for (const entity of entities) {
+      const key = AutoGraphService.generateEntityKey(entity.name, entity.type, entity.filePath);
+      map.set(key, entity);
+    }
+    return map;
+  }
+
+  /**
+   * 迁移观察记录到新实体
+   */
+  public migrateObservations(oldEntityId: string, newEntityId: string): number {
+    const db = this.dbService.getDatabase();
+    const stmt = db.prepare(`
+      UPDATE auto_observations SET entity_id = ? WHERE entity_id = ?
+    `);
+    stmt.run([newEntityId, oldEntityId]);
+    return db.getRowsModified();
+  }
+
+  /**
    * 清空所有自动实体
    */
   public clearAllEntities(): void {
