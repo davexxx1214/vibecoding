@@ -86,6 +86,7 @@ VibeKnowledge 是一个功能完整的 VS Code 知识图谱插件，包含四大
 
 ### 3️⃣ AI 协同功能
 - ✅ Cursor 和 GitHub Copilot 深度集成
+- ✅ **图谱源选择**：生成配置时可选手动/自动/合并图谱 🆕
 - ✅ 知识图谱导出（Markdown / JSON）
 - ✅ 依赖链分析和循环依赖检测
 - ✅ 技术栈自动检测（JS/TS 项目）
@@ -462,6 +463,10 @@ async function bootstrap() {
 #### AI 工具集成
 - ✅ **Cursor 集成**：自动生成 `.cursorrules` 配置文件
 - ✅ **GitHub Copilot 集成**：自动生成 `.github/copilot-instructions.md`
+- ✅ **图谱源选择** 🆕：生成 AI 配置时可选择数据源
+  - 📝 **手动图谱**：设计决策、观察记录、手动维护的关系
+  - ⚡ **自动图谱**：静态分析生成的代码结构和依赖关系
+  - 🔗 **合并图谱**：手动 + 自动，最完整的上下文
 - ✅ **技术栈检测**：自动提取依赖信息
   - JavaScript/TypeScript 项目（`package.json`）
   - Java Maven 项目（`pom.xml`）

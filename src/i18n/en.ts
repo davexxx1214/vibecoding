@@ -216,6 +216,22 @@ export const en = {
       showInFolder: 'Show in folder'
     },
 
+    selectGraphSource: {
+      title: 'Select Graph Source',
+      manual: {
+        label: '📝 Manual Graph',
+        description: 'Design decisions, observations, manually maintained relations'
+      },
+      auto: {
+        label: '⚡ Auto Graph',
+        description: 'Code structure and dependencies from static analysis'
+      },
+      merged: {
+        label: '🔗 Merged Graph',
+        description: 'Manual + Auto, most complete context'
+      }
+    },
+
     generateCopilotInstructions: {
       title: 'Knowledge: Generate Copilot Instructions',
       success: (fileName: string) => `✅ Copilot Instructions generated: .github/${fileName}`,

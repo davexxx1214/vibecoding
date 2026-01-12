@@ -163,16 +163,7 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
-    // 初始化命令处理器
-    const entityCommands = new EntityCommands(
-      entityService,
-      relationService,
-      observationService
-    );
-
-    const ragCommands = new RAGCommands(ragService, geminiClient);
-
-    // 初始化自动图谱服务
+    // 初始化自动图谱服务（需要在 EntityCommands 之前初始化）
     const autoGraphService = new AutoGraphService(dbService);
     const codeAnalyzer = new CodeAnalyzer(autoGraphService);
     codeAnalyzer.initialize(workspaceRoot);
@@ -180,6 +171,16 @@ export async function activate(context: vscode.ExtensionContext) {
     
     // 设置 AutoGraphService 到 GraphView 以支持视图切换
     GraphView.setAutoGraphService(autoGraphService);
+
+    // 初始化命令处理器
+    const entityCommands = new EntityCommands(
+      entityService,
+      relationService,
+      observationService,
+      autoGraphService
+    );
+
+    const ragCommands = new RAGCommands(ragService, geminiClient);
 
     // 注册树视图
     const treeDataProvider = new KnowledgeTreeDataProvider(

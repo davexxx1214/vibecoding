@@ -215,6 +215,22 @@ export const zh = {
       showInFolder: '在文件夹中显示'
     },
 
+    selectGraphSource: {
+      title: '选择图谱数据源',
+      manual: {
+        label: '📝 手动图谱',
+        description: '设计决策、观察记录、手动维护的关系'
+      },
+      auto: {
+        label: '⚡ 自动图谱',
+        description: '静态分析生成的代码结构和依赖关系'
+      },
+      merged: {
+        label: '🔗 合并图谱',
+        description: '手动 + 自动，最完整的上下文'
+      }
+    },
+
     generateCopilotInstructions: {
       title: '知识图谱: 生成 Copilot 指令',
       success: (fileName: string) => `✅ Copilot 指令已生成: .github/${fileName}`,

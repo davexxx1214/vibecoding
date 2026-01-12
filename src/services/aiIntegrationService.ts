@@ -6,8 +6,23 @@ import { RelationService } from './relationService';
 import { ObservationService } from './observationService';
 import { DependencyAnalyzer } from './dependencyAnalyzer';
 import { ScenarioManager } from './scenarioManager';
-import { Entity } from '../utils/types';
+import { Entity, Relation } from '../utils/types';
 import { getLocale } from '../i18n/i18nService';
+
+/**
+ * 图谱数据源类型
+ */
+export type GraphSourceType = 'manual' | 'auto' | 'merged';
+
+/**
+ * 图谱数据
+ */
+export interface GraphData {
+  entities: Entity[];
+  relations: Relation[];
+  observations: Array<{ entityId: string; entityName: string; content: string }>;
+  sourceType: GraphSourceType;
+}
 
 /**
  * 技术栈信息
@@ -39,10 +54,12 @@ export class AIIntegrationService {
 
   /**
    * 生成 Cursor Rules 文件
+   * @param workspaceRoot 工作区根目录
+   * @param graphData 可选的图谱数据，如果不提供则使用默认服务获取
    */
-  public async generateCursorRules(workspaceRoot: string): Promise<string> {
+  public async generateCursorRules(workspaceRoot: string, graphData?: GraphData): Promise<string> {
     const filePath = path.join(workspaceRoot, '.cursorrules');
-    const content = this.buildCursorRulesContent();
+    const content = this.buildCursorRulesContent(graphData);
     
     fs.writeFileSync(filePath, content, 'utf-8');
     return filePath;
@@ -50,15 +67,17 @@ export class AIIntegrationService {
 
   /**
    * 生成 GitHub Copilot Instructions 文件
+   * @param workspaceRoot 工作区根目录
+   * @param graphData 可选的图谱数据，如果不提供则使用默认服务获取
    */
-  public async generateCopilotInstructions(workspaceRoot: string): Promise<string> {
+  public async generateCopilotInstructions(workspaceRoot: string, graphData?: GraphData): Promise<string> {
     const githubDir = path.join(workspaceRoot, '.github');
     if (!fs.existsSync(githubDir)) {
       fs.mkdirSync(githubDir, { recursive: true });
     }
 
     const filePath = path.join(githubDir, 'copilot-instructions.md');
-    const content = this.buildCopilotInstructionsContent();
+    const content = this.buildCopilotInstructionsContent(graphData);
     
     fs.writeFileSync(filePath, content, 'utf-8');
     return filePath;
@@ -66,12 +85,14 @@ export class AIIntegrationService {
 
   /**
    * 生成所有 AI 配置文件
+   * @param workspaceRoot 工作区根目录
+   * @param graphData 可选的图谱数据，如果不提供则使用默认服务获取
    */
-  public async generateAllAIConfigs(workspaceRoot: string): Promise<string[]> {
+  public async generateAllAIConfigs(workspaceRoot: string, graphData?: GraphData): Promise<string[]> {
     const files: string[] = [];
     
-    files.push(await this.generateCursorRules(workspaceRoot));
-    files.push(await this.generateCopilotInstructions(workspaceRoot));
+    files.push(await this.generateCursorRules(workspaceRoot, graphData));
+    files.push(await this.generateCopilotInstructions(workspaceRoot, graphData));
     
     return files;
   }
@@ -79,24 +100,26 @@ export class AIIntegrationService {
   /**
    * 构建 Cursor Rules 内容
    */
-  private buildCursorRulesContent(): string {
+  private buildCursorRulesContent(graphData?: GraphData): string {
     const locale = getLocale();
-    return locale === 'zh' ? this.buildCursorRulesContentCN() : this.buildCursorRulesContentEN();
+    return locale === 'zh' ? this.buildCursorRulesContentCN(graphData) : this.buildCursorRulesContentEN(graphData);
   }
 
   /**
    * 构建 Cursor Rules 内容（中文）
    */
-  private buildCursorRulesContentCN(): string {
+  private buildCursorRulesContentCN(graphData?: GraphData): string {
     const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'Project';
-    const entities = this.entityService.listEntities({});
-    const relations = this.relationService.getAllRelations();
-    const stats = this.dependencyAnalyzer.getGlobalDependencyStats();
+    const entities = graphData?.entities || this.entityService.listEntities({});
+    const relations = graphData?.relations || this.relationService.getAllRelations();
+    const stats = this.calculateStatsFromGraphData(graphData);
     const techStack = this.extractTechStack();
+    const sourceLabel = this.getSourceLabel(graphData?.sourceType, 'zh');
 
     let content = `# ${workspaceName} - Cursor AI Rules\n\n`;
     content += `> 自动生成时间：${new Date().toLocaleString('zh-CN')}\n`;
-    content += `> 来源：Knowledge Graph Extension\n\n`;
+    content += `> 来源：Knowledge Graph Extension\n`;
+    content += `> 数据源：${sourceLabel}\n\n`;
     content += `---\n\n`;
 
     // 技术栈
@@ -142,7 +165,7 @@ export class AIIntegrationService {
     }
 
     // 观察记录分类
-    const observations = this.categorizeObservations();
+    const observations = this.categorizeObservations(graphData);
     
     if (observations.warnings.length > 0) {
       content += `## ⚠️ 重要警告 (${observations.warnings.length})\n\n`;
@@ -174,6 +197,17 @@ export class AIIntegrationService {
       }
       if (observations.bugs.length > 10) {
         content += `\n_... 还有 ${observations.bugs.length - 10} 个问题_\n`;
+      }
+      content += `\n`;
+    }
+
+    if (observations.others.length > 0) {
+      content += `## 📌 其他备注 (${observations.others.length})\n\n`;
+      for (const obs of observations.others.slice(0, 10)) {
+        content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+      }
+      if (observations.others.length > 10) {
+        content += `\n_... 还有 ${observations.others.length - 10} 个备注_\n`;
       }
       content += `\n`;
     }
@@ -216,16 +250,18 @@ export class AIIntegrationService {
   /**
    * 构建 Cursor Rules 内容（英文）
    */
-  private buildCursorRulesContentEN(): string {
+  private buildCursorRulesContentEN(graphData?: GraphData): string {
     const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'Project';
-    const entities = this.entityService.listEntities({});
-    const relations = this.relationService.getAllRelations();
-    const stats = this.dependencyAnalyzer.getGlobalDependencyStats();
+    const entities = graphData?.entities || this.entityService.listEntities({});
+    const relations = graphData?.relations || this.relationService.getAllRelations();
+    const stats = this.calculateStatsFromGraphData(graphData);
     const techStack = this.extractTechStack();
+    const sourceLabel = this.getSourceLabel(graphData?.sourceType, 'en');
 
     let content = `# ${workspaceName} - Cursor AI Rules\n\n`;
     content += `> Generated: ${new Date().toLocaleString('en-US')}\n`;
-    content += `> Source: Knowledge Graph Extension\n\n`;
+    content += `> Source: Knowledge Graph Extension\n`;
+    content += `> Data Source: ${sourceLabel}\n\n`;
     content += `---\n\n`;
 
     // Tech Stack
@@ -271,7 +307,7 @@ export class AIIntegrationService {
     }
 
     // Categorized Observations
-    const observations = this.categorizeObservations();
+    const observations = this.categorizeObservations(graphData);
     
     if (observations.warnings.length > 0) {
       content += `## ⚠️ Important Warnings (${observations.warnings.length})\n\n`;
@@ -303,6 +339,17 @@ export class AIIntegrationService {
       }
       if (observations.bugs.length > 10) {
         content += `\n_... and ${observations.bugs.length - 10} more issues_\n`;
+      }
+      content += `\n`;
+    }
+
+    if (observations.others.length > 0) {
+      content += `## 📌 Other Notes (${observations.others.length})\n\n`;
+      for (const obs of observations.others.slice(0, 10)) {
+        content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+      }
+      if (observations.others.length > 10) {
+        content += `\n_... and ${observations.others.length - 10} more notes_\n`;
       }
       content += `\n`;
     }
@@ -345,16 +392,18 @@ export class AIIntegrationService {
   /**
    * 构建 Copilot Instructions 内容
    */
-  private buildCopilotInstructionsContent(): string {
+  private buildCopilotInstructionsContent(graphData?: GraphData): string {
     const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name || 'Project';
-    const entities = this.entityService.listEntities({});
-    const relations = this.relationService.getAllRelations();
-    const stats = this.dependencyAnalyzer.getGlobalDependencyStats();
+    const entities = graphData?.entities || this.entityService.listEntities({});
+    const relations = graphData?.relations || this.relationService.getAllRelations();
+    const stats = this.calculateStatsFromGraphData(graphData);
     const techStack = this.extractTechStack();
+    const sourceLabel = this.getSourceLabel(graphData?.sourceType, 'en');
 
     let content = `# GitHub Copilot Instructions for ${workspaceName}\n\n`;
     content += `> Auto-generated: ${new Date().toISOString()}\n`;
-    content += `> Source: Knowledge Graph Extension\n\n`;
+    content += `> Source: Knowledge Graph Extension\n`;
+    content += `> Data Source: ${sourceLabel}\n\n`;
     content += `---\n\n`;
 
     // Tech Stack
@@ -403,10 +452,11 @@ export class AIIntegrationService {
     }
 
     // Important Notes
-    const observations = this.categorizeObservations();
+    const observations = this.categorizeObservations(graphData);
     const hasNotes = observations.warnings.length > 0 || 
                      observations.todos.length > 0 || 
-                     observations.bugs.length > 0;
+                     observations.bugs.length > 0 ||
+                     observations.others.length > 0;
 
     if (hasNotes) {
       content += `## Important Notes\n\n`;
@@ -440,6 +490,17 @@ export class AIIntegrationService {
         }
         if (observations.todos.length > 5) {
           content += `\n_... and ${observations.todos.length - 5} more todos_\n`;
+        }
+        content += `\n`;
+      }
+
+      if (observations.others.length > 0) {
+        content += `### 📌 Other Notes (${observations.others.length})\n\n`;
+        for (const obs of observations.others.slice(0, 5)) {
+          content += `- **[${obs.entity.name}]** ${obs.content}\n`;
+        }
+        if (observations.others.length > 5) {
+          content += `\n_... and ${observations.others.length - 5} more notes_\n`;
         }
         content += `\n`;
       }
@@ -518,20 +579,106 @@ export class AIIntegrationService {
   }
 
   /**
-   * 分类观察记录
+   * 获取数据源显示标签
    */
-  private categorizeObservations() {
-    const entities = this.entityService.listEntities({});
-    const warnings: Array<{ entity: Entity; content: string }> = [];
-    const todos: Array<{ entity: Entity; content: string }> = [];
-    const bugs: Array<{ entity: Entity; content: string }> = [];
-    const others: Array<{ entity: Entity; content: string }> = [];
+  private getSourceLabel(sourceType: GraphSourceType | undefined, locale: 'zh' | 'en'): string {
+    if (!sourceType) {
+      return locale === 'zh' ? '手动图谱（默认）' : 'Manual Graph (default)';
+    }
+    
+    const labels = {
+      manual: { zh: '📝 手动图谱', en: '📝 Manual Graph' },
+      auto: { zh: '⚡ 自动图谱', en: '⚡ Auto Graph' },
+      merged: { zh: '🔗 合并图谱', en: '🔗 Merged Graph' }
+    };
+    
+    return labels[sourceType][locale];
+  }
 
+  /**
+   * 根据图谱数据计算统计信息
+   */
+  private calculateStatsFromGraphData(graphData?: GraphData): {
+    entitiesWithDependencies: number;
+    averageDependencies: number;
+    maxDependencyDepth: number;
+    circularDependencyCount: number;
+    topDependencies: Array<{ entity: Entity; dependencyCount: number }>;
+  } {
+    // 如果没有传入 graphData 或者是手动图谱，使用原有的 dependencyAnalyzer
+    if (!graphData || graphData.sourceType === 'manual') {
+      return this.dependencyAnalyzer.getGlobalDependencyStats();
+    }
+
+    // 对于自动图谱或合并图谱，根据传入的数据计算统计
+    const { entities, relations } = graphData;
+    
+    // 计算每个实体的依赖数（出边数量）
+    const dependencyCounts = new Map<string, number>();
     for (const entity of entities) {
-      const observations = this.observationService.getObservations(entity.id);
-      for (const obs of observations) {
+      dependencyCounts.set(entity.id, 0);
+    }
+    
+    for (const relation of relations) {
+      const count = dependencyCounts.get(relation.sourceEntityId) || 0;
+      dependencyCounts.set(relation.sourceEntityId, count + 1);
+    }
+
+    // 计算统计数据
+    let totalDependencies = 0;
+    let entitiesWithDeps = 0;
+    
+    for (const count of dependencyCounts.values()) {
+      totalDependencies += count;
+      if (count > 0) {
+        entitiesWithDeps++;
+      }
+    }
+
+    const averageDependencies = entities.length > 0 
+      ? Math.round((totalDependencies / entities.length) * 10) / 10 
+      : 0;
+
+    // 获取依赖最多的实体
+    const sortedDeps = Array.from(dependencyCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    const topDependencies = sortedDeps
+      .filter(([, count]) => count > 0)
+      .map(([entityId, count]) => {
+        const entity = entities.find(e => e.id === entityId);
+        return {
+          entity: entity!,
+          dependencyCount: count,
+        };
+      })
+      .filter(item => item.entity);
+
+    return {
+      entitiesWithDependencies: entitiesWithDeps,
+      averageDependencies,
+      maxDependencyDepth: 1, // 简化计算，不做深度分析
+      circularDependencyCount: 0, // 简化计算
+      topDependencies,
+    };
+  }
+
+  /**
+   * 分类观察记录
+   * @param graphData 可选的图谱数据，如果提供则使用传入的观察记录
+   */
+  private categorizeObservations(graphData?: GraphData) {
+    const warnings: Array<{ entity: { name: string }; content: string }> = [];
+    const todos: Array<{ entity: { name: string }; content: string }> = [];
+    const bugs: Array<{ entity: { name: string }; content: string }> = [];
+    const others: Array<{ entity: { name: string }; content: string }> = [];
+
+    if (graphData?.observations) {
+      // 使用传入的观察记录
+      for (const obs of graphData.observations) {
         const content = obs.content.toLowerCase();
-        const item = { entity, content: obs.content };
+        const item = { entity: { name: obs.entityName }, content: obs.content };
 
         if (content.includes('warning') || content.includes('warn') || content.includes('⚠️')) {
           warnings.push(item);
@@ -541,6 +688,27 @@ export class AIIntegrationService {
           bugs.push(item);
         } else {
           others.push(item);
+        }
+      }
+    } else {
+      // 使用默认服务获取
+      const entities = this.entityService.listEntities({});
+
+      for (const entity of entities) {
+        const observations = this.observationService.getObservations(entity.id);
+        for (const obs of observations) {
+          const content = obs.content.toLowerCase();
+          const item = { entity: { name: entity.name }, content: obs.content };
+
+          if (content.includes('warning') || content.includes('warn') || content.includes('⚠️')) {
+            warnings.push(item);
+          } else if (content.includes('todo') || content.includes('待办') || content.includes('📝')) {
+            todos.push(item);
+          } else if (content.includes('bug') || content.includes('issue') || content.includes('问题') || content.includes('🐛')) {
+            bugs.push(item);
+          } else {
+            others.push(item);
+          }
         }
       }
     }
